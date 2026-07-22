@@ -55,9 +55,12 @@
         const name = escapeHtml(member.name || "Miembro ALIGN");
         const level = escapeHtml(member.level || "Membresía");
         const code = escapeHtml(member.memberCode || "");
+        const logoSrc = location.protocol === "file:"
+          ? "assets/align-logo-card.png"
+          : "/assets/align-logo-card.png";
         app.className = `card ${isBlack ? "black" : ""}`;
         app.innerHTML = `
-          <div class="top"><img class="logo" src="/assets/align-logo-card.png" alt="ALIGN" /><p class="status">Activa</p></div>
+          <div class="top"><img class="logo" src="${logoSrc}" alt="ALIGN" /><p class="status">Activa</p></div>
           <div><h1 class="level">${level}</h1><p class="member">${name}</p></div>
           <div><div class="qr-wrap"><img id="qr" alt="Código QR de membresía" /></div><p class="caption">Escanea para validar la membresía y aplicar el beneficio.</p></div>
           <div class="bottom"><div><p class="eyebrow">Código de socio</p><p class="code">${code}</p></div><div><p class="eyebrow">Ahorro</p><p class="saving">${money.format(member.savings || 0)}</p></div></div>`;
