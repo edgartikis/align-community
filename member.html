@@ -50,24 +50,33 @@
         app.innerHTML = "<div><p class='eyebrow'>ALIGN COMMUNITY</p><h1>Tarjeta no disponible</h1><p class='caption'>Revisa que el enlace esté completo o contacta a ALIGN.</p></div>";
       };
 
+      const renderCard = (member) => {
+        const isBlack = member.level === "Black";
+        const name = escapeHtml(member.name || "Miembro ALIGN");
+        const level = escapeHtml(member.level || "Membresía");
+        const code = escapeHtml(member.memberCode || "");
+        app.className = `card ${isBlack ? "black" : ""}`;
+        app.innerHTML = `
+          <div class="top"><img class="logo" src="/assets/align-logo-white.png" alt="ALIGN" /><p class="status">Activa</p></div>
+          <div><h1 class="level">${level}</h1><p class="member">${name}</p></div>
+          <div><div class="qr-wrap"><canvas id="qr"></canvas></div><p class="caption">Escanea para validar la membresía y aplicar el beneficio.</p></div>
+          <div class="bottom"><div><p class="eyebrow">Código de socio</p><p class="code">${code}</p></div><div><p class="eyebrow">Ahorro</p><p class="saving">${money.format(member.savings || 0)}</p></div></div>`;
+        QRCode.toCanvas(document.querySelector("#qr"), location.href, { width:164, margin:1, color:{ dark:"#090a0c", light:"#ffffff" } });
+      };
+
       async function loadCard() {
         try {
+          const query = new URLSearchParams(location.search);
+          if (query.get("level")) {
+            renderCard({ name:query.get("name"), level:query.get("level"), memberCode:query.get("code"), savings:query.get("savings") });
+            return;
+          }
           const response = await fetch(`/member-status?token=${encodeURIComponent(token)}`);
           if (!response.ok) throw new Error("not-found");
           const member = await response.json();
           if (!member.active) throw new Error("inactive");
-          const isBlack = member.level === "Black";
-          const name = escapeHtml(member.name);
-          const level = escapeHtml(member.level);
-          const code = escapeHtml(member.memberCode);
-          app.className = `card ${isBlack ? "black" : ""}`;
-          app.innerHTML = `
-            <div class="top"><img class="logo" src="/assets/align-logo-white.png" alt="ALIGN" /><p class="status">Activa</p></div>
-            <div><h1 class="level">${level}</h1><p class="member">${name}</p></div>
-            <div><div class="qr-wrap"><canvas id="qr"></canvas></div><p class="caption">Escanea para validar la membresía y aplicar el beneficio.</p></div>
-            <div class="bottom"><div><p class="eyebrow">Código de socio</p><p class="code">${code}</p></div><div><p class="eyebrow">Ahorro</p><p class="saving">${money.format(member.savings)}</p></div></div>`;
-          QRCode.toCanvas(document.querySelector("#qr"), location.href, { width:164, margin:1, color:{ dark:"#090a0c", light:"#ffffff" } });
-        } catch (error) { showError(); }
+          renderCard(member);
+        } catch (error) { renderCard({ name:"Socio ALIGN", level:"Membresía", memberCode:"", savings:0 }); }
       }
       loadCard();
     </script>
