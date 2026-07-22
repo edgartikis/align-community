@@ -18,16 +18,17 @@
       .card.black { background:#08090b; }
       .top,.bottom { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
       .top { position:relative; justify-content:center; min-height:88px; }
-      .logo { width:92px; height:88px; object-fit:contain; }
+      .logo { width:104px; height:88px; object-fit:contain; }
       .eyebrow,.status { margin:0; font-family:"DM Mono",monospace; font-size:.67rem; letter-spacing:.14em; text-transform:uppercase; }
       .status { position:absolute; right:0; top:0; padding:7px 9px; border:1px solid rgba(245,242,236,.35); border-radius:999px; }
-      .level { margin:14px 0 0; font-family:"Bodoni Moda",serif; font-size:4.25rem; font-weight:500; line-height:.9; letter-spacing:-.065em; }
-      .member { margin:14px 0 0; font-size:1.18rem; font-weight:500; }
+      .level { margin:14px 0 0; text-align:center; font-family:"Bodoni Moda",serif; font-size:4.25rem; font-weight:500; line-height:.9; letter-spacing:-.065em; }
+      .member { margin:14px 0 0; text-align:center; font-size:1.18rem; font-weight:500; }
       .qr-wrap { width:188px; height:188px; margin:12px auto 22px; padding:12px; background:white; border-radius:13px; }
       .qr-wrap img { display:block; width:100%; height:100%; }
       .caption { margin:0; text-align:center; color:#d4d0c9; font-size:.78rem; line-height:1.45; }
-      .code { margin:0; font-family:"DM Mono",monospace; font-size:.9rem; letter-spacing:.1em; }
-      .saving { margin:9px 0 0; color:#d4d0c9; font-size:.78rem; }
+      .bottom { margin-top:14px; padding-top:10px; border-top:1px solid rgba(245,242,236,.18); }
+      .code { margin:6px 0 0; font-family:"DM Mono",monospace; font-size:.9rem; letter-spacing:.1em; }
+      .saving { margin:6px 0 0; color:#d4d0c9; font-size:.78rem; }
       .load { min-height:590px; display:grid; place-items:center; border-radius:24px; background:var(--navy); font-family:"Bodoni Moda",serif; font-size:1.55rem; }
       .error { background:#16171a; text-align:center; padding:36px; }
       .hint { margin:18px 8px 0; color:#5b5a57; text-align:center; font-size:.82rem; line-height:1.5; }
@@ -56,7 +57,7 @@
         const code = escapeHtml(member.memberCode || "");
         app.className = `card ${isBlack ? "black" : ""}`;
         app.innerHTML = `
-          <div class="top"><img class="logo" src="/assets/align-logo-white.png" alt="ALIGN" /><p class="status">Activa</p></div>
+          <div class="top"><img class="logo" src="/assets/align-logo-card.png" alt="ALIGN" /><p class="status">Activa</p></div>
           <div><h1 class="level">${level}</h1><p class="member">${name}</p></div>
           <div><div class="qr-wrap"><img id="qr" alt="Código QR de membresía" /></div><p class="caption">Escanea para validar la membresía y aplicar el beneficio.</p></div>
           <div class="bottom"><div><p class="eyebrow">Código de socio</p><p class="code">${code}</p></div><div><p class="eyebrow">Ahorro</p><p class="saving">${money.format(member.savings || 0)}</p></div></div>`;
