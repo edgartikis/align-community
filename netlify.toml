@@ -3,3 +3,8 @@
 
 [functions]
   node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/member/*"
+  to = "/member.html"
+  status = 200
