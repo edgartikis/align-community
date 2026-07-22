@@ -52,7 +52,7 @@
 
       async function loadCard() {
         try {
-          const response = await fetch(`/.netlify/functions/membership-status?token=${encodeURIComponent(token)}`);
+          const response = await fetch(`/member-status?token=${encodeURIComponent(token)}`);
           if (!response.ok) throw new Error("not-found");
           const member = await response.json();
           if (!member.active) throw new Error("inactive");
