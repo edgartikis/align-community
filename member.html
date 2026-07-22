@@ -14,17 +14,17 @@
       * { box-sizing:border-box; }
       body { min-height:100vh; margin:0; display:grid; place-items:center; padding:28px 18px; background:var(--paper); color:var(--paper); font-family:"DM Sans",sans-serif; }
       main { width:min(100%, 430px); }
-      .brand { width:74px; height:74px; object-fit:contain; display:block; margin:0 auto 16px; }
       .card { min-height:590px; padding:30px; display:flex; flex-direction:column; border-radius:24px; background:var(--navy); box-shadow:0 24px 55px rgba(16,35,62,.25); }
       .card.black { background:#08090b; }
       .top,.bottom { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
-      .logo { width:58px; height:58px; object-fit:contain; object-position:left top; }
+      .top { position:relative; justify-content:center; min-height:88px; }
+      .logo { width:92px; height:88px; object-fit:contain; }
       .eyebrow,.status { margin:0; font-family:"DM Mono",monospace; font-size:.67rem; letter-spacing:.14em; text-transform:uppercase; }
-      .status { padding:7px 9px; border:1px solid rgba(245,242,236,.35); border-radius:999px; }
+      .status { position:absolute; right:0; top:0; padding:7px 9px; border:1px solid rgba(245,242,236,.35); border-radius:999px; }
       .level { margin:14px 0 0; font-family:"Bodoni Moda",serif; font-size:4.25rem; font-weight:500; line-height:.9; letter-spacing:-.065em; }
       .member { margin:14px 0 0; font-size:1.18rem; font-weight:500; }
-      .qr-wrap { width:188px; margin:12px auto 22px; padding:12px; background:white; border-radius:13px; }
-      canvas { display:block; width:100% !important; height:auto !important; }
+      .qr-wrap { width:188px; height:188px; margin:12px auto 22px; padding:12px; background:white; border-radius:13px; }
+      .qr-wrap img { display:block; width:100%; height:100%; }
       .caption { margin:0; text-align:center; color:#d4d0c9; font-size:.78rem; line-height:1.45; }
       .code { margin:0; font-family:"DM Mono",monospace; font-size:.9rem; letter-spacing:.1em; }
       .saving { margin:9px 0 0; color:#d4d0c9; font-size:.78rem; }
@@ -35,7 +35,6 @@
   </head>
   <body>
     <main>
-      <img class="brand" src="/assets/align-logo-white.png" alt="ALIGN" />
       <section id="app" class="load">Cargando tu tarjeta…</section>
       <p class="hint">Presenta este código QR al momento de pedir tu beneficio.</p>
     </main>
@@ -59,9 +58,9 @@
         app.innerHTML = `
           <div class="top"><img class="logo" src="/assets/align-logo-white.png" alt="ALIGN" /><p class="status">Activa</p></div>
           <div><h1 class="level">${level}</h1><p class="member">${name}</p></div>
-          <div><div class="qr-wrap"><canvas id="qr"></canvas></div><p class="caption">Escanea para validar la membresía y aplicar el beneficio.</p></div>
+          <div><div class="qr-wrap"><img id="qr" alt="Código QR de membresía" /></div><p class="caption">Escanea para validar la membresía y aplicar el beneficio.</p></div>
           <div class="bottom"><div><p class="eyebrow">Código de socio</p><p class="code">${code}</p></div><div><p class="eyebrow">Ahorro</p><p class="saving">${money.format(member.savings || 0)}</p></div></div>`;
-        QRCode.toCanvas(document.querySelector("#qr"), location.href, { width:164, margin:1, color:{ dark:"#090a0c", light:"#ffffff" } });
+        document.querySelector("#qr").src = `https://api.qrserver.com/v1/create-qr-code/?size=164x164&margin=0&data=${encodeURIComponent(location.href)}`;
       };
 
       async function loadCard() {
@@ -76,7 +75,7 @@
           const member = await response.json();
           if (!member.active) throw new Error("inactive");
           renderCard(member);
-        } catch (error) { renderCard({ name:"Socio ALIGN", level:"Membresía", memberCode:"", savings:0 }); }
+        } catch (error) { renderCard({ name:"Miembro ALIGN", level:"Society", memberCode:"", savings:0 }); }
       }
       loadCard();
     </script>
