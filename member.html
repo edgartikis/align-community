@@ -14,32 +14,34 @@
       * { box-sizing:border-box; }
       body { min-height:100vh; margin:0; display:grid; place-items:center; padding:30px 18px; background:radial-gradient(circle at 50% 0%, #fff 0, var(--paper) 42%, #e9e4dc 100%); color:var(--paper); font-family:"DM Sans",sans-serif; }
       main { width:min(100%, 438px); }
-      .card { position:relative; isolation:isolate; min-height:626px; overflow:hidden; padding:27px 29px 25px; display:flex; flex-direction:column; border:1px solid rgba(217,198,165,.32); border-radius:28px; background:linear-gradient(138deg, #292a2e 0%, #0a0b0e 24%, #020304 68%, #101925 100%); box-shadow:0 34px 75px rgba(0,0,0,.42), inset 0 1px rgba(255,255,255,.12), inset 0 0 55px rgba(0,0,0,.5); }
-      .card::before { content:""; position:absolute; z-index:-1; inset:0; opacity:.46; background:radial-gradient(circle at 7% 8%, rgba(255,255,255,.17) 0 1px, transparent 1.5px), radial-gradient(circle at 100% 100%, rgba(24,52,86,.52), transparent 35%), repeating-linear-gradient(118deg, transparent 0 7px, rgba(255,255,255,.018) 8px 9px); background-size:8px 8px, auto, auto; mix-blend-mode:screen; }
+      .card { position:relative; isolation:isolate; min-height:626px; overflow:hidden; padding:28px 29px 25px; display:flex; flex-direction:column; border:1px solid rgba(217,198,165,.32); border-radius:28px; background:linear-gradient(138deg, #292a2e 0%, #0a0b0e 24%, #020304 68%, #101925 100%); box-shadow:0 34px 75px rgba(0,0,0,.42), inset 0 1px rgba(255,255,255,.12), inset 0 0 55px rgba(0,0,0,.5); }
+      .card::before { content:""; position:absolute; z-index:-1; inset:0; opacity:.46; background:linear-gradient(125deg, transparent 0 14%, rgba(217,198,165,.75) 14.25% 14.55%, transparent 14.8% 100%), linear-gradient(125deg, transparent 0 16.3%, rgba(166,122,55,.56) 16.55% 16.85%, transparent 17.1% 100%), radial-gradient(circle at 100% 100%, rgba(24,52,86,.52), transparent 35%), repeating-linear-gradient(118deg, transparent 0 7px, rgba(255,255,255,.018) 8px 9px); background-size:auto, auto, auto, auto; }
       .card::after { content:""; position:absolute; z-index:-1; inset:10px; border:1px solid rgba(217,198,165,.13); border-radius:20px; pointer-events:none; }
       .card.black { background:linear-gradient(138deg, #353538 0%, #0a0a0b 24%, #000 70%, #151515 100%); border-color:rgba(217,198,165,.46); }
-      .card.black::before { background:radial-gradient(circle at 7% 8%, rgba(255,255,255,.18) 0 1px, transparent 1.5px), radial-gradient(circle at 100% 100%, rgba(217,198,165,.3), transparent 37%), repeating-linear-gradient(118deg, transparent 0 7px, rgba(255,255,255,.018) 8px 9px); }
+      .card.black::before { background:linear-gradient(125deg, transparent 0 14%, rgba(217,198,165,.95) 14.25% 14.55%, transparent 14.8% 100%), linear-gradient(125deg, transparent 0 16.3%, rgba(166,122,55,.65) 16.55% 16.85%, transparent 17.1% 100%), radial-gradient(circle at 100% 100%, rgba(217,198,165,.3), transparent 37%), repeating-linear-gradient(118deg, transparent 0 7px, rgba(255,255,255,.018) 8px 9px); }
       .top,.bottom { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
-      .top { position:relative; justify-content:center; min-height:83px; }
-      .logo { width:108px; height:83px; object-fit:contain; filter:drop-shadow(0 4px 8px rgba(0,0,0,.18)); }
+      .top { position:relative; justify-content:flex-start; min-height:76px; }
+      .logo { width:96px; height:76px; object-fit:contain; filter:drop-shadow(0 4px 8px rgba(0,0,0,.18)); }
       .eyebrow,.status { margin:0; font-family:"DM Mono",monospace; font-size:.63rem; letter-spacing:.16em; text-transform:uppercase; }
       .status { position:absolute; right:0; top:2px; display:flex; align-items:center; gap:6px; padding:7px 10px; border:1px solid rgba(217,198,165,.46); border-radius:999px; color:var(--champagne); background:rgba(217,198,165,.06); }
       .status::before { content:""; width:5px; height:5px; border-radius:50%; background:#bfe0c7; box-shadow:0 0 8px #bfe0c7; }
-      .level { margin:16px 0 0; text-align:center; font-family:"Bodoni Moda",serif; font-size:4.35rem; font-weight:500; line-height:.86; letter-spacing:-.075em; color:#f6f3ee; text-shadow:0 5px 28px rgba(0,0,0,.45); }
-      .member { margin:17px 0 0; text-align:center; font-size:.78rem; font-weight:500; letter-spacing:.18em; text-transform:uppercase; color:var(--soft); }
-      .membership-line { display:flex; align-items:center; justify-content:center; gap:9px; margin:14px 0 8px; color:var(--champagne); font-family:"DM Mono",monospace; font-size:.6rem; letter-spacing:.18em; text-transform:uppercase; }
-      .membership-line::before,.membership-line::after { content:""; width:27px; height:1px; background:rgba(217,198,165,.62); }
-      .qr-wrap { width:188px; height:188px; margin:10px auto 17px; padding:12px; background:#faf8f4; border:4px solid rgba(217,198,165,.86); border-radius:17px; box-shadow:0 15px 29px rgba(0,0,0,.48), inset 0 0 0 1px #fff; }
+      .level { margin:20px 0 0; font-family:"Bodoni Moda",serif; font-size:3.75rem; font-weight:500; line-height:.86; letter-spacing:-.07em; color:#f6f3ee; text-shadow:0 5px 28px rgba(0,0,0,.45); }
+      .member-label { margin:23px 0 0; font-family:"DM Mono",monospace; font-size:.6rem; letter-spacing:.18em; text-transform:uppercase; color:var(--champagne); }
+      .member { margin:6px 0 0; font-size:1.35rem; font-weight:500; letter-spacing:.02em; color:var(--soft); }
+      .membership-line { display:flex; align-items:center; justify-content:flex-start; gap:9px; margin:12px 0 0; color:rgba(240,237,231,.7); font-family:"DM Mono",monospace; font-size:.58rem; letter-spacing:.16em; text-transform:uppercase; }
+      .membership-line::after { content:""; width:30px; height:1px; background:rgba(217,198,165,.62); }
+      .qr-area { margin-top:auto; display:grid; grid-template-columns:1fr auto; align-items:end; gap:18px; }
+      .qr-wrap { width:154px; height:154px; margin:0; padding:10px; background:#faf8f4; border:4px solid rgba(217,198,165,.86); border-radius:14px; box-shadow:0 15px 29px rgba(0,0,0,.48), inset 0 0 0 1px #fff; }
       .qr-wrap img { display:block; width:100%; height:100%; }
-      .caption { margin:0; text-align:center; color:rgba(231,225,214,.78); font-size:.72rem; line-height:1.5; }
-      .bottom { margin-top:auto; padding-top:17px; border-top:1px solid rgba(217,198,165,.38); }
+      .caption { margin:0; text-align:left; color:rgba(231,225,214,.78); font-size:.7rem; line-height:1.55; }
+      .bottom { margin-top:18px; padding-top:15px; border-top:1px solid rgba(217,198,165,.38); }
       .bottom > div:last-child { text-align:right; }
       .code { margin:7px 0 0; font-family:"DM Mono",monospace; font-size:.88rem; letter-spacing:.1em; color:#fff; }
       .saving { margin:7px 0 0; color:var(--champagne); font-family:"Bodoni Moda",serif; font-size:1.26rem; line-height:1; }
       .load { min-height:626px; display:grid; place-items:center; border-radius:28px; background:var(--navy); font-family:"Bodoni Moda",serif; font-size:1.55rem; }
       .error { background:#16171a; text-align:center; padding:36px; }
       .hint { margin:18px 8px 0; color:#68645e; text-align:center; font-size:.76rem; line-height:1.5; }
-      @media (max-width:390px) { .card { min-height:600px; padding:24px; } .level { font-size:3.9rem; } .qr-wrap { width:174px; height:174px; } }
+      @media (max-width:390px) { .card { min-height:600px; padding:24px; } .level { font-size:3.45rem; } .qr-area { gap:12px; } .qr-wrap { width:142px; height:142px; } }
     </style>
   </head>
   <body>
@@ -69,8 +71,8 @@
         app.className = `card ${isBlack ? "black" : ""}`;
         app.innerHTML = `
           <div class="top"><img class="logo" src="${logoSrc}" alt="ALIGN" /><p class="status">Activa</p></div>
-          <div><h1 class="level">${level}</h1><p class="member">${name}</p><p class="membership-line">ALIGN COMMUNITY</p></div>
-          <div><div class="qr-wrap"><img id="qr" alt="Código QR de membresía" /></div><p class="caption">Escanea para validar la membresía y aplicar el beneficio.</p></div>
+          <div><h1 class="level">${level}</h1><p class="member-label">Miembro ALIGN</p><p class="member">${name}</p><p class="membership-line">ALIGN COMMUNITY</p></div>
+          <div class="qr-area"><p class="caption">Presenta este código al momento de pedir tu beneficio.<br><br>Validación exclusiva para miembros activos.</p><div class="qr-wrap"><img id="qr" alt="Código QR de membresía" /></div></div>
           <div class="bottom"><div><p class="eyebrow">Código de socio</p><p class="code">${code}</p></div><div><p class="eyebrow">Ahorro</p><p class="saving">${money.format(member.savings || 0)}</p></div></div>`;
         document.querySelector("#qr").src = `https://api.qrserver.com/v1/create-qr-code/?size=164x164&margin=0&data=${encodeURIComponent(location.href)}`;
       };
