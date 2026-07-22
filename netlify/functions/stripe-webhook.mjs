@@ -29,7 +29,13 @@ const memberCode = (level) => {
   return `AL-${prefix}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
 };
 
-const memberUrl = (token) => `${required("MEMBER_BASE_URL").replace(/\/$/, "")}/member/${token}`;
+const memberUrl = (token, member) => {
+  const url = new URL(`/member/${token}`, required("MEMBER_BASE_URL"));
+  url.searchParams.set("name", member.name || "Miembro ALIGN");
+  url.searchParams.set("level", member.level);
+  url.searchParams.set("code", member.code);
+  return url.toString();
+};
 
 const sheetTab = () => process.env.GOOGLE_SHEET_TAB || "Hoja 1";
 
@@ -52,6 +58,7 @@ async function registerMember(session, stripe) {
 
   const token = crypto.randomBytes(24).toString("base64url");
   const customer = expanded.customer_details || {};
+  const code = memberCode(level);
   const now = new Date().toISOString();
   const row = [
     `mem_${crypto.randomUUID()}`,
@@ -66,8 +73,8 @@ async function registerMember(session, stripe) {
     now,
     "",
     token,
-    memberUrl(token),
-    memberCode(level),
+    memberUrl(token, { name: customer.name, level, code }),
+    code,
     "",
     "",
     0,
