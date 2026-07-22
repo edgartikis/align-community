@@ -10,28 +10,35 @@
     <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,500;6..96,600&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
     <style>
-      :root { --paper:#f5f2ec; --ink:#090a0c; --navy:#10233e; --muted:#b9b4aa; }
+      :root { --paper:#f5f2ec; --ink:#090a0c; --navy:#10233e; --champagne:#d9c6a5; --soft:#e7e1d6; }
       * { box-sizing:border-box; }
-      body { min-height:100vh; margin:0; display:grid; place-items:center; padding:28px 18px; background:var(--paper); color:var(--paper); font-family:"DM Sans",sans-serif; }
-      main { width:min(100%, 430px); }
-      .card { min-height:590px; padding:30px; display:flex; flex-direction:column; border-radius:24px; background:var(--navy); box-shadow:0 24px 55px rgba(16,35,62,.25); }
-      .card.black { background:#08090b; }
+      body { min-height:100vh; margin:0; display:grid; place-items:center; padding:30px 18px; background:radial-gradient(circle at 50% 0%, #fff 0, var(--paper) 42%, #e9e4dc 100%); color:var(--paper); font-family:"DM Sans",sans-serif; }
+      main { width:min(100%, 438px); }
+      .card { position:relative; isolation:isolate; min-height:626px; overflow:hidden; padding:27px 29px 25px; display:flex; flex-direction:column; border:1px solid rgba(255,255,255,.18); border-radius:28px; background:linear-gradient(145deg, #183456 0%, #10233e 52%, #0a172a 100%); box-shadow:0 30px 70px rgba(16,35,62,.32), inset 0 1px rgba(255,255,255,.12); }
+      .card::before { content:""; position:absolute; z-index:-1; inset:0; opacity:.42; background:radial-gradient(circle at 7% 8%, rgba(255,255,255,.22) 0 1px, transparent 1.5px), radial-gradient(circle at 86% 92%, rgba(217,198,165,.23), transparent 31%); background-size:8px 8px, auto; mix-blend-mode:screen; }
+      .card.black { background:linear-gradient(145deg, #222226 0%, #08090b 52%, #000 100%); box-shadow:0 30px 70px rgba(0,0,0,.38), inset 0 1px rgba(255,255,255,.12); }
+      .card.black::before { background:radial-gradient(circle at 7% 8%, rgba(255,255,255,.18) 0 1px, transparent 1.5px), radial-gradient(circle at 86% 92%, rgba(217,198,165,.32), transparent 33%); }
       .top,.bottom { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
-      .top { position:relative; justify-content:center; min-height:88px; }
-      .logo { width:104px; height:88px; object-fit:contain; }
-      .eyebrow,.status { margin:0; font-family:"DM Mono",monospace; font-size:.67rem; letter-spacing:.14em; text-transform:uppercase; }
-      .status { position:absolute; right:0; top:0; padding:7px 9px; border:1px solid rgba(245,242,236,.35); border-radius:999px; }
-      .level { margin:14px 0 0; text-align:center; font-family:"Bodoni Moda",serif; font-size:4.25rem; font-weight:500; line-height:.9; letter-spacing:-.065em; }
-      .member { margin:14px 0 0; text-align:center; font-size:1.18rem; font-weight:500; }
-      .qr-wrap { width:188px; height:188px; margin:12px auto 22px; padding:12px; background:white; border-radius:13px; }
+      .top { position:relative; justify-content:center; min-height:83px; }
+      .logo { width:108px; height:83px; object-fit:contain; filter:drop-shadow(0 4px 8px rgba(0,0,0,.18)); }
+      .eyebrow,.status { margin:0; font-family:"DM Mono",monospace; font-size:.63rem; letter-spacing:.16em; text-transform:uppercase; }
+      .status { position:absolute; right:0; top:2px; display:flex; align-items:center; gap:6px; padding:7px 10px; border:1px solid rgba(245,242,236,.34); border-radius:999px; color:var(--soft); background:rgba(255,255,255,.06); }
+      .status::before { content:""; width:5px; height:5px; border-radius:50%; background:#bfe0c7; box-shadow:0 0 8px #bfe0c7; }
+      .level { margin:16px 0 0; text-align:center; font-family:"Bodoni Moda",serif; font-size:4.35rem; font-weight:500; line-height:.86; letter-spacing:-.075em; text-shadow:0 4px 22px rgba(0,0,0,.15); }
+      .member { margin:17px 0 0; text-align:center; font-size:.78rem; font-weight:500; letter-spacing:.18em; text-transform:uppercase; color:var(--soft); }
+      .membership-line { display:flex; align-items:center; justify-content:center; gap:9px; margin:14px 0 8px; color:var(--champagne); font-family:"DM Mono",monospace; font-size:.6rem; letter-spacing:.18em; text-transform:uppercase; }
+      .membership-line::before,.membership-line::after { content:""; width:27px; height:1px; background:rgba(217,198,165,.62); }
+      .qr-wrap { width:188px; height:188px; margin:10px auto 17px; padding:12px; background:#fff; border:4px solid rgba(217,198,165,.76); border-radius:17px; box-shadow:0 12px 24px rgba(0,0,0,.22), inset 0 0 0 1px #fff; }
       .qr-wrap img { display:block; width:100%; height:100%; }
-      .caption { margin:0; text-align:center; color:#d4d0c9; font-size:.78rem; line-height:1.45; }
-      .bottom { margin-top:14px; padding-top:10px; border-top:1px solid rgba(245,242,236,.18); }
-      .code { margin:6px 0 0; font-family:"DM Mono",monospace; font-size:.9rem; letter-spacing:.1em; }
-      .saving { margin:6px 0 0; color:#d4d0c9; font-size:.78rem; }
-      .load { min-height:590px; display:grid; place-items:center; border-radius:24px; background:var(--navy); font-family:"Bodoni Moda",serif; font-size:1.55rem; }
+      .caption { margin:0; text-align:center; color:rgba(231,225,214,.78); font-size:.72rem; line-height:1.5; }
+      .bottom { margin-top:auto; padding-top:17px; border-top:1px solid rgba(217,198,165,.38); }
+      .bottom > div:last-child { text-align:right; }
+      .code { margin:7px 0 0; font-family:"DM Mono",monospace; font-size:.88rem; letter-spacing:.1em; color:#fff; }
+      .saving { margin:7px 0 0; color:var(--champagne); font-family:"Bodoni Moda",serif; font-size:1.26rem; line-height:1; }
+      .load { min-height:626px; display:grid; place-items:center; border-radius:28px; background:var(--navy); font-family:"Bodoni Moda",serif; font-size:1.55rem; }
       .error { background:#16171a; text-align:center; padding:36px; }
-      .hint { margin:18px 8px 0; color:#5b5a57; text-align:center; font-size:.82rem; line-height:1.5; }
+      .hint { margin:18px 8px 0; color:#68645e; text-align:center; font-size:.76rem; line-height:1.5; }
+      @media (max-width:390px) { .card { min-height:600px; padding:24px; } .level { font-size:3.9rem; } .qr-wrap { width:174px; height:174px; } }
     </style>
   </head>
   <body>
@@ -61,7 +68,7 @@
         app.className = `card ${isBlack ? "black" : ""}`;
         app.innerHTML = `
           <div class="top"><img class="logo" src="${logoSrc}" alt="ALIGN" /><p class="status">Activa</p></div>
-          <div><h1 class="level">${level}</h1><p class="member">${name}</p></div>
+          <div><h1 class="level">${level}</h1><p class="member">${name}</p><p class="membership-line">ALIGN COMMUNITY</p></div>
           <div><div class="qr-wrap"><img id="qr" alt="Código QR de membresía" /></div><p class="caption">Escanea para validar la membresía y aplicar el beneficio.</p></div>
           <div class="bottom"><div><p class="eyebrow">Código de socio</p><p class="code">${code}</p></div><div><p class="eyebrow">Ahorro</p><p class="saving">${money.format(member.savings || 0)}</p></div></div>`;
         document.querySelector("#qr").src = `https://api.qrserver.com/v1/create-qr-code/?size=164x164&margin=0&data=${encodeURIComponent(location.href)}`;
