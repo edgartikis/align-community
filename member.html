@@ -26,7 +26,7 @@
       .status { position:absolute; right:0; top:2px; display:flex; align-items:center; gap:6px; padding:7px 10px; border:1px solid rgba(217,198,165,.46); border-radius:999px; color:var(--champagne); background:rgba(217,198,165,.06); }
       .status::before { content:""; width:5px; height:5px; border-radius:50%; background:#bfe0c7; box-shadow:0 0 8px #bfe0c7; }
       .level { margin:20px 0 0; font-family:"Bodoni Moda",serif; font-size:3.75rem; font-weight:500; line-height:.86; letter-spacing:-.07em; color:#f6f3ee; text-shadow:0 5px 28px rgba(0,0,0,.45); }
-      .member-label { margin:23px 0 0; font-family:"DM Mono",monospace; font-size:.6rem; letter-spacing:.18em; text-transform:uppercase; color:var(--champagne); }
+      .member-label { margin:23px 0 0; font-family:"DM Mono",monospace; font-size:.6rem; letter-spacing:.18em; text-transform:uppercase; color:#fff; }
       .member { margin:6px 0 0; font-size:1.35rem; font-weight:500; letter-spacing:.02em; color:var(--soft); }
       .membership-line { display:flex; align-items:center; justify-content:flex-start; gap:9px; margin:12px 0 0; color:rgba(240,237,231,.7); font-family:"DM Mono",monospace; font-size:.58rem; letter-spacing:.16em; text-transform:uppercase; }
       .membership-line::after { content:""; width:30px; height:1px; background:rgba(217,198,165,.62); }
@@ -71,7 +71,7 @@
         app.className = `card ${isBlack ? "black" : ""}`;
         app.innerHTML = `
           <div class="top"><img class="logo" src="${logoSrc}" alt="ALIGN" /><p class="status">Activa</p></div>
-          <div><h1 class="level">${level}</h1><p class="member-label">Miembro ALIGN</p><p class="member">${name}</p><p class="membership-line">ALIGN COMMUNITY</p></div>
+          <div><h1 class="level">${level}</h1><p class="member-label">Miembro ${level}</p><p class="member">${name}</p><p class="membership-line">ALIGN COMMUNITY</p></div>
           <div class="qr-area"><p class="caption">Presenta este código al momento de pedir tu beneficio.<br><br>Validación exclusiva para miembros activos.</p><div class="qr-wrap"><img id="qr" alt="Código QR de membresía" /></div></div>
           <div class="bottom"><div><p class="eyebrow">Código de socio</p><p class="code">${code}</p></div><div><p class="eyebrow">Ahorro</p><p class="saving">${money.format(member.savings || 0)}</p></div></div>`;
         document.querySelector("#qr").src = `https://api.qrserver.com/v1/create-qr-code/?size=164x164&margin=0&data=${encodeURIComponent(location.href)}`;
