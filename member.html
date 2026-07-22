@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="es-MX">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#10233e" />
+    <title>Mi tarjeta | ALIGN COMMUNITY</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+    <style>
+      :root { --paper:#f5f2ec; --ink:#090a0c; --navy:#10233e; --muted:#b9b4aa; }
+      * { box-sizing:border-box; }
+      body { min-height:100vh; margin:0; display:grid; place-items:center; padding:28px 18px; background:var(--paper); color:var(--paper); font-family:"DM Sans",sans-serif; }
+      main { width:min(100%, 430px); }
+      .brand { margin:0 0 18px; text-align:center; color:var(--ink); font-family:"Playfair Display",serif; letter-spacing:.18em; }
+      .card { min-height:590px; padding:30px; display:flex; flex-direction:column; border-radius:24px; background:var(--navy); box-shadow:0 24px 55px rgba(16,35,62,.25); }
+      .card.black { background:#08090b; }
+      .top,.bottom { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
+      .eyebrow,.status { margin:0; font-family:"DM Mono",monospace; font-size:.67rem; letter-spacing:.14em; text-transform:uppercase; }
+      .status { padding:7px 9px; border:1px solid rgba(245,242,236,.35); border-radius:999px; }
+      .level { margin:14px 0 0; font-family:"Playfair Display",serif; font-size:4.2rem; line-height:.92; letter-spacing:-.07em; }
+      .member { margin:14px 0 0; font-size:1.18rem; font-weight:500; }
+      .qr-wrap { width:188px; margin:12px auto 22px; padding:12px; background:white; border-radius:13px; }
+      canvas { display:block; width:100% !important; height:auto !important; }
+      .caption { margin:0; text-align:center; color:#d4d0c9; font-size:.78rem; line-height:1.45; }
+      .code { margin:0; font-family:"DM Mono",monospace; font-size:.9rem; letter-spacing:.1em; }
+      .saving { margin:9px 0 0; color:#d4d0c9; font-size:.78rem; }
+      .load { min-height:590px; display:grid; place-items:center; border-radius:24px; background:var(--navy); font-family:"Playfair Display",serif; font-size:1.4rem; }
+      .error { background:#16171a; text-align:center; padding:36px; }
+      .hint { margin:18px 8px 0; color:#5b5a57; text-align:center; font-size:.82rem; line-height:1.5; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="brand">ALIGN</p>
+      <section id="app" class="load">Cargando tu tarjeta…</section>
+      <p class="hint">Presenta este código QR al momento de pedir tu beneficio.</p>
+    </main>
+    <script>
+      const app = document.querySelector("#app");
+      const token = location.pathname.split("/").filter(Boolean).pop();
+      const money = new Intl.NumberFormat("es-MX", { style:"currency", currency:"MXN", maximumFractionDigits:0 });
+      const escapeHtml = (value) => String(value).replace(/[&<>\"']/g, (character) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#039;" })[character]);
+
+      const showError = () => {
+        app.className = "card error";
+        app.innerHTML = "<div><p class='eyebrow'>ALIGN COMMUNITY</p><h1>Tarjeta no disponible</h1><p class='caption'>Revisa que el enlace esté completo o contacta a ALIGN.</p></div>";
+      };
+
+      async function loadCard() {
+        try {
+          const response = await fetch(`/.netlify/functions/member-card?token=${encodeURIComponent(token)}`);
+          if (!response.ok) throw new Error("not-found");
+          const member = await response.json();
+          if (!member.active) throw new Error("inactive");
+          const isBlack = member.level === "Black";
+          const name = escapeHtml(member.name);
+          const level = escapeHtml(member.level);
+          const code = escapeHtml(member.memberCode);
+          app.className = `card ${isBlack ? "black" : ""}`;
+          app.innerHTML = `
+            <div class="top"><p class="eyebrow">ALIGN COMMUNITY</p><p class="status">Activa</p></div>
+            <div><h1 class="level">${level}</h1><p class="member">${name}</p></div>
+            <div><div class="qr-wrap"><canvas id="qr"></canvas></div><p class="caption">Escanea para validar la membresía y aplicar el beneficio.</p></div>
+            <div class="bottom"><div><p class="eyebrow">Código de socio</p><p class="code">${code}</p></div><div><p class="eyebrow">Ahorro</p><p class="saving">${money.format(member.savings)}</p></div></div>`;
+          QRCode.toCanvas(document.querySelector("#qr"), location.href, { width:164, margin:1, color:{ dark:"#090a0c", light:"#ffffff" } });
+        } catch (error) { showError(); }
+      }
+      loadCard();
+    </script>
+  </body>
+</html>
