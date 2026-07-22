@@ -1,0 +1,9 @@
+{
+  "name": "align-community-site",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "googleapis": "^144.0.0",
+    "stripe": "^16.12.0"
+  }
+}

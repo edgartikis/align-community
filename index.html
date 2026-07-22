@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="es-MX">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="ALIGN COMMUNITY: membresías para descubrir experiencias, beneficios y una comunidad en Tampico."
+    />
+    <title>ALIGN COMMUNITY</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet" />
+    <style>
+      :root { --ink:#090a0c; --paper:#f5f2ec; --navy:#10233e; --muted:#b9b4aa; --line:rgba(245,242,236,.18); }
+      * { box-sizing:border-box; }
+      html { scroll-behavior:smooth; }
+      body { margin:0; color:var(--paper); background:var(--ink); font-family:"DM Sans",sans-serif; }
+      a { color:inherit; text-decoration:none; }
+      .nav { display:flex; justify-content:space-between; align-items:center; padding:24px 5.5vw; border-bottom:1px solid var(--line); }
+      .brand { letter-spacing:.18em; font-family:"Playfair Display",serif; font-size:1.25rem; }
+      .nav a { font-size:.8rem; letter-spacing:.08em; text-transform:uppercase; }
+      .hero { min-height:76vh; display:grid; place-items:center; padding:80px 5.5vw; text-align:center; background:radial-gradient(circle at 50% 30%,#1c2027 0%,#090a0c 52%); }
+      .mark { width:56px; height:56px; border:1px solid var(--paper); border-radius:50%; display:grid; place-items:center; margin-bottom:24px; font-family:"Playfair Display",serif; font-size:1.8rem; }
+      .eyebrow { margin:0 0 16px; font-family:"DM Mono",monospace; font-size:.7rem; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); }
+      h1,h2 { margin:0; font-family:"Playfair Display",serif; font-weight:500; }
+      h1 { max-width:780px; font-size:clamp(3rem,8vw,6.4rem); line-height:.96; letter-spacing:-.045em; }
+      .hero-copy { max-width:520px; margin:26px auto 30px; color:#d3d0ca; line-height:1.65; }
+      .button { display:inline-block; padding:14px 22px; border:1px solid var(--paper); font-size:.75rem; font-weight:600; letter-spacing:.1em; text-transform:uppercase; transition:.2s; }
+      .button:hover { background:var(--paper); color:var(--ink); }
+      .intro { padding:110px 5.5vw; display:grid; grid-template-columns:1fr 1.5fr; gap:60px; background:var(--paper); color:var(--ink); }
+      h2 { font-size:clamp(2.2rem,4vw,4rem); line-height:1.02; letter-spacing:-.04em; }
+      .intro p { max-width:620px; margin:0; font-size:1.2rem; line-height:1.65; }
+      .plans { padding:105px 5.5vw; }
+      .plans-heading { display:flex; justify-content:space-between; align-items:end; gap:20px; margin-bottom:34px; }
+      .plans-heading p { max-width:360px; margin:0; color:var(--muted); line-height:1.55; }
+      .cards { display:grid; grid-template-columns:repeat(2,1fr); gap:18px; }
+      .card { min-height:480px; padding:34px; display:flex; flex-direction:column; justify-content:space-between; border:1px solid var(--line); }
+      .society { background:var(--navy); }
+      .black { background:#060607; }
+      .plan-name { font-family:"Playfair Display",serif; font-size:3.7rem; letter-spacing:-.05em; }
+      .price { margin-top:4px; font-family:"DM Mono",monospace; font-size:.8rem; color:var(--muted); }
+      .card ul { list-style:none; padding:0; margin:30px 0; border-top:1px solid var(--line); }
+      .card li { padding:13px 0; border-bottom:1px solid var(--line); font-size:.96rem; }
+      .card li::before { content:"— "; color:var(--muted); }
+      .card .button { align-self:flex-start; }
+      .how { padding:100px 5.5vw; background:#17191d; }
+      .steps { display:grid; grid-template-columns:repeat(3,1fr); margin-top:42px; border-top:1px solid var(--line); }
+      .step { padding:24px 26px 16px 0; margin-right:26px; }
+      .step + .step { border-left:1px solid var(--line); padding-left:26px; }
+      .step-num { font-family:"DM Mono",monospace; color:var(--muted); font-size:.75rem; }
+      .step h3 { margin:28px 0 10px; font-family:"Playfair Display",serif; font-size:1.8rem; font-weight:500; }
+      .step p { color:#ccc9c2; line-height:1.55; margin:0; }
+      .cities { padding:90px 5.5vw; text-align:center; background:var(--paper); color:var(--ink); }
+      .cities p { margin:18px auto 28px; max-width:480px; line-height:1.6; }
+      .cities .button { border-color:var(--ink); }
+      .cities .button:hover { background:var(--ink); color:var(--paper); }
+      footer { display:flex; justify-content:space-between; gap:16px; padding:25px 5.5vw; font-family:"DM Mono",monospace; font-size:.68rem; color:var(--muted); }
+      @media (max-width:700px) { .intro,.cards,.steps { grid-template-columns:1fr; } .intro { gap:22px; padding:70px 7vw; } .plans,.how,.cities { padding:70px 7vw; } .plans-heading { display:block; } .plans-heading p { margin-top:16px; } .step + .step { border-left:0; border-top:1px solid var(--line); padding-left:0; } .step { margin:0; padding:24px 0; } .nav { padding:20px 7vw; } footer { padding:22px 7vw; flex-direction:column; } }
+    </style>
+  </head>
+  <body>
+    <nav class="nav">
+      <a class="brand" href="#inicio">ALIGN</a>
+      <a href="#membresias">Conoce la comunidad</a>
+    </nav>
+
+    <main>
+      <section id="inicio" class="hero">
+        <div>
+          <div class="mark">A</div>
+          <p class="eyebrow">Tampico · Madero · Altamira</p>
+          <h1>Una comunidad para vivir mejor tu ciudad.</h1>
+          <p class="hero-copy">ALIGN COMMUNITY reúne beneficios, experiencias y lugares que vale la pena descubrir.</p>
+          <a class="button" href="#membresias">Explorar membresías</a>
+        </div>
+      </section>
+
+      <section class="intro">
+        <p class="eyebrow">ALIGN COMMUNITY</p>
+        <p>Dos maneras de pertenecer. Elige la comunidad que se alinea contigo y disfruta beneficios pensados para tu ritmo de vida.</p>
+      </section>
+
+      <section id="membresias" class="plans">
+        <div class="plans-heading">
+          <h2>Elige tu acceso.</h2>
+          <p>Membresías mensuales, tarjeta digital y beneficios en una selección de aliados locales.</p>
+        </div>
+        <div class="cards">
+          <article class="card society">
+            <div>
+              <p class="eyebrow">ALIGN COMMUNITY</p>
+              <div class="plan-name">Society</div>
+              <div class="price">$199 MXN / mes</div>
+              <ul>
+                <li>Beneficios individuales en restaurantes y bares</li>
+                <li>Descuentos en marcas de ropa</li>
+                <li>Acceso a experiencias y eventos seleccionados</li>
+                <li>Tarjeta digital para Wallet</li>
+              </ul>
+            </div>
+            <a class="button" href="https://buy.stripe.com/test_dRm4gzf2SdpX7Pr08N1ck00">Quiero Society</a>
+          </article>
+          <article class="card black">
+            <div>
+              <p class="eyebrow">ALIGN COMMUNITY</p>
+              <div class="plan-name">Black</div>
+              <div class="price">$399 MXN / mes</div>
+              <ul>
+                <li>Beneficios para la mesa completa en aliados Black</li>
+                <li>Wellness, gym y pilates</li>
+                <li>Experiencias y eventos exclusivos</li>
+                <li>Tarjeta física incluida + Wallet</li>
+              </ul>
+            </div>
+            <a class="button" href="https://buy.stripe.com/test_dRm7sLdYOfy50mZaNr1ck01">Quiero Black</a>
+          </article>
+        </div>
+      </section>
+
+      <section class="how">
+        <p class="eyebrow">Así funciona</p>
+        <h2>Más simple de lo que parece.</h2>
+        <div class="steps">
+          <article class="step"><span class="step-num">01</span><h3>Únete</h3><p>Elige Society o Black y recibe tu tarjeta digital al instante.</p></article>
+          <article class="step"><span class="step-num">02</span><h3>Descubre</h3><p>Explora los lugares, experiencias y beneficios disponibles para tu nivel.</p></article>
+          <article class="step"><span class="step-num">03</span><h3>Disfruta</h3><p>Presenta tu QR en el establecimiento y lleva el registro de todo lo que ahorras.</p></article>
+        </div>
+      </section>
+
+      <section id="interes" class="cities">
+        <p class="eyebrow">Próximamente</p>
+        <h2>Esto apenas comienza.</h2>
+        <p>Estamos construyendo una comunidad de aliados y experiencias para Tampico, Ciudad Madero y Altamira.</p>
+        <!-- Sustituye este enlace por WhatsApp, Instagram o el checkout cuando esté listo. -->
+        <a class="button" href="mailto:hola@aligncommunity.mx?subject=Quiero%20conocer%20ALIGN%20COMMUNITY">Quiero recibir noticias</a>
+      </section>
+    </main>
+    <footer><span>© 2026 ALIGN COMMUNITY</span><span>Tampico · Madero · Altamira</span></footer>
+  </body>
+</html>
