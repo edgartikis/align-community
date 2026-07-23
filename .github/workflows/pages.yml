@@ -23,12 +23,29 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Preparar imágenes de eventos
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd public/images/events
+          cp "D&L’s welcome party en la playa, featuring the infamous oyster + champagne boat 🦪__Planning & Design __ @chloealiseevents _Photography __ @shannonyenphotography _Venue __ @hotelsancristobal _Band __ @loshijosdelt.jfif" chapter-one-beach-welcome.jpg
+          cp "descarga (2).jfif" boat-party-dj.jpg
+          cp "Instagram.jfif" boat-party-energy.jpg
+          cp "Beach Wedding Aesthetic Inspiration Ideas.jfif" annual-event-stage.jpg
+          cp "descarga (1).jfif" local-table-dinner.jpg
+          cp "Ένα απόγευμα γεμάτο με γιόγκα, περικυκλωμένοι από τα ζώα της φάρμας 🐴__🌸Σ έναν παράδεισο γεμάτο ζωή, χρώματα, ηρεμία και πανέμορφη θέα, μοιραστήκαμε μια μοναδική εμπειρία γιόγκα  κάτω από τον ανοιχτό ουρανό, στη.jfif" equestrian-pilates-horse.jpg
+          cp "horses & pilates event by amour de soi.jfif" equestrian-pilates-setup.jpg
+          cp "perf steak boat day 🧚🧚🐬✨🧜🏾_♀️.jfif" boat-party-social.jpg
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
+
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
