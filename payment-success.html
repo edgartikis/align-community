@@ -10,7 +10,7 @@
   </style>
 </head>
 <body>
-  <main class="panel"><div class="mark">A</div><h1 id="title">Pago aceptado.</h1><p id="message">Estamos activando tu membresía y preparando tu tarjeta personal.</p><div id="loader" class="loader"></div><button id="retry" class="button" type="button">Intentar de nuevo</button></main>
+  <main class="panel"><div class="mark">A</div><h1 id="title">Pago aceptado.</h1><p id="message">Estamos activando tu membresía y preparando tu cuenta.</p><div id="loader" class="loader"></div><button id="retry" class="button" type="button">Intentar de nuevo</button></main>
   <script>
     const title=document.querySelector("#title"),message=document.querySelector("#message"),loader=document.querySelector("#loader"),retry=document.querySelector("#retry");
     const sessionId=new URLSearchParams(location.search).get("session_id");
@@ -25,17 +25,19 @@
         const response=await fetch(`/.netlify/functions/activate-membership?session_id=${encodeURIComponent(sessionId)}`,{cache:"no-store"});
         const data=await response.json();
         if(response.status===202&&attempt<30){
-          message.textContent="Confirmando tu pago y preparando tu tarjeta personal.";
+          message.textContent="Confirmando tu pago y preparando tu cuenta personal.";
           retryTimer=setTimeout(()=>activate(attempt+1),1500);
           return;
         }
         if(!response.ok||!data.memberUrl)throw new Error(data.error||"failed");
+        const token=new URL(data.memberUrl,location.origin).pathname.split('/').filter(Boolean).pop();
+        if(!token)throw new Error('missing-token');
         title.textContent=`Bienvenido a ALIGN ${data.level}.`;
-        message.textContent="Tu membresía está activa. Te llevaremos a tu tarjeta.";
-        location.replace(data.memberUrl);
+        message.textContent="Ahora configura la foto que protegerá tu membresía.";
+        location.replace(`/profile-photo.html?token=${encodeURIComponent(token)}`);
       }catch(error){
         title.textContent="Pago recibido.";
-        message.textContent="Tu pago fue recibido, pero la tarjeta todavía no pudo abrirse. Intenta nuevamente en unos segundos.";
+        message.textContent="Tu pago fue recibido, pero la cuenta todavía no pudo abrirse. Intenta nuevamente en unos segundos.";
         loader.style.display="none";
         retry.style.display="inline-block";
       }
