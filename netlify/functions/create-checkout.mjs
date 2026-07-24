@@ -27,7 +27,6 @@ export default async (request) => {
       line_items: [{ price: priceId, quantity: 1 }],
       allow_promotion_codes: true,
       billing_address_collection: "auto",
-      customer_creation: "always",
       metadata: { align_membership: plan },
       subscription_data: { metadata: { align_membership: plan } },
       success_url: `${baseUrl()}/payment-success.html?session_id={CHECKOUT_SESSION_ID}`,
