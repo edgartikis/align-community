@@ -51,6 +51,7 @@ export default async (request) => {
       memberCode: row[13] || "",
       joinedAt: row[9] || "",
       savings: Number(row[16] || 0),
+      photoUrl: row[18] || "",
     });
   } catch (error) {
     console.error(error);
