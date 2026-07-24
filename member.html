@@ -89,7 +89,7 @@
           const member = await response.json();
           if (!member.active) throw new Error("inactive");
           renderCard(member);
-        } catch (error) { renderCard({ name:"Miembro ALIGN", level:"Society", memberCode:"", savings:0 }); }
+        } catch (error) { showError(); }
       }
       loadCard();
     </script>
