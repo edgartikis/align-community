@@ -9,7 +9,6 @@
   to = "/.netlify/functions/create-checkout-v2"
   status = 200
   force = true
-  query = { plan = ":plan" }
 
 [[redirects]]
   from = "/member/*"
