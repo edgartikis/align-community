@@ -20,7 +20,11 @@ const levelFor = (session) => {
   throw new Error("Precio de membresía desconocido.");
 };
 const codeFor = (level) => `AL-${level === "Black" ? "BLK" : "SOC"}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
-const publicUrl = (token) => new URL(`/member/${token}`, required("MEMBER_BASE_URL")).toString();
+const siteOrigin = (request) => {
+  const configured = process.env.MEMBER_BASE_URL?.trim();
+  return (configured || new URL(request.url).origin).replace(/\/$/, "");
+};
+const publicUrl = (request, token) => new URL(`/member/${token}`, siteOrigin(request)).toString();
 const json = (body,status=200) => new Response(JSON.stringify(body),{status,headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store"}});
 
 export default async (request) => {
@@ -30,7 +34,9 @@ export default async (request) => {
 
     const stripe = new Stripe(required("STRIPE_SECRET_KEY"));
     const session = await stripe.checkout.sessions.retrieve(sessionId,{expand:["line_items"]});
-    if (session.mode !== "subscription" || session.payment_status !== "paid") return json({pending:true},202);
+    if (session.mode !== "subscription" || !["paid", "no_payment_required"].includes(session.payment_status)) {
+      return json({pending:true},202);
+    }
 
     const level = levelFor(session);
     const sheets = sheetsClient();
@@ -38,12 +44,15 @@ export default async (request) => {
     const response = await sheets.spreadsheets.values.get({spreadsheetId,range:`${tab()}!A:S`});
     const rows = response.data.values || [];
     const existing = rows.slice(1).find((row) => row[3] === session.id);
-    if (existing) return json({level:existing[7] || level,memberUrl:existing[12] || publicUrl(existing[11])});
+    if (existing) {
+      const token = existing[11];
+      return json({level:existing[7] || level,memberUrl:existing[12] || publicUrl(request, token)});
+    }
 
     const token = crypto.randomBytes(24).toString("base64url");
     const customer = session.customer_details || {};
     const code = codeFor(level);
-    const memberUrl = publicUrl(token);
+    const memberUrl = publicUrl(request, token);
     const row = [
       `mem_${crypto.randomUUID()}`, session.customer || "", session.subscription || "", session.id,
       customer.name || "", customer.email || "", customer.phone || "", level, "Activa",
