@@ -12,26 +12,48 @@ const siteOrigin = (request) => {
   return (configured || requestUrl.origin).replace(/\/$/, "");
 };
 
+const plans = {
+  society: {
+    name: "ALIGN Society",
+    amount: 24900,
+  },
+  black: {
+    name: "ALIGN Black",
+    amount: 49900,
+  },
+};
+
 export default async (request) => {
   try {
     const url = new URL(request.url);
     const plan = (url.searchParams.get("plan") || "").toLowerCase();
-    const priceId =
-      plan === "black"
-        ? required("STRIPE_BLACK_PRICE_ID")
-        : plan === "society"
-          ? required("STRIPE_SOCIETY_PRICE_ID")
-          : "";
+    const selectedPlan = plans[plan];
 
-    if (!priceId) return new Response("Membresía no válida.", { status: 400 });
+    if (!selectedPlan) {
+      return new Response("Membresía no válida.", { status: 400 });
+    }
 
     const stripe = new Stripe(required("STRIPE_SECRET_KEY"));
     const origin = siteOrigin(request);
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: [
+        {
+          price_data: {
+            currency: "mxn",
+            unit_amount: selectedPlan.amount,
+            recurring: { interval: "month" },
+            product_data: {
+              name: selectedPlan.name,
+              description: "Membresía mensual ALIGN COMMUNITY · IVA incluido",
+            },
+          },
+          quantity: 1,
+        },
+      ],
       allow_promotion_codes: true,
       billing_address_collection: "auto",
+      phone_number_collection: { enabled: true },
       metadata: { align_membership: plan },
       subscription_data: { metadata: { align_membership: plan } },
       success_url: `${origin}/payment-success.html?session_id={CHECKOUT_SESSION_ID}`,
