@@ -5,6 +5,13 @@
   node_bundler = "esbuild"
 
 [[redirects]]
+  from = "/.netlify/functions/create-checkout"
+  to = "/.netlify/functions/create-checkout-v2"
+  status = 200
+  force = true
+  query = { plan = ":plan" }
+
+[[redirects]]
   from = "/member/*"
   to = "/member.html"
   status = 200
