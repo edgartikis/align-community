@@ -11,6 +11,6 @@
 
 [[redirects]]
   from = "/member-status"
-  to = "/.netlify/functions/membership-status"
+  to = "/.netlify/functions/member-card"
   status = 200
   force = true
