@@ -23,11 +23,6 @@ jobs:
     steps:
       - name: Checkout del sitio
         uses: actions/checkout@v4
-        with:
-          sparse-checkout: |
-            /*
-            !/public/images/events/
-          sparse-checkout-cone-mode: false
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
