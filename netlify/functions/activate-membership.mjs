@@ -14,9 +14,13 @@ const sheetsClient = () => {
   return google.sheets({ version:"v4", auth });
 };
 const levelFor = (session) => {
+  const metadataPlan = (session.metadata?.align_membership || "").toLowerCase();
+  if (metadataPlan === "black") return "Black";
+  if (metadataPlan === "society") return "Society";
+
   const priceId = session.line_items?.data?.[0]?.price?.id;
-  if (priceId === required("STRIPE_BLACK_PRICE_ID")) return "Black";
-  if (priceId === required("STRIPE_SOCIETY_PRICE_ID")) return "Society";
+  if (process.env.STRIPE_BLACK_PRICE_ID && priceId === process.env.STRIPE_BLACK_PRICE_ID) return "Black";
+  if (process.env.STRIPE_SOCIETY_PRICE_ID && priceId === process.env.STRIPE_SOCIETY_PRICE_ID) return "Society";
   throw new Error("Precio de membresía desconocido.");
 };
 const codeFor = (level) => `AL-${level === "Black" ? "BLK" : "SOC"}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
