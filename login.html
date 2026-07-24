@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#090a0c" />
+  <title>Log in | ALIGN</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root{--ink:#090a0c;--paper:#f5f2ec;--navy:#10233e;--muted:#aaa59c;--line:rgba(245,242,236,.18)}
+    *{box-sizing:border-box}body{min-height:100vh;margin:0;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 50% 12%,#1c2939 0,#090a0c 54%);color:var(--paper);font-family:"DM Sans",sans-serif}.shell{width:min(100%,460px)}.brand{display:block;margin-bottom:28px;text-align:center;font-family:"Playfair Display",serif;font-size:1.35rem;letter-spacing:.2em}.panel{padding:42px 36px;border:1px solid var(--line);background:linear-gradient(145deg,rgba(23,42,69,.96),rgba(7,11,16,.98));box-shadow:0 28px 80px rgba(0,0,0,.42)}.eyebrow{margin:0 0 14px;font:500 .67rem "DM Mono",monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}h1{margin:0;font:500 clamp(2.6rem,10vw,4.4rem)/.95 "Playfair Display",serif;letter-spacing:-.045em}.copy{margin:18px 0 30px;color:#cbc7be;line-height:1.6}label{display:block;margin:18px 0 8px;font:500 .67rem "DM Mono",monospace;letter-spacing:.12em;text-transform:uppercase;color:#d9d4cb}input{width:100%;padding:15px 14px;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.24);color:#fff;font:500 1rem "DM Mono",monospace;outline:none;text-transform:uppercase}input:focus{border-color:#fff}.button{width:100%;margin-top:24px;padding:15px;border:1px solid #fff;background:#fff;color:#090a0c;font-weight:600;letter-spacing:.11em;text-transform:uppercase;cursor:pointer}.button:disabled{opacity:.55;cursor:wait}.error{min-height:22px;margin:14px 0 0;color:#ffd0d0;font-size:.84rem}.hint{margin:22px 0 0;color:#99958d;font-size:.76rem;line-height:1.5;text-align:center}.back{display:block;margin-top:22px;text-align:center;color:#bdb8af;font:500 .67rem "DM Mono",monospace;letter-spacing:.12em;text-transform:uppercase}@media(max-width:520px){.panel{padding:34px 24px}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <a class="brand" href="/">ALIGN</a>
+    <section class="panel">
+      <p class="eyebrow">Member access</p>
+      <h1>Tu ciudad, desde dentro.</h1>
+      <p class="copy">Ingresa con tu número de socio. Por ahora, tu contraseña inicial es el mismo número.</p>
+      <form id="login-form">
+        <label for="member-code">Número de socio</label>
+        <input id="member-code" name="memberCode" autocomplete="username" placeholder="AL-SOC-XXXXXX" required />
+        <label for="password">Contraseña</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Tu número de socio" required />
+        <button class="button" type="submit">Entrar a mi portal</button>
+        <p id="error" class="error" role="alert"></p>
+      </form>
+      <p class="hint">Tu membresía debe estar activa. En una siguiente etapa podrás crear una contraseña personal.</p>
+    </section>
+    <a class="back" href="/">← Volver a ALIGN</a>
+  </main>
+  <script>
+    const form=document.querySelector('#login-form'),button=form.querySelector('button'),error=document.querySelector('#error');
+    form.addEventListener('submit',async(event)=>{
+      event.preventDefault();error.textContent='';button.disabled=true;button.textContent='Verificando…';
+      const memberCode=form.memberCode.value.trim().toUpperCase(),password=form.password.value.trim().toUpperCase();
+      try{
+        const response=await fetch('/.netlify/functions/member-login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({memberCode,password})});
+        const data=await response.json();
+        if(!response.ok||!data.token)throw new Error(data.error||'No pudimos iniciar sesión.');
+        sessionStorage.setItem('align_member_token',data.token);
+        location.replace(`/portal.html?token=${encodeURIComponent(data.token)}`);
+      }catch(err){error.textContent=err.message||'Revisa tus datos e inténtalo de nuevo.';button.disabled=false;button.textContent='Entrar a mi portal';}
+    });
+  </script>
+</body>
+</html>
