@@ -37,12 +37,15 @@
       {name:'Experiencias ALIGN',offer:'Acceso anticipado a eventos seleccionados de la comunidad.'}
     ];
     const black=[
-      {name:'Restaurantes seleccionados',offer:'Beneficios aplicables a la mesa completa en aliados participantes.'},
-      {name:'Rush / AM Gym',offer:'Beneficios wellness y promociones exclusivas para miembros Black.'},
-      {name:'Sante / Nuva Pilates',offer:'Tarifa preferencial y acceso a activaciones especiales.'},
-      {name:'USPIN',offer:'Beneficios en clases y experiencias seleccionadas.'},
-      {name:'ALIGN & Rancho MX',offer:'Precio preferencial y acceso anticipado a lanzamientos.'},
-      {name:'Eventos ALIGN',offer:'Prioridad de inscripción y beneficios superiores en experiencias.'}
+      {name:'Dulce Nogal',offer:'Beneficio exclusivo en cafetería para miembros Black.'},
+      {name:'Sante / NUVA',offer:'Tarifa preferencial y acceso a activaciones especiales de pilates.'},
+      {name:'Gingers',offer:'Promociones y beneficios exclusivos para miembros Black.'},
+      {name:'Pádel 11:11',offer:'Beneficio preferencial para disfrutar del pádel y sus experiencias.'},
+      {name:'Clase de golf',offer:'Acceso a una experiencia guiada para aprender y practicar golf.'},
+      {name:'Día de pesca',offer:'Una experiencia para aprender a pescar y convivir con familia o amigos.'},
+      {name:'Nutriólogo',offer:'Beneficio preferencial en consulta y orientación nutricional.'},
+      {name:'Dentista',offer:'Beneficio preferencial en servicios y atención dental.'},
+      {name:'RUSH Gym',offer:'Beneficios wellness y promociones exclusivas para miembros Black.'}
     ];
     const signup=(eventTitle,member)=>`mailto:alignservice18@gmail.com?subject=${encodeURIComponent('Inscripción '+eventTitle)}&body=${encodeURIComponent('Hola ALIGN, quiero inscribirme a '+eventTitle+'.\n\nNombre: '+member.name+'\nNúmero de socio: '+member.memberCode+'\nMembresía: '+member.level)}`;
     function render(member){
