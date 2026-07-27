@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b1624" />
+  <meta name="description" content="Día de pesca ALIGN: una experiencia para aprender, convivir y disfrutar la Barra de Tampachiche." />
+  <title>Día de pesca | ALIGN</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet" />
+  <style>
+    :root{--ink:#07101b;--navy:#0d2138;--navy-2:#183957;--paper:#f4f0e8;--sand:#d6bd91;--muted:#aeb7c1;--line:rgba(255,255,255,.14)}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--ink);color:var(--paper);font-family:"DM Sans",sans-serif}a{color:inherit;text-decoration:none}.nav{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:19px 5vw;border-bottom:1px solid var(--line);background:rgba(7,16,27,.86);backdrop-filter:blur(18px)}.brand{font:600 1.2rem "Playfair Display",serif;letter-spacing:.21em}.back{font:500 .66rem "DM Mono",monospace;letter-spacing:.11em;text-transform:uppercase;color:#d9dde2}.back:hover{color:var(--sand)}
+    .hero{min-height:82vh;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(330px,.7fr);gap:6vw;align-items:center;padding:64px 7vw 76px;background:radial-gradient(circle at 78% 10%,#214b70 0,transparent 38%),linear-gradient(145deg,#0f253c,#070d14 68%)}.eyebrow{margin:0 0 18px;font:500 .68rem "DM Mono",monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--sand)}h1,h2,h3{font-family:"Playfair Display",serif;font-weight:500}h1{max-width:760px;margin:0;font-size:clamp(4rem,8vw,8rem);line-height:.84;letter-spacing:-.06em}h1 em{display:block;color:var(--sand);font-weight:500}.lead{max-width:650px;margin:28px 0 0;color:#cbd2d9;font-size:1.07rem;line-height:1.75}.video-frame{position:relative;width:min(410px,100%);margin-left:auto;padding:10px;border:1px solid rgba(214,189,145,.42);background:#09121d;box-shadow:0 35px 90px rgba(0,0,0,.48)}video{width:100%;display:block;aspect-ratio:9/16;background:#000;object-fit:contain}.video-label{position:absolute;left:-22px;bottom:28px;padding:11px 14px;background:var(--sand);color:#101720;font:500 .62rem "DM Mono",monospace;letter-spacing:.12em;text-transform:uppercase}
+    .facts{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#0a1725}.fact{min-height:170px;padding:34px 3vw;border-right:1px solid var(--line)}.fact:last-child{border-right:0}.fact span{display:block;margin-bottom:13px;color:var(--muted);font:500 .63rem "DM Mono",monospace;letter-spacing:.12em;text-transform:uppercase}.fact strong{font:500 clamp(1.7rem,3vw,3.1rem)/1 "Playfair Display",serif}.fact small{display:block;margin-top:10px;color:#c4cbd2;line-height:1.45}
+    .story{padding:100px 7vw;background:var(--paper);color:#111820}.story-head{display:grid;grid-template-columns:1fr .75fr;gap:7vw;align-items:end;margin-bottom:42px}.story h2{margin:0;font-size:clamp(3.2rem,6vw,6.4rem);line-height:.9;letter-spacing:-.05em}.story-head p{margin:0;color:#565f68;line-height:1.75}.gallery{display:grid;grid-template-columns:1.18fr .82fr;grid-template-rows:202px 202px 202px;gap:14px}.gallery figure{position:relative;overflow:hidden;margin:0;background:#d7d8d5}.gallery figure:first-child{grid-row:1/4}.gallery img{width:100%;height:100%;display:block;object-fit:cover;transition:transform .7s ease}.gallery figure:hover img{transform:scale(1.025)}.gallery figcaption{position:absolute;left:18px;bottom:16px;padding:8px 10px;background:rgba(7,16,27,.82);color:#fff;font:500 .6rem "DM Mono",monospace;letter-spacing:.1em;text-transform:uppercase;backdrop-filter:blur(8px)}
+    .experience{padding:100px 7vw;background:linear-gradient(150deg,#102941,#07101b)}.experience-grid{display:grid;grid-template-columns:.8fr 1.2fr;gap:8vw}.experience h2{margin:0;font-size:clamp(3.2rem,6vw,6rem);line-height:.93;letter-spacing:-.045em}.steps{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line)}.step{padding:29px;background:#0b1928}.step b{display:block;margin-bottom:34px;color:var(--sand);font:500 .67rem "DM Mono",monospace;letter-spacing:.12em}.step h3{margin:0;font-size:1.6rem}.step p{margin:11px 0 0;color:#b8c1ca;line-height:1.55}
+    .cta{display:flex;justify-content:space-between;align-items:center;gap:34px;padding:62px 7vw;background:var(--sand);color:#101720}.cta h2{margin:0;font-size:clamp(2.6rem,5vw,5rem);line-height:.93;letter-spacing:-.04em}.cta p{max-width:520px;margin:15px 0 0;line-height:1.6}.buttons{display:flex;gap:10px;flex-wrap:wrap}.button{display:inline-block;padding:15px 18px;border:1px solid #111923;font:600 .67rem "DM Mono",monospace;letter-spacing:.11em;text-transform:uppercase}.button.primary{background:#111923;color:#fff}.button:hover{transform:translateY(-2px)}footer{display:flex;justify-content:space-between;padding:28px 7vw;color:#7f8994;font:500 .62rem "DM Mono",monospace;letter-spacing:.1em;text-transform:uppercase}
+    @media(max-width:900px){.hero{grid-template-columns:1fr;padding-top:54px}.video-frame{margin:10px auto 0}.facts{grid-template-columns:1fr 1fr}.fact:nth-child(2){border-right:0}.fact:nth-child(-n+2){border-bottom:1px solid var(--line)}.story-head,.experience-grid{grid-template-columns:1fr}.gallery{grid-template-columns:1fr;grid-template-rows:430px 260px 260px 260px}.gallery figure:first-child{grid-row:auto}.cta{display:block}.buttons{margin-top:27px}}@media(max-width:600px){.nav{padding:17px 6vw}.hero{padding:48px 6vw 64px}.hero h1{font-size:3.9rem}.video-label{left:-8px}.facts{grid-template-columns:1fr}.fact,.fact:nth-child(2){border-right:0;border-bottom:1px solid var(--line)}.story,.experience{padding:72px 6vw}.gallery{grid-template-rows:370px 220px 220px 220px}.steps{grid-template-columns:1fr}.cta{padding:52px 6vw}footer{padding:26px 6vw;flex-direction:column;gap:9px}}
+  </style>
+</head>
+<body>
+  <nav class="nav"><a class="brand" href="/">ALIGN</a><a class="back" id="backLink" href="/portal.html">← Regresar a beneficios</a></nav>
+  <main>
+    <section class="hero">
+      <div><p class="eyebrow">Experiencia Black · Vaca Fishing Tours</p><h1>Día de <em>pesca.</em></h1><p class="lead">Una salida para aprender a pescar, pasar la tarde con familia o amigos y hacer una pausa en la playa. No necesitas experiencia: solo ganas de vivir algo distinto.</p></div>
+      <div class="video-frame"><video controls playsinline preload="metadata" poster="/public/images/fishing/pescador.jpg"><source src="/public/videos/dia-de-pesca-align.mp4" type="video/mp4">Tu navegador no puede reproducir este video.</video><span class="video-label">Mira la experiencia</span></div>
+    </section>
+    <section class="facts" aria-label="Información de la experiencia">
+      <div class="fact"><span>Tarifa ALIGN</span><strong>$1,166</strong><small>MXN por hora</small></div>
+      <div class="fact"><span>Tarifa habitual</span><strong>$1,500</strong><small>Ahorras $334 MXN por hora</small></div>
+      <div class="fact"><span>Capacidad</span><strong>6–8</strong><small>personas por salida</small></div>
+      <div class="fact"><span>Beneficio especial</span><strong>5 + 1</strong><small>Reserva cinco horas y recibe la sexta sin costo</small></div>
+    </section>
+    <section class="story">
+      <div class="story-head"><h2>El mar cambia el ritmo del día.</h2><p>Desde la primera captura hasta la parada en la Barra de Tampachiche, la experiencia está pensada para aprender, convivir y disfrutar sin prisas.</p></div>
+      <div class="gallery">
+        <figure><img src="/public/images/fishing/pescador.jpg" alt="Pescador mostrando su captura desde la lancha"><figcaption>Aprende y captura</figcaption></figure>
+        <figure><img src="/public/images/fishing/amigos.jpg" alt="Amigos compartiendo un día de pesca"><figcaption>Familia o amigos</figcaption></figure>
+        <figure><img src="/public/images/fishing/lancha.jpg" alt="Lancha utilizada durante el día de pesca"><figcaption>Tu recorrido</figcaption></figure>
+        <figure><img src="/public/images/fishing/playa.jpg" alt="Parada en la playa durante la experiencia"><figcaption>Stop en la playa</figcaption></figure>
+      </div>
+    </section>
+    <section class="experience">
+      <div class="experience-grid"><div><p class="eyebrow">Tu recorrido</p><h2>Más que salir a pescar.</h2></div><div class="steps">
+        <article class="step"><b>01</b><h3>Sube a bordo</h3><p>La experiencia tiene espacio para compartirla cómodamente entre seis y ocho personas.</p></article>
+        <article class="step"><b>02</b><h3>Aprende</h3><p>Recibe acompañamiento para conocer lo esencial y disfrutar incluso si es tu primera vez.</p></article>
+        <article class="step"><b>03</b><h3>Comparte</h3><p>Convive durante el recorrido, celebra cada captura y crea un recuerdo diferente.</p></article>
+        <article class="step"><b>04</b><h3>Haz una pausa</h3><p>Detente en la playa para descansar y disfrutar el paisaje antes de regresar.</p></article>
+      </div></div>
+    </section>
+    <section class="cta"><div><h2>Tu próxima historia comienza aquí.</h2><p>Presenta tu membresía Black para solicitar la tarifa ALIGN. Reservación sujeta a disponibilidad y condiciones del prestador.</p></div><div class="buttons"><a class="button primary" id="qrLink" href="/portal.html">Abrir mi QR</a><a class="button" id="portalLink" href="/portal.html">Volver al portal</a></div></section>
+  </main>
+  <footer><span>© 2026 ALIGN COMMUNITY</span><span>Tampico · Madero · Altamira</span></footer>
+  <script>
+    const token=new URLSearchParams(location.search).get('token')||sessionStorage.getItem('align_member_token');
+    if(token){sessionStorage.setItem('align_member_token',token);document.querySelector('#qrLink').href=`/member/${encodeURIComponent(token)}`;document.querySelector('#portalLink').href=`/portal.html?token=${encodeURIComponent(token)}`;document.querySelector('#backLink').href=`/portal.html?token=${encodeURIComponent(token)}#beneficios`;}
+  </script>
+</body>
+</html>
