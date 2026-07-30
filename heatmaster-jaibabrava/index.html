@@ -19,7 +19,8 @@
     #memberCard.member-card{min-height:390px!important;height:auto!important;aspect-ratio:auto!important;display:flex!important;flex-direction:column!important;padding:26px!important;overflow:hidden!important}
     #memberCard .card-copy{margin:24px 0 18px!important}#memberCard .card-bottom{position:relative!important;left:auto!important;right:auto!important;bottom:auto!important;width:100%!important;margin-top:auto!important;padding-top:8px!important;display:flex!important;align-items:flex-end!important;justify-content:space-between!important;gap:18px!important;flex-shrink:0!important}
     #memberCard .qr-box{box-sizing:border-box!important;width:112px!important;height:112px!important;min-width:112px!important;min-height:112px!important;padding:24px!important;overflow:hidden!important;display:flex!important;align-items:center!important;justify-content:center!important;background:#fff!important;border-radius:14px!important}
-    #memberCard .qr-box img,#memberCard .qr-box canvas{width:64px!important;height:64px!important;display:block!important;margin:0!important;max-width:none!important;max-height:none!important}
+    #memberCard .qr-box canvas{width:64px!important;height:64px!important;display:block!important;margin:0!important;max-width:none!important;max-height:none!important}
+    #memberCard .qr-box img{display:none!important}
     #memberCard .validity{display:flex!important;flex-direction:column!important;align-items:flex-end!important;justify-content:flex-end!important;min-width:150px!important;padding-bottom:4px!important}#memberCard .validity strong{display:block!important;font-size:20px!important;line-height:1.15!important;white-space:nowrap!important}
 
     body.member-mode .hero,
@@ -34,7 +35,7 @@
     body.member-mode #cardSection{width:100%;max-width:760px;margin:0 auto}
 
     @media(max-width:720px){.login-head{display:block}.login-form{grid-template-columns:1fr}.login-form .form-message{grid-column:auto}.login-form button{width:100%}.account-metrics{grid-template-columns:1fr}.welcome-line{align-items:flex-start}}
-    @media(max-width:620px){#memberCard.member-card{min-height:380px!important;padding:18px!important}#memberCard .qr-box{width:100px!important;height:100px!important;min-width:100px!important;min-height:100px!important;padding:21px!important}#memberCard .qr-box img,#memberCard .qr-box canvas{width:58px!important;height:58px!important}#memberCard .validity{min-width:135px!important}#memberCard .validity strong{font-size:17px!important}}
+    @media(max-width:620px){#memberCard.member-card{min-height:380px!important;padding:18px!important}#memberCard .qr-box{width:100px!important;height:100px!important;min-width:100px!important;min-height:100px!important;padding:21px!important}#memberCard .qr-box canvas{width:58px!important;height:58px!important}#memberCard .validity{min-width:135px!important}#memberCard .validity strong{font-size:17px!important}}
   </style>
 </head>
 <body>
@@ -90,6 +91,6 @@
   </main>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script src="app.js?v=20260729-2337"></script>
+  <script src="app.js?v=20260729-2340"></script>
 </body>
 </html>
