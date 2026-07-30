@@ -23,6 +23,7 @@ function renderCard(member) {
   const qr = document.getElementById('qrCode');
   qr.innerHTML = '';
   const qrSize = window.matchMedia('(max-width: 620px)').matches ? 58 : 64;
+
   new QRCode(qr, {
     text: member.qrPayload,
     width: qrSize,
@@ -33,15 +34,24 @@ function renderCard(member) {
   });
 
   requestAnimationFrame(() => {
-    qr.querySelectorAll('canvas, img').forEach((qrGraphic) => {
-      qrGraphic.style.width = `${qrSize}px`;
-      qrGraphic.style.height = `${qrSize}px`;
-      qrGraphic.style.display = 'block';
-      qrGraphic.style.margin = '0';
-      qrGraphic.style.maxWidth = 'none';
-      qrGraphic.style.maxHeight = 'none';
-    });
+    const canvas = qr.querySelector('canvas');
+    const image = qr.querySelector('img');
+
+    if (canvas) {
+      canvas.style.setProperty('width', `${qrSize}px`, 'important');
+      canvas.style.setProperty('height', `${qrSize}px`, 'important');
+      canvas.style.setProperty('display', 'block', 'important');
+      canvas.style.setProperty('margin', '0', 'important');
+      canvas.style.setProperty('max-width', 'none', 'important');
+      canvas.style.setProperty('max-height', 'none', 'important');
+    }
+
+    if (image) {
+      image.style.setProperty('display', 'none', 'important');
+      image.setAttribute('aria-hidden', 'true');
+    }
   });
+
   downloadButton.disabled = false;
 }
 
