@@ -22,7 +22,7 @@ function renderCard(member) {
 
   const qr = document.getElementById('qrCode');
   qr.innerHTML = '';
-  const qrSize = window.matchMedia('(max-width: 620px)').matches ? 70 : 82;
+  const qrSize = window.matchMedia('(max-width: 620px)').matches ? 58 : 64;
   new QRCode(qr, {
     text: member.qrPayload,
     width: qrSize,
@@ -38,8 +38,8 @@ function renderCard(member) {
       qrGraphic.style.height = `${qrSize}px`;
       qrGraphic.style.display = 'block';
       qrGraphic.style.margin = '0';
-      qrGraphic.style.maxWidth = '100%';
-      qrGraphic.style.maxHeight = '100%';
+      qrGraphic.style.maxWidth = 'none';
+      qrGraphic.style.maxHeight = 'none';
     });
   });
   downloadButton.disabled = false;
