@@ -13,15 +13,37 @@ function renderCard(member) {
   document.getElementById('cardName').textContent = member.fullName;
   document.getElementById('cardMember').textContent = `SOCIO: ${member.memberNumber}`;
   document.getElementById('cardExpiry').textContent = member.expiryDisplay;
+
   const qr = document.getElementById('qrCode');
   qr.innerHTML = '';
-  new QRCode(qr, { text: member.qrPayload, width: 68, height: 68, correctLevel: QRCode.CorrectLevel.H });
+
+  new QRCode(qr, {
+    text: member.qrPayload,
+    width: 112,
+    height: 112,
+    colorDark: '#000000',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+
+  requestAnimationFrame(() => {
+    const qrGraphic = qr.querySelector('canvas, img');
+    if (qrGraphic) {
+      qrGraphic.style.width = '112px';
+      qrGraphic.style.height = '112px';
+      qrGraphic.style.display = 'block';
+      qrGraphic.style.maxWidth = 'none';
+      qrGraphic.style.maxHeight = 'none';
+    }
+  });
+
   downloadButton.disabled = false;
 }
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!form.reportValidity()) return;
+
   const payload = {
     action: 'register',
     fullName: document.getElementById('fullName').value.trim(),
@@ -29,14 +51,26 @@ form.addEventListener('submit', async (event) => {
     email: document.getElementById('email').value.trim().toLowerCase(),
     consent: document.getElementById('consent').checked
   };
-  if (payload.phone.length !== 10) { setMessage('Ingresa un celular de 10 dígitos.', 'error'); return; }
+
+  if (payload.phone.length !== 10) {
+    setMessage('Ingresa un celular de 10 dígitos.', 'error');
+    return;
+  }
+
   button.disabled = true;
   button.textContent = 'GENERANDO...';
   setMessage('');
+
   try {
-    const response = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(payload) });
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+
     const result = await response.json();
     if (!result.ok) throw new Error(result.message || 'No se pudo completar el registro.');
+
     latestMember = result.member;
     renderCard(latestMember);
     setMessage(`Registro completado. Tu número es ${latestMember.memberNumber}.`, 'success');
@@ -51,8 +85,21 @@ form.addEventListener('submit', async (event) => {
 
 downloadButton.addEventListener('click', async () => {
   if (!latestMember) return;
+
   const card = document.getElementById('memberCard');
-  const canvas = await html2canvas(card, { scale: 3, backgroundColor: null });
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+  const canvas = await html2canvas(card, {
+    scale: 3,
+    backgroundColor: null,
+    useCORS: true,
+    logging: false,
+    width: card.scrollWidth,
+    height: card.scrollHeight,
+    windowWidth: card.scrollWidth,
+    windowHeight: card.scrollHeight
+  });
+
   const link = document.createElement('a');
   link.download = `Tarjeta-${latestMember.memberNumber}.png`;
   link.href = canvas.toDataURL('image/png');
