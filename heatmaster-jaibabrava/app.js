@@ -4,19 +4,24 @@ const form = document.getElementById('registrationForm');
 const button = document.getElementById('submitButton');
 const message = document.getElementById('formMessage');
 const downloadButton = document.getElementById('downloadCard');
+const loginForm = document.getElementById('loginForm');
+const loginButton = document.getElementById('loginButton');
+const loginMessage = document.getElementById('loginMessage');
+const accountSummary = document.getElementById('accountSummary');
 let latestMember = null;
 
 function normalizePhone(value) { return value.replace(/\D/g, '').slice(-10); }
-function setMessage(text, type='') { message.textContent = text; message.className = `form-message ${type}`; }
+function setMessage(target, text, type='') { target.textContent = text; target.className = `form-message ${type}`; }
+function money(value) { return new Intl.NumberFormat('es-MX', { style:'currency', currency:'MXN' }).format(Number(value || 0)); }
 
 function renderCard(member) {
   document.getElementById('cardName').textContent = member.fullName;
   document.getElementById('cardMember').textContent = `SOCIO: ${member.memberNumber}`;
   document.getElementById('cardExpiry').textContent = member.expiryDisplay;
+  document.getElementById('cardStatus').textContent = member.status || 'ACTIVO';
 
   const qr = document.getElementById('qrCode');
   qr.innerHTML = '';
-
   new QRCode(qr, {
     text: member.qrPayload,
     width: 112,
@@ -29,21 +34,63 @@ function renderCard(member) {
   requestAnimationFrame(() => {
     const qrGraphic = qr.querySelector('canvas, img');
     if (qrGraphic) {
-      qrGraphic.style.width = '112px';
-      qrGraphic.style.height = '112px';
+      qrGraphic.style.width = '84px';
+      qrGraphic.style.height = '84px';
       qrGraphic.style.display = 'block';
       qrGraphic.style.maxWidth = 'none';
       qrGraphic.style.maxHeight = 'none';
     }
   });
-
   downloadButton.disabled = false;
 }
+
+async function callApi(payload) {
+  const response = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
+  return response.json();
+}
+
+loginForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!loginForm.reportValidity()) return;
+  const memberNumber = document.getElementById('loginMemberNumber').value.trim().toUpperCase();
+  const phone = normalizePhone(document.getElementById('loginPhone').value);
+  if (!/^HM-JB-\d{4}$/.test(memberNumber) || phone.length !== 10) {
+    setMessage(loginMessage, 'Ingresa un número de socio válido y tu celular de 10 dígitos.', 'error');
+    return;
+  }
+
+  loginButton.disabled = true;
+  loginButton.textContent = 'CONSULTANDO...';
+  setMessage(loginMessage, '');
+  try {
+    const result = await callApi({ action:'login', memberNumber, phone });
+    if (!result.ok) throw new Error(result.message || 'No se pudo consultar la tarjeta.');
+    latestMember = result.member;
+    renderCard(latestMember);
+    document.getElementById('accountName').textContent = `Hola, ${latestMember.fullName}`;
+    document.getElementById('accountStatus').textContent = latestMember.status;
+    document.getElementById('accountSavings').textContent = money(latestMember.savings);
+    document.getElementById('accountConsumption').textContent = money(latestMember.consumption);
+    document.getElementById('accountVisits').textContent = String(latestMember.visits || 0);
+    accountSummary.classList.add('visible');
+    setMessage(loginMessage, 'Tarjeta encontrada correctamente.', 'success');
+    document.getElementById('cardSection').scrollIntoView({ behavior:'smooth', block:'start' });
+  } catch (error) {
+    accountSummary.classList.remove('visible');
+    setMessage(loginMessage, error.message || 'Ocurrió un error. Intenta nuevamente.', 'error');
+  } finally {
+    loginButton.disabled = false;
+    loginButton.textContent = 'VER MI TARJETA';
+  }
+});
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!form.reportValidity()) return;
-
   const payload = {
     action: 'register',
     fullName: document.getElementById('fullName').value.trim(),
@@ -51,32 +98,22 @@ form.addEventListener('submit', async (event) => {
     email: document.getElementById('email').value.trim().toLowerCase(),
     consent: document.getElementById('consent').checked
   };
-
   if (payload.phone.length !== 10) {
-    setMessage('Ingresa un celular de 10 dígitos.', 'error');
+    setMessage(message, 'Ingresa un celular de 10 dígitos.', 'error');
     return;
   }
-
   button.disabled = true;
   button.textContent = 'GENERANDO...';
-  setMessage('');
-
+  setMessage(message, '');
   try {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
-    });
-
-    const result = await response.json();
+    const result = await callApi(payload);
     if (!result.ok) throw new Error(result.message || 'No se pudo completar el registro.');
-
     latestMember = result.member;
     renderCard(latestMember);
-    setMessage(`Registro completado. Tu número es ${latestMember.memberNumber}.`, 'success');
+    setMessage(message, `Registro completado. Tu número es ${latestMember.memberNumber}.`, 'success');
     form.reset();
   } catch (error) {
-    setMessage(error.message || 'Ocurrió un error. Intenta nuevamente.', 'error');
+    setMessage(message, error.message || 'Ocurrió un error. Intenta nuevamente.', 'error');
   } finally {
     button.disabled = false;
     button.textContent = 'GENERAR MI TARJETA';
@@ -85,10 +122,8 @@ form.addEventListener('submit', async (event) => {
 
 downloadButton.addEventListener('click', async () => {
   if (!latestMember) return;
-
   const card = document.getElementById('memberCard');
   await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-
   const canvas = await html2canvas(card, {
     scale: 3,
     backgroundColor: null,
@@ -99,7 +134,6 @@ downloadButton.addEventListener('click', async () => {
     windowWidth: card.scrollWidth,
     windowHeight: card.scrollHeight
   });
-
   const link = document.createElement('a');
   link.download = `Tarjeta-${latestMember.memberNumber}.png`;
   link.href = canvas.toDataURL('image/png');
