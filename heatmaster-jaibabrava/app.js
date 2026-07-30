@@ -15,6 +15,19 @@ function normalizePhone(value) { return value.replace(/\D/g, '').slice(-10); }
 function setMessage(target, text, type='') { target.textContent = text; target.className = `form-message ${type}`; }
 function money(value) { return new Intl.NumberFormat('es-MX', { style:'currency', currency:'MXN' }).format(Number(value || 0)); }
 
+function buildQrUrl(member) {
+  const payload = String(member.qrPayload || '').trim();
+  if (/^https?:\/\//i.test(payload)) return payload;
+
+  const legacy = payload.match(/^HMJB:([^:]+):(.+)$/);
+  if (legacy) {
+    const base = `${window.location.origin}${window.location.pathname}`;
+    return `${base}?verify=${encodeURIComponent(legacy[1])}&token=${encodeURIComponent(legacy[2])}`;
+  }
+
+  return payload;
+}
+
 function keepSingleQrCanvas(qr, qrSize) {
   const canvases = Array.from(qr.querySelectorAll('canvas'));
   const keep = canvases[0] || null;
@@ -26,6 +39,7 @@ function keepSingleQrCanvas(qr, qrSize) {
     keep.style.setProperty('margin', '0 auto', 'important');
     keep.style.setProperty('max-width', 'none', 'important');
     keep.style.setProperty('max-height', 'none', 'important');
+    keep.setAttribute('aria-label', 'Código QR de validación');
   }
 }
 
@@ -37,15 +51,18 @@ function renderCard(member) {
 
   const qr = document.getElementById('qrCode');
   qr.replaceChildren();
-  const qrSize = window.matchMedia('(max-width: 620px)').matches ? 58 : 64;
+  const qrSize = window.matchMedia('(max-width: 620px)').matches ? 132 : 144;
+  const qrUrl = buildQrUrl(member);
+
   new QRCode(qr, {
-    text: member.qrPayload,
+    text: qrUrl,
     width: qrSize,
     height: qrSize,
     colorDark: '#000000',
     colorLight: '#ffffff',
-    correctLevel: QRCode.CorrectLevel.M
+    correctLevel: QRCode.CorrectLevel.L
   });
+
   requestAnimationFrame(() => requestAnimationFrame(() => keepSingleQrCanvas(qr, qrSize)));
   setTimeout(() => keepSingleQrCanvas(qr, qrSize), 150);
   downloadButton.disabled = false;
