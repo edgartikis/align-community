@@ -14,6 +14,24 @@ function normalizePhone(value) { return value.replace(/\D/g, '').slice(-10); }
 function setMessage(target, text, type='') { target.textContent = text; target.className = `form-message ${type}`; }
 function money(value) { return new Intl.NumberFormat('es-MX', { style:'currency', currency:'MXN' }).format(Number(value || 0)); }
 
+function keepSingleQrCanvas(qr, qrSize) {
+  const canvases = Array.from(qr.querySelectorAll('canvas'));
+  const keep = canvases[0] || null;
+
+  Array.from(qr.children).forEach((child) => {
+    if (child !== keep) child.remove();
+  });
+
+  if (keep) {
+    keep.style.setProperty('width', `${qrSize}px`, 'important');
+    keep.style.setProperty('height', `${qrSize}px`, 'important');
+    keep.style.setProperty('display', 'block', 'important');
+    keep.style.setProperty('margin', '0 auto', 'important');
+    keep.style.setProperty('max-width', 'none', 'important');
+    keep.style.setProperty('max-height', 'none', 'important');
+  }
+}
+
 function renderCard(member) {
   document.getElementById('cardName').textContent = member.fullName;
   document.getElementById('cardMember').textContent = `SOCIO: ${member.memberNumber}`;
@@ -21,7 +39,7 @@ function renderCard(member) {
   document.getElementById('cardStatus').textContent = member.status || 'ACTIVO';
 
   const qr = document.getElementById('qrCode');
-  qr.innerHTML = '';
+  qr.replaceChildren();
   const qrSize = window.matchMedia('(max-width: 620px)').matches ? 58 : 64;
 
   new QRCode(qr, {
@@ -34,23 +52,9 @@ function renderCard(member) {
   });
 
   requestAnimationFrame(() => {
-    const canvas = qr.querySelector('canvas');
-    const image = qr.querySelector('img');
-
-    if (canvas) {
-      canvas.style.setProperty('width', `${qrSize}px`, 'important');
-      canvas.style.setProperty('height', `${qrSize}px`, 'important');
-      canvas.style.setProperty('display', 'block', 'important');
-      canvas.style.setProperty('margin', '0', 'important');
-      canvas.style.setProperty('max-width', 'none', 'important');
-      canvas.style.setProperty('max-height', 'none', 'important');
-    }
-
-    if (image) {
-      image.style.setProperty('display', 'none', 'important');
-      image.setAttribute('aria-hidden', 'true');
-    }
+    requestAnimationFrame(() => keepSingleQrCanvas(qr, qrSize));
   });
+  setTimeout(() => keepSingleQrCanvas(qr, qrSize), 150);
 
   downloadButton.disabled = false;
 }
