@@ -8,6 +8,7 @@ const loginForm = document.getElementById('loginForm');
 const loginButton = document.getElementById('loginButton');
 const loginMessage = document.getElementById('loginMessage');
 const accountSummary = document.getElementById('accountSummary');
+const verificationPanel = document.getElementById('verificationPanel');
 let latestMember = null;
 
 function normalizePhone(value) { return value.replace(/\D/g, '').slice(-10); }
@@ -17,11 +18,7 @@ function money(value) { return new Intl.NumberFormat('es-MX', { style:'currency'
 function keepSingleQrCanvas(qr, qrSize) {
   const canvases = Array.from(qr.querySelectorAll('canvas'));
   const keep = canvases[0] || null;
-
-  Array.from(qr.children).forEach((child) => {
-    if (child !== keep) child.remove();
-  });
-
+  Array.from(qr.children).forEach(child => { if (child !== keep) child.remove(); });
   if (keep) {
     keep.style.setProperty('width', `${qrSize}px`, 'important');
     keep.style.setProperty('height', `${qrSize}px`, 'important');
@@ -41,7 +38,6 @@ function renderCard(member) {
   const qr = document.getElementById('qrCode');
   qr.replaceChildren();
   const qrSize = window.matchMedia('(max-width: 620px)').matches ? 58 : 64;
-
   new QRCode(qr, {
     text: member.qrPayload,
     width: qrSize,
@@ -50,12 +46,8 @@ function renderCard(member) {
     colorLight: '#ffffff',
     correctLevel: QRCode.CorrectLevel.M
   });
-
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => keepSingleQrCanvas(qr, qrSize));
-  });
+  requestAnimationFrame(() => requestAnimationFrame(() => keepSingleQrCanvas(qr, qrSize)));
   setTimeout(() => keepSingleQrCanvas(qr, qrSize), 150);
-
   downloadButton.disabled = false;
 }
 
@@ -68,7 +60,39 @@ async function callApi(payload) {
   return response.json();
 }
 
-loginForm.addEventListener('submit', async (event) => {
+async function openVerificationFromQr() {
+  const params = new URLSearchParams(window.location.search);
+  const memberNumber = (params.get('verify') || '').trim().toUpperCase();
+  const token = params.get('token') || '';
+  if (!memberNumber || !token) return;
+
+  document.body.classList.add('verify-mode');
+  verificationPanel.classList.add('visible');
+  document.getElementById('verificationTitle').textContent = 'VALIDANDO QR...';
+  document.getElementById('verificationText').textContent = 'Consultando la membresía en tiempo real.';
+
+  try {
+    const result = await callApi({ action:'verify', memberNumber, token });
+    if (!result.ok) throw new Error(result.message || 'QR inválido.');
+    latestMember = result.member;
+    renderCard(latestMember);
+
+    const active = latestMember.status === 'ACTIVO';
+    document.body.classList.toggle('verification-valid', active);
+    document.body.classList.toggle('verification-invalid', !active);
+    document.getElementById('verificationTitle').textContent = active ? 'SOCIO ACTIVO' : 'MEMBRESÍA VENCIDA';
+    document.getElementById('verificationText').textContent = active
+      ? 'Aplicar 15% de descuento en Heat Master.'
+      : 'No aplicar el descuento. La vigencia ha terminado.';
+  } catch (error) {
+    document.body.classList.add('verification-invalid');
+    document.getElementById('verificationTitle').textContent = 'QR NO VÁLIDO';
+    document.getElementById('verificationText').textContent = error.message || 'No fue posible validar este código.';
+    document.getElementById('cardSection').style.display = 'none';
+  }
+}
+
+loginForm.addEventListener('submit', async event => {
   event.preventDefault();
   if (!loginForm.reportValidity()) return;
   const memberNumber = document.getElementById('loginMemberNumber').value.trim().toUpperCase();
@@ -77,7 +101,6 @@ loginForm.addEventListener('submit', async (event) => {
     setMessage(loginMessage, 'Ingresa un número de socio válido y tu celular de 10 dígitos.', 'error');
     return;
   }
-
   loginButton.disabled = true;
   loginButton.textContent = 'CONSULTANDO...';
   setMessage(loginMessage, '');
@@ -104,7 +127,7 @@ loginForm.addEventListener('submit', async (event) => {
   }
 });
 
-form.addEventListener('submit', async (event) => {
+form.addEventListener('submit', async event => {
   event.preventDefault();
   if (!form.reportValidity()) return;
   const payload = {
@@ -155,3 +178,5 @@ downloadButton.addEventListener('click', async () => {
   link.href = canvas.toDataURL('image/png');
   link.click();
 });
+
+openVerificationFromQr();
