@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260729-2350" />
+  <link rel="stylesheet" href="styles.css?v=20260729-2358" />
   <style>
     .login-section{margin-top:24px;padding:28px;border:1px solid rgba(255,255,255,.13);border-radius:25px;background:linear-gradient(135deg,rgba(226,27,35,.12),rgba(15,15,15,.92));box-shadow:0 20px 60px rgba(0,0,0,.3)}
     .login-head{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:20px}.login-head h2{margin:0}.login-head p{margin:6px 0 0;color:#bbb}
@@ -17,10 +17,10 @@
     .account-summary{display:none;margin-top:22px}.account-summary.visible{display:block}.welcome-line{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:14px}.welcome-line h3{margin:0;font-size:1.25rem}.account-status{padding:7px 11px;border-radius:999px;font-size:.72rem;font-weight:800;background:rgba(119,233,147,.12);color:#77e993;border:1px solid rgba(119,233,147,.3)}
     .account-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.account-metric{padding:18px;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:rgba(0,0,0,.3)}.account-metric span{display:block;color:#aaa;font-size:.72rem;font-weight:700;letter-spacing:.08em}.account-metric strong{display:block;margin-top:7px;font-size:1.55rem}.account-note{margin:14px 0 0;color:#aaa;font-size:.78rem}
     .verification-panel{display:none;margin:0 auto 20px;max-width:760px;padding:24px;border-radius:22px;text-align:center;border:1px solid rgba(255,255,255,.15);background:#161616}.verification-panel.visible{display:block}.verification-panel strong{display:block;font-family:Anton,sans-serif;font-size:clamp(32px,7vw,54px);letter-spacing:1px}.verification-panel p{margin:8px 0 0;color:#ddd;font-weight:700}.verification-valid .verification-panel{border-color:rgba(80,220,120,.45);background:rgba(38,126,62,.18)}.verification-valid .verification-panel strong{color:#7cf09a}.verification-invalid .verification-panel{border-color:rgba(255,90,90,.5);background:rgba(145,25,25,.2)}.verification-invalid .verification-panel strong{color:#ff8585}
-    #memberCard.member-card{min-height:390px!important;height:auto!important;aspect-ratio:auto!important;display:flex!important;flex-direction:column!important;padding:26px!important;overflow:hidden!important}
-    #memberCard .card-copy{margin:24px 0 18px!important}#memberCard .card-bottom{position:relative!important;left:auto!important;right:auto!important;bottom:auto!important;width:100%!important;margin-top:auto!important;padding-top:8px!important;display:flex!important;align-items:flex-end!important;justify-content:space-between!important;gap:18px!important;flex-shrink:0!important}
-    #memberCard .qr-box{box-sizing:border-box!important;width:112px!important;height:112px!important;min-width:112px!important;min-height:112px!important;padding:24px!important;overflow:hidden!important;display:flex!important;align-items:center!important;justify-content:center!important;background:#fff!important;border-radius:14px!important}
-    #memberCard .qr-box canvas{width:64px!important;height:64px!important;display:block!important;margin:0 auto!important;max-width:none!important;max-height:none!important}
+    #memberCard.member-card{min-height:460px!important;height:auto!important;aspect-ratio:auto!important;display:flex!important;flex-direction:column!important;padding:26px!important;overflow:hidden!important}
+    #memberCard .card-copy{margin:22px 0 16px!important}#memberCard .card-bottom{position:relative!important;left:auto!important;right:auto!important;bottom:auto!important;width:100%!important;margin-top:auto!important;padding-top:10px!important;display:flex!important;align-items:flex-end!important;justify-content:space-between!important;gap:18px!important;flex-shrink:0!important}
+    #memberCard .qr-box{box-sizing:border-box!important;width:176px!important;height:176px!important;min-width:176px!important;min-height:176px!important;padding:16px!important;overflow:hidden!important;display:flex!important;align-items:center!important;justify-content:center!important;background:#fff!important;border-radius:16px!important}
+    #memberCard .qr-box canvas{width:144px!important;height:144px!important;display:block!important;margin:0 auto!important;max-width:none!important;max-height:none!important;image-rendering:pixelated}
     #memberCard .qr-box img,#memberCard .qr-box>*:not(canvas){display:none!important}
     #memberCard .validity{display:flex!important;flex-direction:column!important;align-items:flex-end!important;justify-content:flex-end!important;min-width:150px!important;padding-bottom:4px!important}#memberCard .validity strong{display:block!important;font-size:20px!important;line-height:1.15!important;white-space:nowrap!important}
     body.member-mode .hero,body.member-mode .login-head,body.member-mode .login-form,body.member-mode .form-panel,body.member-mode footer{display:none!important}
@@ -28,7 +28,7 @@
     body.verify-mode .hero,body.verify-mode .login-section,body.verify-mode .form-panel,body.verify-mode footer,body.verify-mode #downloadCard{display:none!important}
     body.verify-mode .page-shell{width:min(900px,calc(100% - 24px));padding-top:24px}body.verify-mode .content-grid{display:block;margin-top:0}body.verify-mode #cardSection{width:100%;max-width:760px;margin:0 auto}body.verify-mode #cardSection>.step{text-align:center;font-size:14px}
     @media(max-width:720px){.login-head{display:block}.login-form{grid-template-columns:1fr}.login-form .form-message{grid-column:auto}.login-form button{width:100%}.account-metrics{grid-template-columns:1fr}.welcome-line{align-items:flex-start}}
-    @media(max-width:620px){#memberCard.member-card{min-height:380px!important;padding:18px!important}#memberCard .qr-box{width:100px!important;height:100px!important;min-width:100px!important;min-height:100px!important;padding:21px!important}#memberCard .qr-box canvas{width:58px!important;height:58px!important}#memberCard .validity{min-width:135px!important}#memberCard .validity strong{font-size:17px!important}}
+    @media(max-width:620px){#memberCard.member-card{min-height:500px!important;padding:18px!important}#memberCard .card-bottom{align-items:flex-end!important;gap:12px!important}#memberCard .qr-box{width:160px!important;height:160px!important;min-width:160px!important;min-height:160px!important;padding:14px!important}#memberCard .qr-box canvas{width:132px!important;height:132px!important}#memberCard .validity{min-width:118px!important}#memberCard .validity strong{font-size:16px!important}}
   </style>
 </head>
 <body>
@@ -85,6 +85,6 @@
   </main>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script src="app.js?v=20260729-2350"></script>
+  <script src="app.js?v=20260729-2358"></script>
 </body>
 </html>
