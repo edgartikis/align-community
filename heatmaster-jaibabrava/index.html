@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#090909" />
+  <title>Heat Master × Jaiba Brava</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="page-shell">
+    <section class="hero">
+      <div class="brand-lockup">
+        <div class="brand-mark">HM</div>
+        <div>
+          <p class="eyebrow">HEAT MASTER × JAIBA BRAVA</p>
+          <h1>Tu membresía. Tu descuento. Tu QR.</h1>
+          <p class="lead">Regístrate para recibir tu tarjeta digital y obtener 15% de descuento en Heat Master.</p>
+        </div>
+      </div>
+      <div class="benefit-pill">15% OFF</div>
+    </section>
+
+    <section class="content-grid">
+      <div class="panel form-panel">
+        <p class="step">REGISTRO OFICIAL</p>
+        <h2>Activa tu beneficio</h2>
+        <form id="registrationForm" novalidate>
+          <label>
+            Nombre completo
+            <input id="fullName" name="fullName" autocomplete="name" maxlength="100" required placeholder="Ej. Edgar Cordero" />
+          </label>
+          <label>
+            Número de celular
+            <input id="phone" name="phone" inputmode="tel" autocomplete="tel" maxlength="15" required placeholder="10 dígitos" />
+          </label>
+          <label>
+            Correo electrónico
+            <input id="email" name="email" type="email" autocomplete="email" maxlength="120" required placeholder="nombre@correo.com" />
+          </label>
+          <label class="check-row">
+            <input id="consent" name="consent" type="checkbox" required />
+            <span>Acepto el uso de mis datos para administrar esta promoción y validar mi membresía.</span>
+          </label>
+          <button id="submitButton" type="submit">GENERAR MI TARJETA</button>
+          <p id="formMessage" class="form-message" role="status"></p>
+        </form>
+      </div>
+
+      <div class="panel preview-panel">
+        <p class="step">VISTA PREVIA</p>
+        <div id="memberCard" class="member-card" aria-label="Tarjeta digital Heat Master Jaiba Brava">
+          <div class="card-top">
+            <div>
+              <div class="mini-logo">HM</div>
+              <p>HEAT MASTER</p>
+            </div>
+            <span class="status-dot">ACTIVO</span>
+          </div>
+          <div class="card-copy">
+            <span>JAIBA BRAVA</span>
+            <strong>15% DE DESCUENTO</strong>
+            <p id="cardName">TU NOMBRE</p>
+            <small id="cardMember">SOCIO: HM-JB-0000</small>
+          </div>
+          <div class="card-bottom">
+            <div id="qrCode" class="qr-box"></div>
+            <div class="validity">
+              <span>VÁLIDA HASTA</span>
+              <strong id="cardExpiry">--/--/----</strong>
+              <small>Personal e intransferible</small>
+            </div>
+          </div>
+        </div>
+        <button id="downloadCard" class="secondary-button" type="button" disabled>DESCARGAR TARJETA</button>
+      </div>
+    </section>
+
+    <footer>
+      <span>Cupo máximo: 2,500 registros.</span>
+      <span>Promoción exclusiva Heat Master × Jaiba Brava.</span>
+    </footer>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
