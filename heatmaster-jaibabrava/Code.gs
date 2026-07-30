@@ -1,7 +1,10 @@
 const SPREADSHEET_ID = '1J9p3bN4-Wty1mFkMUS4E8bgJM4Fot33ecGedGdmt99o';
 const SHEET_NAME = 'Registros';
+const TRANSACTIONS_SHEET = 'Consumos';
 const MAX_MEMBERS = 2500;
 const VALIDITY_DAYS = 30;
+const DISCOUNT_RATE = 0.15;
+const CASHIER_PIN = '615243';
 const SITE_URL = 'https://edgartikis.github.io/align-community/heatmaster-jaibabrava/';
 
 function doGet() {
@@ -16,6 +19,7 @@ function doPost(e) {
     if (data.action === 'register') return registerMember(data);
     if (data.action === 'login') return loginMember(data);
     if (data.action === 'verify') return verifyMember(data);
+    if (data.action === 'purchase') return registerPurchase(data);
     return jsonResponse({ ok: false, message: 'Acción no válida.' });
   } catch (error) {
     return jsonResponse({ ok: false, message: error.message || 'Error interno.' });
@@ -76,16 +80,60 @@ function loginMember(data) {
 function verifyMember(data) {
   const memberNumber = clean(data.memberNumber, 20).toUpperCase();
   const token = clean(data.token, 300);
-  if (!/^HM-JB-\d{4}$/.test(memberNumber) || !token) {
-    return jsonResponse({ ok: false, message: 'QR inválido.' });
+  if (!/^HM-JB-\d{4}$/.test(memberNumber) || !token) return jsonResponse({ ok: false, message: 'QR inválido.' });
+
+  const found = findMember(memberNumber);
+  if (!found || String(found.row[8] || '') !== token) return jsonResponse({ ok: false, message: 'Este QR no es válido.' });
+  refreshStatus(found);
+  return jsonResponse({ ok: true, member: buildMemberResponse(found.row, false) });
+}
+
+function registerPurchase(data) {
+  const memberNumber = clean(data.memberNumber, 20).toUpperCase();
+  const token = clean(data.token, 300);
+  const pin = clean(data.pin, 12);
+  const subtotal = roundMoney(Number(data.subtotal));
+
+  if (pin !== CASHIER_PIN) return jsonResponse({ ok: false, message: 'NIP de caja incorrecto.' });
+  if (!/^HM-JB-\d{4}$/.test(memberNumber) || !token) return jsonResponse({ ok: false, message: 'QR inválido.' });
+  if (!Number.isFinite(subtotal) || subtotal <= 0 || subtotal > 100000) {
+    return jsonResponse({ ok: false, message: 'Ingresa un monto válido.' });
   }
 
   const found = findMember(memberNumber);
-  if (!found || String(found.row[8] || '') !== token) {
-    return jsonResponse({ ok: false, message: 'Este QR no es válido.' });
-  }
+  if (!found || String(found.row[8] || '') !== token) return jsonResponse({ ok: false, message: 'Este QR no es válido.' });
   refreshStatus(found);
-  return jsonResponse({ ok: true, member: buildMemberResponse(found.row, false) });
+  if (String(found.row[7]).toUpperCase() !== 'ACTIVO') {
+    return jsonResponse({ ok: false, message: 'La membresía no está activa.' });
+  }
+
+  const discount = roundMoney(subtotal * DISCOUNT_RATE);
+  const total = roundMoney(subtotal - discount);
+  const now = new Date();
+  const visits = Number(found.row[11] || 0) + 1;
+  const consumption = roundMoney(Number(found.row[12] || 0) + subtotal);
+  const savings = roundMoney(Number(found.row[13] || 0) + discount);
+
+  found.sheet.getRange(found.sheetRow, 11, 1, 4).setValues([[now, visits, consumption, savings]]);
+  found.sheet.getRange(found.sheetRow, 11).setNumberFormat('dd/mm/yyyy hh:mm');
+  found.sheet.getRange(found.sheetRow, 13, 1, 2).setNumberFormat('$#,##0.00');
+
+  const txSheet = getTransactionsSheet();
+  txSheet.appendRow([
+    Utilities.getUuid(), now, memberNumber, String(found.row[2] || ''), subtotal,
+    DISCOUNT_RATE, discount, total, 'Heat Master', 'APLICADO'
+  ]);
+  const txRow = txSheet.getLastRow();
+  txSheet.getRange(txRow, 2).setNumberFormat('dd/mm/yyyy hh:mm');
+  txSheet.getRange(txRow, 5, 1, 1).setNumberFormat('$#,##0.00');
+  txSheet.getRange(txRow, 6).setNumberFormat('0%');
+  txSheet.getRange(txRow, 7, 1, 2).setNumberFormat('$#,##0.00');
+
+  return jsonResponse({
+    ok: true,
+    purchase: { subtotal, discount, total, rate: DISCOUNT_RATE },
+    metrics: { visits, consumption, savings }
+  });
 }
 
 function findMember(memberNumber) {
@@ -110,8 +158,7 @@ function buildMemberResponse(row, includePrivateMetrics) {
   const token = String(row[8] || '');
   const memberNumber = String(row[1] || '');
   const response = {
-    fullName: String(row[2] || ''),
-    memberNumber,
+    fullName: String(row[2] || ''), memberNumber,
     status: String(row[7] || 'VENCIDO'),
     qrPayload: buildVerificationUrl(memberNumber, token),
     expiryISO: isNaN(expiry.getTime()) ? '' : expiry.toISOString(),
@@ -133,6 +180,17 @@ function getSheet() {
   return SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAME);
 }
 
+function getTransactionsSheet() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = spreadsheet.getSheetByName(TRANSACTIONS_SHEET);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(TRANSACTIONS_SHEET);
+    sheet.appendRow(['ID', 'Fecha y hora', 'Número de socio', 'Nombre', 'Cuenta original', 'Descuento %', 'Ahorro', 'Total pagado', 'Comercio', 'Estado']);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
 function updateExpiredMembers() {
   const sheet = getSheet();
   const lastRow = sheet.getLastRow();
@@ -140,9 +198,7 @@ function updateExpiredMembers() {
   const range = sheet.getRange(2, 7, lastRow - 1, 2);
   const rows = range.getValues();
   const now = new Date();
-  rows.forEach(row => {
-    if (row[0] instanceof Date && row[0] < now && row[1] === 'ACTIVO') row[1] = 'VENCIDO';
-  });
+  rows.forEach(row => { if (row[0] instanceof Date && row[0] < now && row[1] === 'ACTIVO') row[1] = 'VENCIDO'; });
   range.setValues(rows);
 }
 
@@ -151,6 +207,7 @@ function createDailyExpiryTrigger() {
   ScriptApp.newTrigger('updateExpiredMembers').timeBased().everyDays(1).atHour(1).create();
 }
 
+function roundMoney(value) { return Math.round((Number(value) + Number.EPSILON) * 100) / 100; }
 function normalizePhone(value) { return String(value || '').replace(/\D/g, '').slice(-10); }
 function clean(value, max) { return String(value || '').trim().replace(/\s+/g, ' ').slice(0, max); }
 function jsonResponse(data) { return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON); }
