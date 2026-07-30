@@ -22,24 +22,25 @@ function renderCard(member) {
 
   const qr = document.getElementById('qrCode');
   qr.innerHTML = '';
+  const qrSize = window.matchMedia('(max-width: 620px)').matches ? 70 : 82;
   new QRCode(qr, {
     text: member.qrPayload,
-    width: 112,
-    height: 112,
+    width: qrSize,
+    height: qrSize,
     colorDark: '#000000',
     colorLight: '#ffffff',
     correctLevel: QRCode.CorrectLevel.M
   });
 
   requestAnimationFrame(() => {
-    const qrGraphic = qr.querySelector('canvas, img');
-    if (qrGraphic) {
-      qrGraphic.style.width = '84px';
-      qrGraphic.style.height = '84px';
+    qr.querySelectorAll('canvas, img').forEach((qrGraphic) => {
+      qrGraphic.style.width = `${qrSize}px`;
+      qrGraphic.style.height = `${qrSize}px`;
       qrGraphic.style.display = 'block';
-      qrGraphic.style.maxWidth = 'none';
-      qrGraphic.style.maxHeight = 'none';
-    }
+      qrGraphic.style.margin = '0';
+      qrGraphic.style.maxWidth = '100%';
+      qrGraphic.style.maxHeight = '100%';
+    });
   });
   downloadButton.disabled = false;
 }
