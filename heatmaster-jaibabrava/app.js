@@ -1,5 +1,4 @@
-// Se reemplazará con la URL /exec al autorizar y desplegar Google Apps Script.
-const API_URL = "PASTE_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
+const API_URL = "https://script.google.com/macros/s/AKfycby_aQm7IcWaAfKEHL_sh-GrE8hogVtr3zMQ4j3qHM587pNaHhzUehkFxpzVM774Han7sw/exec";
 
 const form = document.getElementById('registrationForm');
 const button = document.getElementById('submitButton');
@@ -23,10 +22,6 @@ function renderCard(member) {
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!form.reportValidity()) return;
-  if (API_URL.includes('PASTE_')) {
-    setMessage('La conexión con Google todavía está pendiente de autorización.', 'error');
-    return;
-  }
   const payload = {
     action: 'register',
     fullName: document.getElementById('fullName').value.trim(),
