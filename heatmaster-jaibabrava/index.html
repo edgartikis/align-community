@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260729-2335" />
+  <link rel="stylesheet" href="styles.css?v=20260729-2345" />
   <style>
     .login-section{margin-top:24px;padding:28px;border:1px solid rgba(255,255,255,.13);border-radius:25px;background:linear-gradient(135deg,rgba(226,27,35,.12),rgba(15,15,15,.92));box-shadow:0 20px 60px rgba(0,0,0,.3)}
     .login-head{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:20px}.login-head h2{margin:0}.login-head p{margin:6px 0 0;color:#bbb}
@@ -18,10 +18,10 @@
     .account-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.account-metric{padding:18px;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:rgba(0,0,0,.3)}.account-metric span{display:block;color:#aaa;font-size:.72rem;font-weight:700;letter-spacing:.08em}.account-metric strong{display:block;margin-top:7px;font-size:1.55rem}.account-note{margin:14px 0 0;color:#aaa;font-size:.78rem}
     #memberCard.member-card{min-height:390px!important;height:auto!important;aspect-ratio:auto!important;display:flex!important;flex-direction:column!important;padding:26px!important;overflow:hidden!important}
     #memberCard .card-copy{margin:24px 0 18px!important}#memberCard .card-bottom{position:relative!important;left:auto!important;right:auto!important;bottom:auto!important;width:100%!important;margin-top:auto!important;padding-top:8px!important;display:flex!important;align-items:flex-end!important;justify-content:space-between!important;gap:18px!important;flex-shrink:0!important}
-    #memberCard .qr-box{width:100px!important;height:100px!important;min-width:100px!important;min-height:100px!important;padding:8px!important;overflow:visible!important}#memberCard .qr-box img,#memberCard .qr-box canvas{width:84px!important;height:84px!important;display:block!important;max-width:none!important;max-height:none!important}
+    #memberCard .qr-box{box-sizing:border-box!important;width:100px!important;height:100px!important;min-width:100px!important;min-height:100px!important;padding:9px!important;overflow:hidden!important;display:flex!important;align-items:center!important;justify-content:center!important;background:#fff!important;border-radius:12px!important}#memberCard .qr-box img,#memberCard .qr-box canvas{width:82px!important;height:82px!important;display:block!important;margin:0!important;max-width:100%!important;max-height:100%!important}
     #memberCard .validity{display:flex!important;flex-direction:column!important;align-items:flex-end!important;justify-content:flex-end!important;min-width:150px!important;padding-bottom:4px!important}#memberCard .validity strong{display:block!important;font-size:20px!important;line-height:1.15!important;white-space:nowrap!important}
     @media(max-width:720px){.login-head{display:block}.login-form{grid-template-columns:1fr}.login-form .form-message{grid-column:auto}.login-form button{width:100%}.account-metrics{grid-template-columns:1fr}.welcome-line{align-items:flex-start}}
-    @media(max-width:620px){#memberCard.member-card{min-height:380px!important;padding:18px!important}#memberCard .qr-box{width:88px!important;height:88px!important;min-width:88px!important;min-height:88px!important;padding:7px!important}#memberCard .qr-box img,#memberCard .qr-box canvas{width:74px!important;height:74px!important}#memberCard .validity{min-width:135px!important}#memberCard .validity strong{font-size:17px!important}}
+    @media(max-width:620px){#memberCard.member-card{min-height:380px!important;padding:18px!important}#memberCard .qr-box{width:88px!important;height:88px!important;min-width:88px!important;min-height:88px!important;padding:9px!important}#memberCard .qr-box img,#memberCard .qr-box canvas{width:70px!important;height:70px!important}#memberCard .validity{min-width:135px!important}#memberCard .validity strong{font-size:17px!important}}
   </style>
 </head>
 <body>
@@ -77,6 +77,6 @@
   </main>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script src="app.js?v=20260729-2335"></script>
+  <script src="app.js?v=20260729-2345"></script>
 </body>
 </html>
