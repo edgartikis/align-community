@@ -4,11 +4,77 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#090909" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>Heat Master × Jaiba Brava</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=20260729-2320" />
+  <style>
+    #memberCard.member-card{
+      min-height:390px!important;
+      height:auto!important;
+      aspect-ratio:auto!important;
+      display:flex!important;
+      flex-direction:column!important;
+      padding:26px!important;
+      overflow:hidden!important;
+    }
+    #memberCard .card-copy{
+      margin:24px 0 18px!important;
+    }
+    #memberCard .card-bottom{
+      position:relative!important;
+      left:auto!important;
+      right:auto!important;
+      bottom:auto!important;
+      width:100%!important;
+      margin-top:auto!important;
+      padding-top:8px!important;
+      display:flex!important;
+      align-items:flex-end!important;
+      justify-content:space-between!important;
+      gap:18px!important;
+      flex-shrink:0!important;
+    }
+    #memberCard .qr-box{
+      width:100px!important;
+      height:100px!important;
+      min-width:100px!important;
+      min-height:100px!important;
+      padding:8px!important;
+      overflow:visible!important;
+    }
+    #memberCard .qr-box img,
+    #memberCard .qr-box canvas{
+      width:84px!important;
+      height:84px!important;
+      display:block!important;
+      max-width:none!important;
+      max-height:none!important;
+    }
+    #memberCard .validity{
+      display:flex!important;
+      flex-direction:column!important;
+      align-items:flex-end!important;
+      justify-content:flex-end!important;
+      min-width:150px!important;
+      padding-bottom:4px!important;
+    }
+    #memberCard .validity strong{
+      display:block!important;
+      font-size:20px!important;
+      line-height:1.15!important;
+      white-space:nowrap!important;
+    }
+    @media(max-width:620px){
+      #memberCard.member-card{min-height:380px!important;padding:18px!important}
+      #memberCard .qr-box{width:88px!important;height:88px!important;min-width:88px!important;min-height:88px!important;padding:7px!important}
+      #memberCard .qr-box img,#memberCard .qr-box canvas{width:74px!important;height:74px!important}
+      #memberCard .validity{min-width:135px!important}
+      #memberCard .validity strong{font-size:17px!important}
+    }
+  </style>
 </head>
 <body>
   <main class="page-shell">
@@ -87,6 +153,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script src="app.js"></script>
+  <script src="app.js?v=20260729-2320"></script>
 </body>
 </html>
