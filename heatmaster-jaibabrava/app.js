@@ -78,10 +78,11 @@ loginForm.addEventListener('submit', async (event) => {
     document.getElementById('accountConsumption').textContent = money(latestMember.consumption);
     document.getElementById('accountVisits').textContent = String(latestMember.visits || 0);
     accountSummary.classList.add('visible');
-    setMessage(loginMessage, 'Tarjeta encontrada correctamente.', 'success');
-    document.getElementById('cardSection').scrollIntoView({ behavior:'smooth', block:'start' });
+    document.body.classList.add('member-mode');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   } catch (error) {
     accountSummary.classList.remove('visible');
+    document.body.classList.remove('member-mode');
     setMessage(loginMessage, error.message || 'Ocurrió un error. Intenta nuevamente.', 'error');
   } finally {
     loginButton.disabled = false;
