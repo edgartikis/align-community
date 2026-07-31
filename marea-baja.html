@@ -31,4 +31,5 @@
 const slides=[...document.querySelectorAll('.hero-slide')],dots=[...document.querySelectorAll('.carousel-dot')];let current=0,timer;function showSlide(index){current=(index+slides.length)%slides.length;slides.forEach((slide,i)=>slide.classList.toggle('active',i===current));dots.forEach((dot,i)=>dot.classList.toggle('active',i===current))}function startCarousel(){clearInterval(timer);timer=setInterval(()=>showSlide(current+1),3200)}dots.forEach((dot,i)=>dot.addEventListener('click',()=>{showSlide(i);startCarousel()}));startCarousel();
 const q=new URLSearchParams(location.search),member=q.get('member'),level=q.get('level');if(member){const url=`mi-membresia.html?member=${encodeURIComponent(member)}&level=${encodeURIComponent(level||'Society')}`;document.querySelector('#backLink').href=url;document.querySelector('#portalLink').href=url}
 </script>
+<!-- Netlify deploy refresh: 2026-07-30T23:45-06:00 -->
 </body></html>
