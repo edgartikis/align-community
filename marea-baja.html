@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Marea Baja Surfing School, aliado fundador de ALIGN Membership en Playa Miramar." />
+  <title>Marea Baja × ALIGN</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root{--navy:#071523;--ocean:#0e4965;--foam:#f7f4ed;--sand:#ddd0b8;--ink:#081018;--muted:#9eb0ba;--line:rgba(255,255,255,.18)}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--navy);color:var(--foam);font-family:"DM Sans",sans-serif}a{color:inherit;text-decoration:none}
+    .nav{position:absolute;z-index:5;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:24px 5vw;border-bottom:1px solid rgba(255,255,255,.18)}.brand{font-family:"Playfair Display",serif;letter-spacing:.16em}.back{font:500 .7rem "DM Mono",monospace;letter-spacing:.13em;text-transform:uppercase}
+    .hero{position:relative;min-height:92vh;display:grid;place-items:end start;overflow:hidden;padding:140px 6vw 70px;background:radial-gradient(circle at 72% 18%,rgba(250,176,113,.48),transparent 34%),linear-gradient(155deg,#6d7d8e 0%,#173e55 43%,#071523 100%)}
+    .hero:before{content:"";position:absolute;inset:45% -10% -20%;background:repeating-radial-gradient(ellipse at center,rgba(137,207,229,.25) 0 2px,transparent 3px 24px);transform:rotate(-5deg);opacity:.42}.hero:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(2,10,18,.76),rgba(2,10,18,.08) 65%),linear-gradient(0deg,rgba(2,10,18,.82),transparent 48%)}
+    .hero-copy{position:relative;z-index:2;max-width:760px}.kicker{margin:0 0 18px;font:500 .7rem "DM Mono",monospace;letter-spacing:.18em;text-transform:uppercase;color:#d7e2e8}.hero h1{margin:0;font:500 clamp(3.7rem,10vw,8rem)/.88 "Playfair Display",serif;letter-spacing:-.055em}.hero p{max-width:570px;margin:25px 0 30px;font-size:clamp(1rem,1.7vw,1.25rem);line-height:1.65;color:#e5edf0}.button{display:inline-block;padding:14px 22px;border:1px solid rgba(255,255,255,.75);font:600 .72rem "DM Mono",monospace;letter-spacing:.12em;text-transform:uppercase;transition:.2s}.button:hover{background:#fff;color:#071523}
+    .statement{display:grid;grid-template-columns:.8fr 1.4fr;gap:50px;padding:110px 6vw;background:var(--foam);color:var(--ink)}.statement h2,.benefits h2,.experience h2{margin:0;font:500 clamp(2.4rem,5vw,4.8rem)/1 "Playfair Display",serif;letter-spacing:-.04em}.statement p{margin:0;max-width:700px;font-size:1.22rem;line-height:1.7;color:#39434a}
+    .visual-grid{display:grid;grid-template-columns:1.3fr .7fr;grid-template-rows:360px 360px;gap:16px;padding:16px;background:#071523}.visual{position:relative;overflow:hidden;border:1px solid var(--line);background:linear-gradient(145deg,#1a526b,#d39b72)}.visual:nth-child(1){grid-row:1/3}.visual:nth-child(2){background:linear-gradient(145deg,#d8a178,#204f65)}.visual:nth-child(3){background:linear-gradient(145deg,#12415b,#9dc7d4)}.visual span{position:absolute;left:24px;bottom:22px;font:500 .68rem "DM Mono",monospace;letter-spacing:.13em;text-transform:uppercase}.visual:before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,transparent 25%,rgba(255,255,255,.13),transparent 65%)}
+    .benefits{padding:110px 6vw;background:#0a2030}.benefits-head{display:flex;justify-content:space-between;align-items:end;gap:30px;margin-bottom:40px}.benefits-head p{max-width:430px;margin:0;color:var(--muted);line-height:1.6}.benefit-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.benefit{min-height:430px;padding:38px;display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--line)}.benefit.society{background:#153b53}.benefit.black{background:#040608}.plan{font:500 .7rem "DM Mono",monospace;letter-spacing:.15em;text-transform:uppercase;color:#c9d5db}.benefit h3{margin:12px 0 0;font:500 clamp(2.6rem,5vw,4.8rem)/.95 "Playfair Display",serif;letter-spacing:-.04em}.price-row{display:flex;align-items:end;gap:18px;margin-top:30px}.old{font-size:1rem;color:#aab3b7;text-decoration:line-through}.new{font:600 clamp(3.2rem,7vw,6.4rem)/1 "Playfair Display",serif}.detail{margin:16px 0 0;max-width:500px;line-height:1.65;color:#d9e0e4}.black .new{font-size:clamp(4.6rem,10vw,8.5rem)}
+    .experience{display:grid;grid-template-columns:1fr 1fr;gap:70px;padding:110px 6vw;background:var(--sand);color:var(--ink)}.experience ul{list-style:none;padding:0;margin:0;border-top:1px solid rgba(8,16,24,.2)}.experience li{padding:18px 0;border-bottom:1px solid rgba(8,16,24,.2);font-size:1.05rem}.experience li:before{content:"— ";color:#6d756f}.note{margin:22px 0 0;color:#596067;line-height:1.6}
+    .cta{padding:120px 6vw;text-align:center;background:radial-gradient(circle at 50% 20%,#174c66,#071523 58%)}.cta h2{margin:0 auto 28px;max-width:760px;font:500 clamp(3rem,7vw,6.2rem)/.95 "Playfair Display",serif;letter-spacing:-.05em}.cta p{margin:0 auto 30px;max-width:520px;color:#bccbd2;line-height:1.65}footer{display:flex;justify-content:space-between;gap:20px;padding:26px 5vw;font:400 .67rem "DM Mono",monospace;letter-spacing:.08em;color:#8da0a9}
+    @media(max-width:760px){.statement,.experience,.benefit-grid{grid-template-columns:1fr}.statement,.benefits,.experience,.cta{padding:75px 7vw}.visual-grid{grid-template-columns:1fr;grid-template-rows:420px 260px 260px}.visual:nth-child(1){grid-row:auto}.benefits-head{display:block}.benefits-head p{margin-top:16px}.benefit{min-height:370px;padding:28px}.nav{padding:20px 7vw}.hero{padding:130px 7vw 55px;min-height:88vh}footer{flex-direction:column}}
+  </style>
+</head>
+<body>
+  <nav class="nav"><a class="brand" href="index.html">ALIGN</a><a class="back" href="index.html#experiencias">Volver a experiencias</a></nav>
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="kicker">Aliado fundador · Playa Miramar</p>
+        <h1>Marea Baja<br />Surfing School</h1>
+        <p>La playa de siempre. Una experiencia completamente diferente. Aprende a surfear en Playa Miramar y descubre una nueva manera de vivir tu ciudad.</p>
+        <a class="button" href="#beneficios">Ver beneficios ALIGN</a>
+      </div>
+    </section>
+
+    <section class="statement">
+      <p class="kicker">Experiencia ALIGN</p>
+      <div><h2>Tu primera ola comienza aquí.</h2><p>No necesitas experiencia previa. Marea Baja te acompaña desde los fundamentos hasta el momento de ponerte de pie sobre la tabla, con equipo e instrucción para vivir el mar con seguridad y confianza.</p></div>
+    </section>
+
+    <section class="visual-grid" aria-label="Galería Marea Baja">
+      <div class="visual"><span>Surf · Playa Miramar</span></div>
+      <div class="visual"><span>Clases para principiantes</span></div>
+      <div class="visual"><span>Una experiencia para compartir</span></div>
+    </section>
+
+    <section id="beneficios" class="benefits">
+      <div class="benefits-head"><h2>Beneficios exclusivos.</h2><p>Presenta tu membresía ALIGN al reservar. Los beneficios están sujetos a disponibilidad y reservación previa.</p></div>
+      <div class="benefit-grid">
+        <article class="benefit society">
+          <div><p class="plan">ALIGN Society</p><h3>Precio preferencial en cada clase.</h3></div>
+          <div><div class="price-row"><span class="old">$350 regular</span><span class="new">$250</span></div><p class="detail">Ahorra $100 MXN cada vez que tomes una clase de surf.</p></div>
+        </article>
+        <article class="benefit black">
+          <div><p class="plan">ALIGN Black</p><h3>Comparte la experiencia.</h3></div>
+          <div><div class="new">2×1</div><p class="detail">Beneficio permanente en clases de surf: dos personas disfrutan la experiencia pagando una clase.</p></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="experience">
+      <div><p class="kicker">La experiencia</p><h2>Todo lo necesario para entrar al mar.</h2><p class="note">Las condiciones definitivas de equipo, duración y reservación se confirmarán directamente con Marea Baja.</p></div>
+      <ul><li>Instrucción para principiantes y niveles intermedios</li><li>Uso de tabla durante la clase</li><li>Acompañamiento dentro del agua</li><li>Experiencia en Playa Miramar</li><li>Reservación sujeta a condiciones del mar</li></ul>
+    </section>
+
+    <section class="cta"><p class="kicker">Marea Baja × ALIGN</p><h2>¿Listo para subirte a tu primera ola?</h2><p>Reserva directamente con Marea Baja y presenta tu membresía activa para aplicar el beneficio correspondiente.</p><a class="button" href="index.html#contacto">Solicitar información</a></section>
+  </main>
+  <footer><span>ALIGN Membership × Marea Baja Surfing School</span><span>Tampico · Madero · Altamira</span></footer>
+</body>
+</html>
