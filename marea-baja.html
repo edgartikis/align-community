@@ -9,15 +9,16 @@
 <body>
 <nav class="nav"><a class="brand" href="./">ALIGN</a><a class="back" id="backLink" href="mi-membresia.html">← Mi membresía</a></nav>
 <main>
-<section class="hero"><img class="marea-photo" alt="Clase de surf de Marea Baja en Playa Miramar"><div class="hero-copy"><p class="eyebrow">Aliado fundador · Playa Miramar</p><h1>Marea Baja<br>Surfing School</h1><p class="lead">La playa de siempre. Una experiencia completamente diferente. Aprende a surfear y descubre otra forma de vivir Playa Miramar.</p><a class="button" href="#beneficios">Ver beneficio</a></div></section>
+<section class="hero"><img id="heroPhoto" alt="Clase de surf de Marea Baja en Playa Miramar"><div class="hero-copy"><p class="eyebrow">Aliado fundador · Playa Miramar</p><h1>Marea Baja<br>Surfing School</h1><p class="lead">La playa de siempre. Una experiencia completamente diferente. Aprende a surfear y descubre otra forma de vivir Playa Miramar.</p><a class="button" href="#beneficios">Ver beneficio</a></div></section>
 <section class="intro"><p class="eyebrow">Experiencia ALIGN</p><div><h2>Tu primera ola comienza aquí.</h2><p>No necesitas experiencia previa. Recibe acompañamiento, equipo e instrucción para entrar al mar con seguridad y confianza.</p></div></section>
-<section class="gallery"><figure><img class="marea-photo" alt="Surfista sobre una ola"></figure><figure><img class="marea-photo" alt="Clase de surf"></figure><figure><img class="marea-photo" alt="Experiencia Marea Baja"></figure></section>
+<section class="gallery"><figure><img id="galleryOne" alt="Surfista de Marea Baja"></figure><figure><img id="galleryTwo" alt="Clase de surf en Playa Miramar"></figure><figure><img id="galleryThree" alt="Experiencia Marea Baja"></figure></section>
 <section id="beneficios" class="benefits"><h2>Beneficios exclusivos.</h2><div class="benefit-grid"><article class="benefit society"><div><p class="eyebrow">ALIGN Society</p><h3>Precio preferencial.</h3></div><div class="big">$250</div><p>Precio regular de $350. Ahorra $100 en cada clase.</p></article><article class="benefit black"><div><p class="eyebrow">ALIGN Black</p><h3>Comparte la experiencia.</h3></div><div class="big">2×1</div><p>Beneficio permanente en clases de surf.</p></article></div></section>
 <section class="cta"><h2>¿Listo para subirte a tu primera ola?</h2><a class="button" id="portalLink" href="mi-membresia.html">Volver a mi membresía</a></section>
 </main>
+<script src="public/images/marea-baja/marea-1.js?v=20260731"></script>
+<script src="public/images/marea-baja/marea-2.js?v=20260731"></script>
 <script>
-const BLOB='90616dfbbda259271e9bbe760afdb7d9dea635b0';
-fetch(`https://api.github.com/repos/edgartikis/align-community/git/blobs/${BLOB}`).then(r=>r.json()).then(d=>{const src=`data:image/jpeg;base64,${String(d.content||'').replace(/\n/g,'')}`;document.querySelectorAll('.marea-photo').forEach(img=>img.src=src)}).catch(()=>{});
+const images=window.MAREA_IMAGES||[];document.querySelector('#heroPhoto').src=images[0]||'';document.querySelector('#galleryOne').src=images[1]||images[0]||'';document.querySelector('#galleryTwo').src=images[0]||'';document.querySelector('#galleryThree').src=images[1]||images[0]||'';
 const q=new URLSearchParams(location.search),member=q.get('member'),level=q.get('level');if(member){const url=`mi-membresia.html?member=${encodeURIComponent(member)}&level=${encodeURIComponent(level||'Society')}`;document.querySelector('#backLink').href=url;document.querySelector('#portalLink').href=url}
 </script>
 </body></html>
