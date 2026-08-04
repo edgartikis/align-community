@@ -12,13 +12,34 @@ const siteOrigin = (request) => {
   return (configured || new URL(request.url).origin).replace(/\/$/, "");
 };
 
+const allowedOrigins = new Set([
+  "https://aligncommunity.netlify.app",
+  "https://edgartikis.github.io",
+]);
+
+const corsHeaders = (request) => {
+  const origin = request.headers.get("origin") || "";
+  return {
+    "access-control-allow-origin": allowedOrigins.has(origin) ? origin : "https://aligncommunity.netlify.app",
+    "access-control-allow-methods": "POST, OPTIONS",
+    "access-control-allow-headers": "content-type",
+    "vary": "Origin",
+  };
+};
+
+const json = (request, body, status = 200) => Response.json(body, {
+  status,
+  headers: { ...corsHeaders(request), "cache-control": "no-store" },
+});
+
 export default async (request) => {
   try {
-    if (request.method !== "POST") return new Response("Método no permitido.", { status: 405 });
+    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(request) });
+    if (request.method !== "POST") return json(request, { error: "Método no permitido." }, 405);
     const body = await request.json();
     const planKey = String(body.plan || "").toLowerCase();
     const plan = planFor(planKey);
-    if (!plan) return new Response("Membresía no válida.", { status: 400 });
+    if (!plan) return json(request, { error: "Membresía no válida." }, 400);
 
     const metadata = {
       align_membership: planKey,
@@ -34,7 +55,7 @@ export default async (request) => {
     });
     const members = membersFromMetadata(metadata, plan.seats);
     if (Array.isArray(body.members) && body.members.length !== plan.seats) {
-      return new Response(`Este plan requiere ${plan.seats} integrante(s).`, { status: 400 });
+      return json(request, { error: `Este plan requiere ${plan.seats} integrante(s).` }, 400);
     }
 
     const stripe = new Stripe(required("STRIPE_SECRET_KEY"));
@@ -65,9 +86,9 @@ export default async (request) => {
       cancel_url: `${origin}/#membresias`,
     });
 
-    return Response.json({ url: session.url }, { headers: { "cache-control": "no-store" } });
+    return json(request, { url: session.url });
   } catch (error) {
     console.error("checkout-v2", error);
-    return new Response("No pudimos iniciar el pago.", { status: 500 });
+    return json(request, { error: "No pudimos iniciar el pago." }, 500);
   }
 };
