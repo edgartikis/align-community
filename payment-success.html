@@ -1,50 +1,5 @@
-<!doctype html>
-<html lang="es-MX">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#090a0c" />
-  <title>Activando membresía | ALIGN</title>
-  <style>
-    *{box-sizing:border-box}body{min-height:100vh;margin:0;display:grid;place-items:center;padding:24px;background:#090a0c;color:#f5f2ec;font-family:Arial,sans-serif;text-align:center}.panel{width:min(100%,520px);padding:46px 30px;border:1px solid rgba(255,255,255,.2);background:linear-gradient(145deg,#172a45,#080b10)}.mark{width:58px;height:58px;margin:0 auto 24px;display:grid;place-items:center;border:1px solid #f5f2ec;border-radius:50%;font-family:Georgia,serif;font-size:30px}h1{margin:0;font-family:Georgia,serif;font-weight:400;font-size:clamp(34px,8vw,55px);line-height:1}p{margin:20px auto 0;max-width:390px;color:#cbc7be;line-height:1.6}.loader{width:34px;height:34px;margin:26px auto 0;border:2px solid rgba(255,255,255,.22);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}.button{display:none;margin-top:25px;padding:13px 18px;border:1px solid #fff;background:transparent;color:#fff;text-decoration:none;text-transform:uppercase;font-size:12px;letter-spacing:.1em;cursor:pointer}@keyframes spin{to{transform:rotate(360deg)}}
-  </style>
-</head>
-<body>
-  <main class="panel"><div class="mark">A</div><h1 id="title">Pago aceptado.</h1><p id="message">Estamos activando tu membresía y preparando tu cuenta.</p><div id="loader" class="loader"></div><button id="retry" class="button" type="button">Intentar de nuevo</button></main>
-  <script>
-    const title=document.querySelector("#title"),message=document.querySelector("#message"),loader=document.querySelector("#loader"),retry=document.querySelector("#retry");
-    const sessionId=new URLSearchParams(location.search).get("session_id");
-    let retryTimer;
-
-    async function activate(attempt=0){
-      clearTimeout(retryTimer);
-      retry.style.display="none";
-      loader.style.display="block";
-      try{
-        if(!sessionId)throw new Error("missing");
-        const response=await fetch(`/.netlify/functions/activate-membership?session_id=${encodeURIComponent(sessionId)}`,{cache:"no-store"});
-        const data=await response.json();
-        if(response.status===202&&attempt<30){
-          message.textContent="Confirmando tu pago y preparando tu cuenta personal.";
-          retryTimer=setTimeout(()=>activate(attempt+1),1500);
-          return;
-        }
-        if(!response.ok||!data.memberUrl)throw new Error(data.error||"failed");
-        const token=new URL(data.memberUrl,location.origin).pathname.split('/').filter(Boolean).pop();
-        if(!token)throw new Error('missing-token');
-        title.textContent=`Bienvenido a ALIGN ${data.level}.`;
-        message.textContent="Ahora configura la foto que protegerá tu membresía.";
-        location.replace(`/profile-photo.html?token=${encodeURIComponent(token)}`);
-      }catch(error){
-        title.textContent="Pago recibido.";
-        message.textContent="Tu pago fue recibido, pero la cuenta todavía no pudo abrirse. Intenta nuevamente en unos segundos.";
-        loader.style.display="none";
-        retry.style.display="inline-block";
-      }
-    }
-
-    retry.addEventListener("click",()=>activate());
-    activate();
-  </script>
-</body>
-</html>
+<!doctype html><html lang="es-MX"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#090a0c"><title>Activando membresía | ALIGN</title><style>
+*{box-sizing:border-box}body{min-height:100vh;margin:0;display:grid;place-items:center;padding:24px;background:#090a0c;color:#f5f2ec;font-family:Arial,sans-serif;text-align:center}.panel{width:min(100%,620px);padding:46px 30px;border:1px solid rgba(255,255,255,.2);background:linear-gradient(145deg,#172a45,#080b10)}.mark{width:58px;height:58px;margin:0 auto 24px;display:grid;place-items:center;border:1px solid #f5f2ec;border-radius:50%;font-family:Georgia,serif;font-size:30px}h1{margin:0;font-family:Georgia,serif;font-weight:400;font-size:clamp(34px,8vw,55px);line-height:1}p{margin:20px auto 0;max-width:440px;color:#cbc7be;line-height:1.6}.loader{width:34px;height:34px;margin:26px auto 0;border:2px solid rgba(255,255,255,.22);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}.button{display:none;margin-top:25px;padding:13px 18px;border:1px solid #fff;background:transparent;color:#fff;text-transform:uppercase;font-size:12px;letter-spacing:.1em;cursor:pointer}.member-list{display:grid;gap:10px;margin-top:25px}.member-link{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:15px;border:1px solid rgba(255,255,255,.22);color:#fff;text-decoration:none;text-align:left}.member-link strong{display:block}.member-link span{font-family:monospace;color:#d9c6a5;font-size:12px}@keyframes spin{to{transform:rotate(360deg)}}
+</style></head><body><main class="panel"><div class="mark">A</div><h1 id="title">Pago aceptado.</h1><p id="message">Estamos activando tu membresía y preparando las tarjetas.</p><div id="loader" class="loader"></div><div id="member-list" class="member-list"></div><button id="retry" class="button" type="button">Intentar de nuevo</button></main><script>
+const title=document.querySelector('#title'),message=document.querySelector('#message'),loader=document.querySelector('#loader'),retry=document.querySelector('#retry'),memberList=document.querySelector('#member-list'),sessionId=new URLSearchParams(location.search).get('session_id');let retryTimer;async function activate(attempt=0){clearTimeout(retryTimer);retry.style.display='none';loader.style.display='block';try{if(!sessionId)throw new Error('missing');const response=await fetch(`/.netlify/functions/activate-membership?session_id=${encodeURIComponent(sessionId)}`,{cache:'no-store'}),data=await response.json();if(response.status===202&&attempt<30){message.textContent='Confirmando tu pago y preparando las tarjetas personales.';retryTimer=setTimeout(()=>activate(attempt+1),1500);return}if(!response.ok||!Array.isArray(data.members)||!data.members.length)throw new Error(data.error||'failed');title.textContent=`Bienvenido a ALIGN ${data.level}.`;message.textContent=data.members.length===1?'Tu tarjeta y código ya están listos. Configura tu foto para protegerlos.':'Las tarjetas y códigos ya están listos. Cada integrante debe configurar su propia foto.';loader.style.display='none';memberList.innerHTML=data.members.map(member=>`<a class="member-link" href="/profile-photo.html?token=${encodeURIComponent(member.token)}"><strong>${member.name}</strong><span>${member.memberCode} →</span></a>`).join('')}catch(error){title.textContent='Pago recibido.';message.textContent='Tu pago fue recibido, pero las tarjetas todavía no pudieron abrirse. Intenta nuevamente en unos segundos.';loader.style.display='none';retry.style.display='inline-block'}}retry.addEventListener('click',()=>activate());activate();
+</script></body></html>
