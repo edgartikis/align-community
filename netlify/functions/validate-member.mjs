@@ -40,7 +40,7 @@ export default async (request) => {
     if (!row || row[8] !== "Activa") return page("Membresía no activa", `<span class="status">No válido</span><h1>Membresía no activa</h1><p class="note">No apliques el beneficio. Contacta a ALIGN si el miembro considera que existe un error.</p>`);
 
     const name = escapeHtml(row[4] || "Miembro ALIGN");
-    const level = escapeHtml(row[7] || "Society");
+    const level = escapeHtml(row[7] || "ALIGN");
     const code = escapeHtml(row[13] || "");
     const photo = row[18] ? `<img class="photo" src="${escapeHtml(row[18])}" alt="Foto del socio">` : `<div class="photo" style="display:grid;place-items:center;font-size:42px">${escapeHtml(name.charAt(0))}</div>`;
     return page("Miembro verificado", `<span class="status">Miembro activo</span>${photo}<h1>${name}</h1><p class="level">ALIGN ${level}</p><p class="code">${code}</p><p class="note">Verifica que la persona coincida con la foto antes de aplicar el beneficio. Este QR solo es válido durante el mes indicado.</p><p class="period">Vigencia ${escapeHtml(period)}</p>`, true);
