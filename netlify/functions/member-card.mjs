@@ -47,7 +47,7 @@ export default async (request) => {
     return json({
       active,
       name: row[4] || "Miembro ALIGN",
-      level: row[7] || "Society",
+      level: row[7] || "ALIGN",
       memberCode: row[13] || "",
       joinedAt: row[9] || "",
       savings: Number(row[16] || 0),
