@@ -52,7 +52,7 @@ export default async (request) => {
       ok: true,
       token: row[11],
       name: row[4] || "Miembro ALIGN",
-      level: row[7] || "Society",
+      level: row[7] || "ALIGN",
       memberCode: row[13] || memberCode,
     });
   } catch (error) {
