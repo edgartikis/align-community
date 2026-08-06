@@ -1,8 +1,6 @@
-name: Deploy ALIGN to GitHub Pages
+name: Deploy ALIGN to GitHub Pages (manual backup)
 
 on:
-  push:
-    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -11,7 +9,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "align-pages-deploy-v2"
+  group: pages-manual-backup
   cancel-in-progress: true
 
 jobs:
@@ -25,8 +23,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
