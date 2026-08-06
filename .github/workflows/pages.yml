@@ -1,8 +1,6 @@
-name: Deploy ALIGN site to GitHub Pages
+name: Deploy ALIGN site to GitHub Pages (manual backup)
 
 on:
-  push:
-    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -11,7 +9,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-manual-backup
   cancel-in-progress: true
 
 jobs:
