@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#090a0c" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>Log in | ALIGN</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -19,7 +20,7 @@
     <section class="panel">
       <p class="eyebrow">Member access</p>
       <h1>Tu ciudad, desde dentro.</h1>
-      <p class="copy">Ingresa con el código que recibiste al crear tu membresía. Tu contraseña inicial es ese mismo código.</p>
+      <p class="copy">Ingresa con tu código de socio. Mientras trabajamos únicamente desde GitHub, tu contraseña es ese mismo código.</p>
       <form id="login-form">
         <label for="member-code">Número de socio</label>
         <input id="member-code" name="memberCode" autocomplete="username" placeholder="AL-BRO-XXXXXX" required />
@@ -28,14 +29,32 @@
         <button class="button" type="submit">Entrar a mi portal</button>
         <p id="error" class="error" role="alert"></p>
       </form>
-      <p class="hint">Cada integrante tiene su propio código y su propia tarjeta personal.</p>
+      <p class="hint">Modo GitHub Pages activo. No se utiliza Netlify en este acceso.</p>
     </section>
     <a class="back" href="./">← Volver a ALIGN</a>
   </main>
   <script>
-    if(location.hostname==='edgartikis.github.io'){location.replace('https://aligncommunity.netlify.app/login.html'+location.search);}
     const form=document.querySelector('#login-form'),error=document.querySelector('#error'),button=form.querySelector('button');
-    form.addEventListener('submit',async(event)=>{event.preventDefault();error.textContent='';button.disabled=true;button.textContent='Entrando…';try{const memberCode=form.memberCode.value.trim().toUpperCase(),password=form.password.value.trim().toUpperCase();const response=await fetch('/.netlify/functions/member-login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({memberCode,password})});const data=await response.json();if(!response.ok||!data.token)throw new Error(data.error||'No pudimos iniciar sesión.');sessionStorage.setItem('align_member_token',data.token);location.replace(`mi-membresia.html?token=${encodeURIComponent(data.token)}`)}catch(err){error.textContent=err.message;button.disabled=false;button.textContent='Entrar a mi portal'}});
+    form.addEventListener('submit',async(event)=>{
+      event.preventDefault();error.textContent='';button.disabled=true;button.textContent='Entrando…';
+      try{
+        const memberCode=form.memberCode.value.trim().toUpperCase(),password=form.password.value.trim().toUpperCase();
+        if(memberCode!==password)throw new Error('Número de socio o contraseña incorrectos.');
+        if(location.hostname==='edgartikis.github.io'){
+          const group=JSON.parse(localStorage.getItem('align_demo_group')||'null');
+          const cards=group?.cards||[];
+          const member=cards.find(card=>String(card.memberCode||'').toUpperCase()===memberCode);
+          if(!member)throw new Error('Ese código no está guardado en este dispositivo. Regístrate o usa el mismo dispositivo donde creaste la membresía.');
+          sessionStorage.setItem('align_member_token',member.token);
+          if(group.primary?.memberCode===member.memberCode){group.primary=member;localStorage.setItem('align_demo_group',JSON.stringify(group));}
+          location.replace(`mi-membresia.html?token=${encodeURIComponent(member.token)}&demo=1`);
+          return;
+        }
+        const response=await fetch('/.netlify/functions/member-login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({memberCode,password})});
+        const data=await response.json();if(!response.ok||!data.token)throw new Error(data.error||'No pudimos iniciar sesión.');
+        sessionStorage.setItem('align_member_token',data.token);location.replace(`mi-membresia.html?token=${encodeURIComponent(data.token)}`);
+      }catch(err){error.textContent=err.message;button.disabled=false;button.textContent='Entrar a mi portal'}
+    });
   </script>
 </body>
 </html>
