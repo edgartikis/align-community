@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { membersFromMetadata, planFor } from "./_plans.mjs";
 import { codeKey, emailKey, groupsStore, indexStore, membersStore, readJson } from "./_member-store.mjs";
+import { appendMembers } from "./_sheet-members.mjs";
 
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store"}});
 const memberCode=(prefix)=>`AL-${prefix}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
@@ -15,9 +16,16 @@ export default async(request)=>{
     const members=membersFromMetadata(metadata,plan.seats),records=membersStore(),lookup=indexStore();
     for(const member of members){if(await readJson(lookup,emailKey(member.email)))return json({error:`Ya existe una cuenta para ${member.email}. Usa Log in para entrar.`},409);}
     const now=new Date().toISOString(),groupId=`grp_${crypto.randomUUID()}`;
-    const created=[];
-    for(let index=0;index<members.length;index++){const person=members[index],token=crypto.randomBytes(24).toString("base64url"),memberCodeValue=memberCode(plan.prefix),record={id:`mem_${crypto.randomUUID()}`,token,memberCode:memberCodeValue,name:person.name,email:person.email,phone:person.phone,level:plan.level,planKey,status:"Activa",joinedAt:now,photoUrl:"",savings:0,groupId,position:index+1,seats:plan.seats,source:"registro-gratuito"};await records.set(token,JSON.stringify(record));await lookup.set(codeKey(memberCodeValue),JSON.stringify({token}));await lookup.set(emailKey(person.email),JSON.stringify({token}));created.push({name:record.name,email:record.email,level:record.level,memberCode:record.memberCode,token:record.token,memberUrl:`${new URL(request.url).origin}/member/${record.token}`});}
+    const created=[],sheetRows=[];
+    for(let index=0;index<members.length;index++){
+      const person=members[index],token=crypto.randomBytes(24).toString("base64url"),memberCodeValue=memberCode(plan.prefix),id=`mem_${crypto.randomUUID()}`;
+      const record={id,token,memberCode:memberCodeValue,name:person.name,email:person.email,phone:person.phone,level:plan.level,planKey,status:"Activa",joinedAt:now,photoUrl:"",savings:0,groupId,position:index+1,seats:plan.seats,source:"registro-gratuito"};
+      await records.set(token,JSON.stringify(record));await lookup.set(codeKey(memberCodeValue),JSON.stringify({token}));await lookup.set(emailKey(person.email),JSON.stringify({token}));
+      created.push({name:record.name,email:record.email,level:record.level,memberCode:record.memberCode,token:record.token,memberUrl:`${new URL(request.url).origin}/member/${record.token}`});
+      sheetRows.push([id,"","","",person.name,person.email,person.phone,plan.level,"Activa",now,"",token,`${new URL(request.url).origin}/member/${token}`,memberCodeValue,"","",0,"Digital","",groupId,String(index+1),String(plan.seats),"registro-gratuito","",0,0]);
+    }
     await groupsStore().set(groupId,JSON.stringify({groupId,planKey,level:plan.level,primaryToken:created[0].token,tokens:created.map(member=>member.token)}));
+    await appendMembers(sheetRows);
     return json({ok:true,plan:planKey,level:plan.level,primaryToken:created[0].token,members:created});
   }catch(error){console.error("register-membership",error);return json({error:"No pudimos crear la membresía. Intenta nuevamente."},500);}
 };
