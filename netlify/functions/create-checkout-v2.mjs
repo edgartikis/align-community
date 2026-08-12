@@ -13,6 +13,7 @@ const siteOrigin = (request) => {
 };
 
 const allowedOrigins = new Set([
+  "https://alignmembership.netlify.app",
   "https://aligncommunity.netlify.app",
   "https://edgartikis.github.io",
 ]);
