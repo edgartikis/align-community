@@ -6,3 +6,5 @@ export const indexStore=()=>getStore({name:"align-member-index",consistency:"str
 export const readJson=async(store,key)=>{const value=await store.get(key);return value?JSON.parse(value):null;};
 export const codeKey=(code)=>`code-${String(code||"").trim().toUpperCase()}`;
 export const emailKey=(email)=>`email-${String(email||"").trim().toLowerCase()}`;
+
+export const usernameKey=(username)=>`username-${String(username||"").trim().toLowerCase()}`;
