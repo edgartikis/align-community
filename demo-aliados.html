@@ -154,6 +154,12 @@
       stream=null;video.srcObject=null;camera.classList.remove('on');
       cameraButton.textContent='Activar cámara y escanear QR';
     }
+    function cameraErrorMessage(error){
+      if(error&&error.name==='NotAllowedError')return'Permiso de cámara rechazado. Actívalo desde la configuración del navegador y vuelve a intentar.';
+      if(error&&error.name==='NotFoundError')return'No se encontró una cámara disponible en este dispositivo.';
+      if(error&&error.name==='NotReadableError')return'La cámara está siendo utilizada por otra aplicación. Ciérrala y vuelve a intentar.';
+      return error&&error.message||'No fue posible activar la cámara.';
+    }
     async function startCamera(){
       try{
         clearValidation();stopCamera();
@@ -167,7 +173,7 @@
         cameraStatus.textContent='Cámara activa. Apunta al QR de la tarjeta digital.';
         requestAnimationFrame(scanFrame);
       }catch(error){
-        stopCamera();cameraStatus.className='camera-status error';cameraStatus.textContent=error.message||'No fue posible activar la cámara.';
+        stopCamera();cameraStatus.className='camera-status error';cameraStatus.textContent=cameraErrorMessage(error);
       }
     }
     async function scanFrame(time){
