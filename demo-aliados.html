@@ -32,8 +32,16 @@
           <label for="business">Establecimiento de prueba</label>
           <select id="business">
             <option value="global">Global Gym</option>
+            <option value="uspin">USPIN</option>
             <option value="sante">Santé Pilates</option>
+            <option value="nuva">NUVA Pilates Studio</option>
+            <option value="padel">Pádel 11:11</option>
+            <option value="gingers">Ginger's Coffee House</option>
             <option value="rancho">Rancho MX</option>
+            <option value="horse">Horse Riding</option>
+            <option value="charreadas">Charreadas</option>
+            <option value="marea">Marea Baja Surfing School</option>
+            <option value="fishing">Vaca Fishing Tours</option>
           </select>
         </div>
         <div class="camera" id="camera">
@@ -46,7 +54,11 @@
         <button class="secondary" id="localButton" type="button">Usar socio de prueba de este dispositivo</button>
         <p class="camera-status" id="cameraStatus">La primera vez, el navegador solicitará permiso para usar la cámara.</p>
         <div class="field" style="margin-top:20px">
-          <label for="ticket">Monto del consumo</label>
+          <label for="people">Personas que utilizaron el beneficio</label>
+          <input id="people" type="number" min="1" max="50" step="1" value="1">
+        </div>
+        <div class="field">
+          <label for="ticket">Monto pagado por el socio</label>
           <input id="ticket" type="number" min="0" step="1" placeholder="$0 MXN">
         </div>
         <p class="hint">La cámara funciona desde HTTPS. Esta versión es demostrativa y los datos se guardan únicamente en la base de pruebas.</p>
@@ -60,6 +72,10 @@
             <div class="tier" id="tier">—</div>
           </div>
           <div class="benefit-label" id="place">—</div>
+          <div class="field" id="benefitPicker" hidden>
+            <label for="benefitChoice">Promoción que se aplicará</label>
+            <select id="benefitChoice"></select>
+          </div>
           <div class="benefit" id="benefit">—</div>
           <div class="rules" id="rules">—</div>
           <button class="confirm" id="confirm" type="button">Aplicar beneficio y registrar visita</button>
@@ -75,10 +91,55 @@
   </main>
   <div class="toast" id="toast">Visita registrada</div>
   <script>
+    const ALL_PLANS=['brotherhood','girls','ranch','duo','circle'];
     const OFFERS={
-      global:{id:'ALI-001',name:'Global Gym',category:'Fitness & Cycling',plans:['brotherhood','girls','ranch','duo','circle'],benefit:'10% de descuento ALIGN',rules:'Primer mes sin mantenimiento, 10% en mensualidad, invitados al 50% y 10% en cafetería.',rate:.10},
-      sante:{id:'ALI-003',name:'Santé Pilates',category:'Pilates',plans:['girls','circle'],benefit:'Beneficio preferencial ALIGN',rules:'Disponible para Girls Club y Private Circle. La disponibilidad y reservación se confirman directamente con Santé.',rate:0},
-      rancho:{id:'ALI-007',name:'Rancho MX',category:'Ranch & Western',plans:['brotherhood','ranch','circle'],benefit:'10% de descuento en tienda',rules:'Aplica en productos a precio regular. No acumulable con otras promociones.',rate:.10}
+      global:{id:'ALI-001',name:'Global Gym',category:'Fitness & Cycling',plans:ALL_PLANS,promotions:[
+        {label:'10% OFF en mensualidad',benefit:'10% de descuento en mensualidad',rules:'Aplica en la mensualidad de Global Gym al presentar una membresía ALIGN vigente.',discount:.10},
+        {label:'10% OFF en cafetería',benefit:'10% de descuento en cafetería',rules:'Aplica en consumos dentro de la cafetería de Global Gym.',discount:.10},
+        {label:'50% OFF para invitados',benefit:'50% de descuento en acceso de invitados',rules:'Aplica en el acceso de invitados conforme a las políticas operativas del gimnasio.',discount:.50},
+        {label:'Primer mes sin mantenimiento',benefit:'Primer mes sin cuota de mantenimiento',rules:'La cuota de mantenimiento se elimina durante el primer mes.',discount:0}
+      ]},
+      uspin:{id:'ALI-002',name:'USPIN',category:'Fitness & Cycling',plans:['girls','duo','circle'],promotions:[
+        {label:'10% OFF en membresía',benefit:'10% de descuento en membresía USPIN',rules:'Aplica para Ride “Ride with Soul” o Train “Train with Üs”.',discount:.10},
+        {label:'Una clase de regalo al mes',benefit:'Una clase de regalo al mes',rules:'Una clase mensual de regalo para Train o Bici. Sujeto a disponibilidad.',discount:0}
+      ]},
+      sante:{id:'ALI-003',name:'Santé Pilates',category:'Pilates',plans:['girls','circle'],byPlan:{
+        girls:[{label:'10% OFF en dos visitas',benefit:'10% de descuento en dos visitas mensuales',rules:'Aplica en dos visitas cada mes para miembros Girls Club.',discount:.10}],
+        circle:[{label:'Inscripción gratis',benefit:'Inscripción gratis',rules:'Private Circle puede activar su experiencia en Santé sin cubrir la cuota de inscripción.',discount:0}]
+      }},
+      nuva:{id:'ALI-004',name:'NUVA Pilates Studio',category:'Pilates',plans:['girls','duo','circle'],promotions:[
+        {label:'20% OFF en paquete semestral',benefit:'Inscripción gratis + 20% OFF',rules:'Aplica en paquete semestral. Pago únicamente en efectivo o transferencia. Cupo total limitado a 20 personas.',discount:.20},
+        {label:'10% OFF en AM Club / Loyalty',benefit:'Inscripción gratis + 10% OFF',rules:'Aplica en paquete AM Club y Loyalty Program. Cupo total limitado a 20 personas.',discount:.10}
+      ]},
+      padel:{id:'ALI-005',name:'Pádel 11:11',category:'Pádel',plans:ALL_PLANS,promotions:[
+        {label:'15% OFF en cancha',benefit:'15% de descuento en cancha',rules:'Aplica en el pago de cancha para el miembro ALIGN.',discount:.15},
+        {label:'10% OFF en restaurante',benefit:'10% de descuento en restaurante',rules:'Aplica únicamente sobre el consumo individual del miembro ALIGN.',discount:.10}
+      ]},
+      gingers:{id:'ALI-006',name:"Ginger's Coffee House",category:'Coffee',plans:['girls','duo','circle'],promotions:[
+        {label:'Beneficio 3×2',benefit:'3×2 en Ginger’s',rules:'Presenta tu membresía ALIGN para acceder al 3×2 conforme a las condiciones vigentes del aliado.',discount:1/3}
+      ]},
+      rancho:{id:'ALI-007',name:'Rancho MX',category:'Ranch & Western',plans:['brotherhood','ranch','circle'],promotions:[
+        {label:'20% OFF · Gorra Cuadra',benefit:'20% OFF en gorra Cuadra',rules:'Aplica en modelos participantes. No acumulable con otras promociones.',discount:.20},
+        {label:'10% OFF · Bota Cuadra',benefit:'10% OFF en bota Cuadra',rules:'Aplica en modelos participantes. No acumulable con otras promociones.',discount:.10},
+        {label:'10% OFF · Sombrero Thompston',benefit:'10% OFF en sombrero Thompston',rules:'Aplica en modelos participantes. No acumulable con otras promociones.',discount:.10},
+        {label:'30% OFF · Zapato Cuadra',benefit:'30% OFF en zapato Cuadra',rules:'Aplica en modelos participantes. No acumulable con otras promociones.',discount:.30}
+      ]},
+      horse:{id:'ALI-008',name:'Horse Riding',category:'Ranch & Western',plans:ALL_PLANS,promotions:[
+        {label:'Tarifa ALIGN · $350',benefit:'Paseo a caballo por $350 MXN',rules:'Precio regular $500. Tarifa ALIGN por persona por hora, sujeta a disponibilidad y reservación previa.',discount:.30}
+      ]},
+      charreadas:{id:'ALI-009',name:'Charreadas',category:'Ranch & Western',plans:['ranch','circle'],promotions:[
+        {label:'Preventa preferencial',benefit:'Acceso preferencial a preventa',rules:'Acceso antes de la venta general. Cupo de referencia: 150 boletos. El precio depende de cada charreada.',discount:0}
+      ]},
+      marea:{id:'ALI-010',name:'Marea Baja',category:'Outdoor & Adventure',plans:['brotherhood','girls','duo','circle'],byPlan:{
+        brotherhood:[{label:'Clase ALIGN · $250',benefit:'Clase de surf por $250 MXN',rules:'Precio regular $350. Ahorro de $100 por clase.',discount:1-250/350}],
+        girls:[{label:'Clase ALIGN · $250',benefit:'Clase de surf por $250 MXN',rules:'Precio regular $350. Ahorro de $100 por clase.',discount:1-250/350}],
+        duo:[{label:'Clase ALIGN · $250',benefit:'Clase de surf por $250 MXN',rules:'Precio regular $350. Tarifa preferencial sujeta a disponibilidad.',discount:1-250/350}],
+        circle:[{label:'Beneficio 2×1',benefit:'2×1 en clase de surf',rules:'Reserva una clase y tu acompañante entra sin costo adicional.',discount:.50}]
+      }},
+      fishing:{id:'ALI-011',name:'Vaca Fishing',category:'Outdoor & Adventure',plans:['brotherhood','circle'],promotions:[
+        {label:'Tarifa ALIGN · $1,166 por hora',benefit:'Tarifa de $1,166 MXN por hora',rules:'Precio regular $1,500 por hora. Experiencia sujeta a reservación y disponibilidad.',discount:1-1166/1500},
+        {label:'Reserva 5 horas + 1 gratis',benefit:'Sexta hora sin costo',rules:'Reserva cinco horas y recibe la sexta hora sin costo.',discount:1/6}
+      ]}
     };
     const business=document.getElementById('business');
     const video=document.getElementById('video');
@@ -89,7 +150,9 @@
     const localButton=document.getElementById('localButton');
     const cameraStatus=document.getElementById('cameraStatus');
     const confirmButton=document.getElementById('confirm');
-    let stream=null,scanning=false,lastFrame=0,scannedMember=null,currentOffer=null,eligible=false;
+    const benefitPicker=document.getElementById('benefitPicker');
+    const benefitChoice=document.getElementById('benefitChoice');
+    let stream=null,scanning=false,lastFrame=0,scannedMember=null,currentOffer=null,currentPromotion=null,eligible=false;
     const savedMetrics=JSON.parse(localStorage.getItem('align_demo_ally_metrics')||'null')||{visits:0,sales:0,savings:0};
 
     function planFromLevel(level){
@@ -121,11 +184,23 @@
     function memberFromCard(group,card){
       return{socioId:group.socioId||'',integranteId:(group.socioId||'')+'-P'+(card.position||1),username:group.account&&group.account.username||'',name:card.name||'',planKey:card.planKey||planFromLevel(card.level),planName:card.level||'',memberCode:card.memberCode||'',token:card.token||''};
     }
+    function promotionsFor(offer,plan){
+      if(!offer.byPlan)return offer.promotions||[];
+      if(plan==='master')return Object.values(offer.byPlan).flat().filter((promo,index,list)=>list.findIndex(item=>item.label===promo.label)===index);
+      return offer.byPlan[plan]||[];
+    }
+    function renderPromotion(){
+      const promotions=promotionsFor(currentOffer,scannedMember.planKey||planFromLevel(scannedMember.planName));
+      currentPromotion=promotions[Number(benefitChoice.value)||0]||promotions[0]||null;
+      document.getElementById('benefit').textContent=currentPromotion?currentPromotion.benefit:'Beneficio no incluido';
+      document.getElementById('rules').textContent=currentPromotion?currentPromotion.rules:'El paquete de este socio no incluye promociones en este aliado.';
+    }
     function useMember(member){
       if(!member||!member.name||!member.memberCode)throw new Error('El QR no contiene una identidad válida.');
       scannedMember=member;
       currentOffer=OFFERS[business.value];
       const plan=member.planKey||planFromLevel(member.planName);
+      scannedMember.planKey=plan;
       eligible=plan==='master'||currentOffer.plans.includes(plan);
       document.getElementById('empty').style.display='none';
       document.getElementById('validation').classList.add('show');
@@ -133,8 +208,14 @@
       document.getElementById('memberCode').textContent=member.memberCode;
       document.getElementById('tier').textContent=member.planName||plan;
       document.getElementById('place').textContent=currentOffer.name;
-      document.getElementById('benefit').textContent=eligible?currentOffer.benefit:'Beneficio no incluido';
-      document.getElementById('rules').textContent=eligible?currentOffer.rules:'El paquete de este socio no incluye la promoción seleccionada en este aliado.';
+      const promotions=eligible?promotionsFor(currentOffer,plan):[];
+      benefitChoice.innerHTML=promotions.map((promo,index)=>`<option value="${index}">${promo.label}</option>`).join('');
+      benefitPicker.hidden=promotions.length<2;
+      if(eligible)renderPromotion();else{
+        currentPromotion=null;
+        document.getElementById('benefit').textContent='Beneficio no incluido';
+        document.getElementById('rules').textContent='El paquete de este socio no incluye promociones en este aliado.';
+      }
       const status=document.getElementById('membershipStatus');
       status.classList.toggle('denied',!eligible);
       document.getElementById('membershipText').textContent=eligible?'Membresía activa':'Sin beneficio para este aliado';
@@ -143,9 +224,10 @@
       cameraStatus.textContent='QR leído correctamente. Revisa el beneficio antes de aplicarlo.';
     }
     function clearValidation(){
-      scannedMember=null;currentOffer=null;eligible=false;
+      scannedMember=null;currentOffer=null;currentPromotion=null;eligible=false;
       document.getElementById('validation').classList.remove('show');
       document.getElementById('empty').style.display='block';
+      benefitPicker.hidden=true;benefitChoice.innerHTML='';
       confirmButton.disabled=true;
     }
     function stopCamera(){
@@ -207,6 +289,10 @@
       document.getElementById('savings').textContent='$'+Number(savedMetrics.savings).toLocaleString('es-MX',{maximumFractionDigits:2});
       localStorage.setItem('align_demo_ally_metrics',JSON.stringify(savedMetrics));
     }
+    function calculateSavings(promotion,amount){
+      const discount=Math.max(0,Math.min(.99,Number(promotion&&promotion.discount||0)));
+      return discount?Math.round(amount*discount/(1-discount)*100)/100:0;
+    }
     cameraButton.addEventListener('click',()=>scanning?stopCamera():startCamera());
     localButton.addEventListener('click',()=>{
       try{
@@ -215,14 +301,16 @@
         useMember(memberFromCard(group,group.primary));
       }catch(error){cameraStatus.className='camera-status error';cameraStatus.textContent=error.message}
     });
+    benefitChoice.addEventListener('change',renderPromotion);
     business.addEventListener('change',()=>{clearValidation();cameraStatus.className='camera-status';cameraStatus.textContent='Establecimiento actualizado. Escanea nuevamente al socio.'});
     confirmButton.addEventListener('click',async()=>{
-      if(!scannedMember||!currentOffer||!eligible)return;
+      if(!scannedMember||!currentOffer||!currentPromotion||!eligible)return;
       confirmButton.disabled=true;confirmButton.textContent='Registrando visita…';
       const amount=Math.max(0,Number(document.getElementById('ticket').value||0));
-      const saved=Math.round(amount*currentOffer.rate*100)/100;
+      const people=Math.max(1,Math.min(50,Math.round(Number(document.getElementById('people').value||1))));
+      const saved=calculateSavings(currentPromotion,amount);
       if(window.ALIGN_TEST_DB){
-        await window.ALIGN_TEST_DB.recordVisit({visitId:'VIS-GH-'+Date.now().toString(36).toUpperCase(),socioId:scannedMember.socioId,integranteId:scannedMember.integranteId,username:scannedMember.username,visitorName:scannedMember.name,planName:scannedMember.planName,allyId:currentOffer.id,place:currentOffer.name,category:currentOffer.category,people:1,spent:amount,saved,benefit:currentOffer.benefit,notes:'QR leído por cámara desde el portal general de aliados'});
+        await window.ALIGN_TEST_DB.recordVisit({visitId:'VIS-GH-'+Date.now().toString(36).toUpperCase(),socioId:scannedMember.socioId,integranteId:scannedMember.integranteId,username:scannedMember.username,visitorName:scannedMember.name,planName:scannedMember.planName,allyId:currentOffer.id,place:currentOffer.name,category:currentOffer.category,people,spent:amount,saved,benefit:currentPromotion.benefit,notes:'QR leído por cámara desde el portal general de aliados'});
       }
       savedMetrics.visits+=1;savedMetrics.sales+=amount;savedMetrics.savings+=saved;updateMetrics();
       const toast=document.getElementById('toast');toast.textContent='Visita registrada · '+scannedMember.memberCode;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),2800);
