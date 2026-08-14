@@ -1,7 +1,7 @@
 /**
  * ALIGN · conector de base de datos de PRUEBAS
  * Hoja independiente: ALIGN · Base de Pruebas + Dashboard
- * No almacena contraseñas, hashes ni datos bancarios.
+ * Almacena únicamente hash SHA-256 de contraseña; nunca la contraseña en texto plano.
  */
 const SPREADSHEET_ID = '1tk5XrObvkVXe8g69IE-lWf52SDFy1PZZnxrNuWQ-nUI';
 const TEST_SOURCE = 'GitHub Pages demo';
@@ -18,6 +18,8 @@ function doPost(e) {
     if (body.mode !== 'ALIGN_TEST_2026') throw new Error('Solicitud de prueba no válida.');
     if (body.action === 'register_payment') return json_(registerPayment_(body));
     if (body.action === 'register_visit') return json_(registerVisit_(body));
+    if (body.action === 'login') return json_(login_(body));
+    if (body.action === 'sync_account') return json_(syncAccount_(body));
     throw new Error('Acción no reconocida.');
   } catch (err) {
     return json_({ ok: false, error: String(err && err.message || err) });
@@ -34,15 +36,23 @@ function registerPayment_(body) {
   const username = clean_(body.username, 24).toLowerCase();
   const socioId = clean_(body.socioId, 40);
   const planName = clean_(body.planName, 40);
+  const passwordHash = hash_(body.passwordHash);
   const members = Array.isArray(body.members) ? body.members.slice(0, 12) : [];
   if (!socioId || !username || !planName || !members.length) throw new Error('Registro incompleto.');
-  if (findRow_(socios, 1, socioId) || findRow_(socios, 2, username)) {
+
+  const existingSocioRow = findRow_(socios, 1, socioId) || findRow_(socios, 2, username);
+  if (existingSocioRow) {
+    const savedSocioId = clean_(socios.getRange(existingSocioRow, 1).getValue(), 40);
+    const savedUsername = clean_(socios.getRange(existingSocioRow, 2).getValue(), 24).toLowerCase();
+    if (savedSocioId !== socioId || savedUsername !== username) throw new Error('Ese usuario ya pertenece a otra membresía.');
+    if (passwordHash) socios.getRange(existingSocioRow, 16).setValue(passwordHash);
+    saveAffiliateTokens_(afiliados, socioId, members);
     return { ok: true, duplicate: true, socioId: socioId };
   }
 
   const now = new Date();
   const memberRow = socios.getLastRow() + 1;
-  socios.getRange(memberRow, 1, 1, 15).setValues([[
+  socios.getRange(memberRow, 1, 1, 16).setValues([[
     socioId,
     username,
     clean_(members[0].name, 80),
@@ -51,7 +61,8 @@ function registerPayment_(body) {
     now,
     members.length,
     '', '', '', '', '', '', '',
-    TEST_SOURCE
+    TEST_SOURCE,
+    passwordHash
   ]]);
   socios.getRange(memberRow, 8, 1, 7).setFormulas([[
     '=SUMIF(PAGOS!$C$5:$C$2000,A' + memberRow + ',PAGOS!$F$5:$F$2000)',
@@ -73,7 +84,8 @@ function registerPayment_(body) {
       clean_(person.memberCode, 40),
       'Activo',
       clean_(person.email, 120),
-      clean_(person.phone, 30)
+      clean_(person.phone, 30),
+      clean_(person.token, 120)
     ]);
   });
 
@@ -90,6 +102,101 @@ function registerPayment_(body) {
     clean_(body.reference || 'DEMO-' + Date.now(), 80)
   ]);
   return { ok: true, socioId: socioId, members: members.length };
+}
+
+function login_(body) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const socios = ss.getSheetByName('SOCIOS');
+  const afiliados = ss.getSheetByName('AFILIADOS');
+  const username = clean_(body.username, 24).toLowerCase();
+  const passwordHash = hash_(body.passwordHash);
+  if (!username || !passwordHash) return { ok: false, error: 'Usuario o contraseña incorrectos.' };
+
+  const row = findRow_(socios, 2, username);
+  if (!row) return { ok: false, error: 'Usuario o contraseña incorrectos.' };
+  const values = socios.getRange(row, 1, 1, 16).getValues()[0];
+  const status = clean_(values[4], 20);
+  const storedHash = hash_(values[15]);
+  if (status.toLowerCase() !== 'activo') return { ok: false, error: 'Esta membresía no está activa.' };
+  if (!storedHash) return { ok: false, needsMigration: true, error: 'Esta cuenta todavía necesita habilitar acceso en cualquier dispositivo.' };
+  if (storedHash !== passwordHash) return { ok: false, error: 'Usuario o contraseña incorrectos.' };
+
+  const socioId = clean_(values[0], 40);
+  const cards = affiliateCards_(afiliados, socioId, clean_(values[3], 40));
+  if (!cards.length || !cards[0].token) return { ok: false, needsMigration: true, error: 'Esta cuenta todavía necesita sincronizar sus tarjetas.' };
+  return {
+    ok: true,
+    socioId: socioId,
+    username: username,
+    name: clean_(values[2], 80),
+    planName: clean_(values[3], 40),
+    status: status,
+    cards: cards
+  };
+}
+
+function syncAccount_(body) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const socios = ss.getSheetByName('SOCIOS');
+  const afiliados = ss.getSheetByName('AFILIADOS');
+  const socioId = clean_(body.socioId, 40);
+  const username = clean_(body.username, 24).toLowerCase();
+  const passwordHash = hash_(body.passwordHash);
+  const members = Array.isArray(body.members) ? body.members.slice(0, 12) : [];
+  if (!socioId || !username || !passwordHash || !members.length) throw new Error('No fue posible sincronizar la cuenta.');
+
+  const row = findRow_(socios, 2, username);
+  if (!row) throw new Error('La membresía no existe en la base central.');
+  const savedSocioId = clean_(socios.getRange(row, 1).getValue(), 40);
+  const status = clean_(socios.getRange(row, 5).getValue(), 20);
+  if (savedSocioId !== socioId) throw new Error('Los datos locales no corresponden a esa membresía.');
+  if (status.toLowerCase() !== 'activo') throw new Error('Esta membresía no está activa.');
+
+  socios.getRange(row, 16).setValue(passwordHash);
+  saveAffiliateTokens_(afiliados, socioId, members);
+  return { ok: true, migrated: true, socioId: socioId };
+}
+
+function affiliateCards_(afiliados, socioId, planName) {
+  const last = afiliados.getLastRow();
+  if (last < 5) return [];
+  const rows = afiliados.getRange(5, 1, last - 4, 10).getValues();
+  return rows.filter(function(row) {
+    return clean_(row[1], 40) === socioId && clean_(row[6], 20).toLowerCase() === 'activo';
+  }).map(function(row, index) {
+    return {
+      integranteId: clean_(row[0], 50),
+      name: clean_(row[3], 80),
+      email: clean_(row[7], 120),
+      phone: clean_(row[8], 30),
+      level: planName,
+      memberCode: clean_(row[5], 40),
+      position: index + 1,
+      status: 'Activa',
+      token: clean_(row[9], 120),
+      groupId: socioId,
+      photoUrl: '',
+      savings: 0
+    };
+  });
+}
+
+function saveAffiliateTokens_(afiliados, socioId, members) {
+  const last = afiliados.getLastRow();
+  if (last < 5) return;
+  const rows = afiliados.getRange(5, 1, last - 4, 10).getValues();
+  members.forEach(function(member) {
+    const code = clean_(member.memberCode, 40);
+    const token = clean_(member.token, 120);
+    if (!code || !token) return;
+    for (let i = 0; i < rows.length; i++) {
+      if (clean_(rows[i][1], 40) === socioId && clean_(rows[i][5], 40) === code) {
+        afiliados.getRange(i + 5, 10).setValue(token);
+        rows[i][9] = token;
+        break;
+      }
+    }
+  });
 }
 
 function registerVisit_(body) {
@@ -159,6 +266,11 @@ function findRow_(sheet, column, value) {
 
 function clean_(value, max) {
   return String(value == null ? '' : value).replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, max || 200);
+}
+
+function hash_(value) {
+  const v = clean_(value, 64).toLowerCase();
+  return /^[a-f0-9]{64}$/.test(v) ? v : '';
 }
 
 function number_(value) {
