@@ -7,13 +7,15 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>Log in | ALIGN GitHub</title>
+  <title>Log in | ALIGN</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
+  <script src="align-test-db-config.js"></script>
+  <script src="align-test-db-client.js"></script>
   <style>
     :root{--ink:#090a0c;--paper:#f5f2ec;--muted:#aaa59c;--line:rgba(245,242,236,.18)}
-    *{box-sizing:border-box}body{min-height:100vh;margin:0;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 50% 12%,#1c2939 0,#090a0c 54%);color:var(--paper);font-family:"DM Sans",sans-serif}.shell{width:min(100%,460px)}.brand{display:block;margin-bottom:28px;text-align:center;color:inherit;text-decoration:none;font-family:"Playfair Display",serif;font-size:1.35rem;letter-spacing:.2em}.panel{padding:42px 36px;border:1px solid var(--line);background:linear-gradient(145deg,rgba(23,42,69,.96),rgba(7,11,16,.98));box-shadow:0 28px 80px rgba(0,0,0,.42)}.eyebrow{margin:0 0 14px;font:500 .67rem "DM Mono",monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}h1{margin:0;font:500 clamp(2.6rem,10vw,4.4rem)/.95 "Playfair Display",serif;letter-spacing:-.045em}.copy{margin:18px 0 30px;color:#cbc7be;line-height:1.6}label{display:block;margin:18px 0 8px;font:500 .67rem "DM Mono",monospace;letter-spacing:.12em;text-transform:uppercase;color:#d9d4cb}input{width:100%;padding:15px 14px;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.24);color:#fff;font:500 1rem "DM Mono",monospace;outline:none}input:focus{border-color:#fff}.button{width:100%;margin-top:24px;padding:15px;border:1px solid #fff;background:#fff;color:#090a0c;font-weight:600;letter-spacing:.11em;text-transform:uppercase;cursor:pointer}.button:disabled{opacity:.55;cursor:wait}.reset{width:100%;margin-top:10px;padding:13px;border:1px solid rgba(255,255,255,.45);background:transparent;color:#fff;font:600 .65rem "DM Mono",monospace;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}.reset[hidden]{display:none}.error{min-height:22px;margin:14px 0 0;color:#ffd0d0;font-size:.84rem;line-height:1.45}.hint{margin:22px 0 0;color:#99958d;font-size:.76rem;line-height:1.5;text-align:center}.hint a{color:#ddd;text-decoration:underline}.back{display:block;margin-top:22px;text-align:center;color:#bdb8af;text-decoration:none;font:500 .67rem "DM Mono",monospace;letter-spacing:.12em;text-transform:uppercase}@media(max-width:520px){.panel{padding:34px 24px}}
+    *{box-sizing:border-box}body{min-height:100vh;margin:0;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 50% 12%,#1c2939 0,#090a0c 54%);color:var(--paper);font-family:"DM Sans",sans-serif}.shell{width:min(100%,460px)}.brand{display:block;margin-bottom:28px;text-align:center;color:inherit;text-decoration:none;font-family:"Playfair Display",serif;font-size:1.35rem;letter-spacing:.2em}.panel{padding:42px 36px;border:1px solid var(--line);background:linear-gradient(145deg,rgba(23,42,69,.96),rgba(7,11,16,.98));box-shadow:0 28px 80px rgba(0,0,0,.42)}.eyebrow{margin:0 0 14px;font:500 .67rem "DM Mono",monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}h1{margin:0;font:500 clamp(2.6rem,10vw,4.4rem)/.95 "Playfair Display",serif;letter-spacing:-.045em}.copy{margin:18px 0 30px;color:#cbc7be;line-height:1.6}label{display:block;margin:18px 0 8px;font:500 .67rem "DM Mono",monospace;letter-spacing:.12em;text-transform:uppercase;color:#d9d4cb}input{width:100%;padding:15px 14px;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.24);color:#fff;font:500 1rem "DM Mono",monospace;outline:none}input:focus{border-color:#fff}.button{width:100%;margin-top:24px;padding:15px;border:1px solid #fff;background:#fff;color:#090a0c;font-weight:600;letter-spacing:.11em;text-transform:uppercase;cursor:pointer}.button:disabled{opacity:.55;cursor:wait}.error{min-height:22px;margin:14px 0 0;color:#ffd0d0;font-size:.84rem;line-height:1.45}.hint{margin:22px 0 0;color:#99958d;font-size:.76rem;line-height:1.5;text-align:center}.back{display:block;margin-top:22px;text-align:center;color:#bdb8af;text-decoration:none;font:500 .67rem "DM Mono",monospace;letter-spacing:.12em;text-transform:uppercase}@media(max-width:520px){.panel{padding:34px 24px}}
   </style>
 </head>
 <body>
@@ -30,9 +32,8 @@
         <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Contraseña" required maxlength="72">
         <button class="button" type="submit">Entrar a mi portal</button>
         <p id="error" class="error" role="alert"></p>
-        <button id="reset" class="reset" type="button" hidden>Usar esta contraseña y recuperar acceso</button>
       </form>
-      <p class="hint">Esta es una cuenta de prueba guardada en tu navegador. Si no aparece en este dispositivo, <a href="./#membresias">crea nuevamente la prueba</a>.</p>
+      <p class="hint">Tu cuenta activa puede iniciar sesión desde cualquier navegador o dispositivo.</p>
     </section>
     <a class="back" href="./">← Volver a ALIGN</a>
   </main>
@@ -42,7 +43,8 @@
     const passwordInput=document.getElementById('password');
     const errorBox=document.getElementById('error');
     const button=form.querySelector('.button');
-    const resetButton=document.getElementById('reset');
+    const PLAN_KEYS={'The Brotherhood':'brotherhood','Girls Club':'girls','Ranch Club':'ranch','Duo Club':'duo','Private Circle':'circle'};
+
     const hashPassword=async value=>{
       const bytes=new TextEncoder().encode(value);
       const digest=await crypto.subtle.digest('SHA-256',bytes);
@@ -51,21 +53,26 @@
     const readGroup=()=>{
       try{return JSON.parse(localStorage.getItem('align_demo_group')||'null')}catch(_){return null}
     };
-    const openGroup=group=>{
-      const member=group&&group.primary;
-      if(!member)throw new Error('La membresía no está disponible.');
-      sessionStorage.setItem('align_member_token',member.token);
+    const saveAndOpen=(group,passwordHash)=>{
+      const cards=(group.cards||[]).map((card,index)=>({
+        ...card,
+        planKey:card.planKey||PLAN_KEYS[card.level]||'circle',
+        position:card.position||index+1,
+        groupId:card.groupId||group.socioId
+      }));
+      const primary=cards[0];
+      if(!primary||!primary.token)throw new Error('La membresía no tiene una tarjeta válida.');
+      const normalized={...group,cards,primary,account:{username:group.account?.username||group.username,passwordHash:passwordHash||group.account?.passwordHash||''}};
+      localStorage.setItem('align_demo_group',JSON.stringify(normalized));
+      localStorage.setItem('align_primary_token',primary.token);
+      sessionStorage.setItem('align_member_token',primary.token);
       sessionStorage.removeItem('align_master_access');
-      location.replace(`mi-membresia.html?token=${encodeURIComponent(member.token)}&demo=1&v=${Date.now()}`);
+      location.replace(`mi-membresia.html?token=${encodeURIComponent(primary.token)}&demo=1&v=${Date.now()}`);
     };
-    const validateNewPassword=password=>{
-      if(password.length<8||!/[a-záéíóúñ]/i.test(password)||!/\d/.test(password)){
-        throw new Error('La contraseña debe tener al menos 8 caracteres, una letra y un número.');
-      }
-    };
+
     form.addEventListener('submit',async event=>{
       event.preventDefault();
-      errorBox.textContent='';resetButton.hidden=true;button.disabled=true;button.textContent='Entrando…';
+      errorBox.textContent='';button.disabled=true;button.textContent='Entrando…';
       try{
         const username=usernameInput.value.trim().toLowerCase();
         const password=passwordInput.value;
@@ -75,48 +82,46 @@
           location.replace(`mi-membresia.html?token=MYTIME&master=1&v=${Date.now()}`);
           return;
         }
-        if(location.hostname==='edgartikis.github.io'){
-          const group=readGroup();
-          if(!group||!group.account){
-            throw new Error('No encuentro una cuenta de prueba guardada en este navegador. Usa el mismo navegador donde la creaste o inicia una prueba nueva.');
-          }
-          if(String(group.account.username||'').toLowerCase()!==username){
-            throw new Error(`El usuario guardado en este navegador es “${group.account.username}”.`);
-          }
-          const hash=await hashPassword(password);
-          if(group.account.passwordHash!==hash){
-            errorBox.textContent='La contraseña no coincide. Como es una prueba local, puedes guardar la contraseña que acabas de escribir y recuperar el acceso.';
-            resetButton.hidden=false;button.disabled=false;button.textContent='Entrar a mi portal';
+        const passwordHash=await hashPassword(password);
+
+        let remote=null;
+        if(window.ALIGN_TEST_DB&&window.ALIGN_TEST_DB.enabled()){
+          remote=await window.ALIGN_TEST_DB.login(username,passwordHash);
+          if(remote&&remote.ok){
+            saveAndOpen({
+              socioId:remote.socioId,
+              username:remote.username,
+              cards:remote.cards,
+              account:{username:remote.username,passwordHash}
+            },passwordHash);
             return;
           }
-          openGroup(group);
+        }
+
+        const local=readGroup();
+        const localMatches=local&&local.account&&String(local.account.username||'').toLowerCase()===username&&local.account.passwordHash===passwordHash;
+        if(localMatches){
+          if(window.ALIGN_TEST_DB&&window.ALIGN_TEST_DB.enabled()){
+            const sync=await window.ALIGN_TEST_DB.syncAccount(local);
+            if(sync&&sync.ok){
+              saveAndOpen(local,passwordHash);
+              return;
+            }
+            if(remote&&remote.needsMigration){
+              throw new Error(sync&&sync.error?sync.error:'No fue posible habilitar esta cuenta para otros dispositivos.');
+            }
+          }
+          saveAndOpen(local,passwordHash);
           return;
         }
-        const response=await fetch('/.netlify/functions/member-login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({username,password})});
-        const data=await response.json();
-        if(!response.ok||!data.token)throw new Error(data.error||'Usuario o contraseña incorrectos.');
-        sessionStorage.setItem('align_member_token',data.token);
-        sessionStorage.removeItem('align_master_access');
-        location.replace(`mi-membresia.html?token=${encodeURIComponent(data.token)}&v=${Date.now()}`);
+
+        if(remote&&remote.needsMigration){
+          throw new Error('Esta cuenta fue creada antes del acceso multidispositivo. Inicia sesión una sola vez desde el navegador donde la creaste para sincronizarla; después funcionará en cualquier dispositivo.');
+        }
+        if(remote&&!remote.networkError&&remote.error)throw new Error(remote.error);
+        throw new Error('Usuario o contraseña incorrectos.');
       }catch(error){
         errorBox.textContent=error.message;button.disabled=false;button.textContent='Entrar a mi portal';
-      }
-    });
-    resetButton.addEventListener('click',async()=>{
-      errorBox.textContent='';resetButton.disabled=true;resetButton.textContent='Recuperando acceso…';
-      try{
-        const username=usernameInput.value.trim().toLowerCase();
-        const password=passwordInput.value;
-        validateNewPassword(password);
-        const group=readGroup();
-        if(!group||!group.account||String(group.account.username||'').toLowerCase()!==username){
-          throw new Error('No fue posible recuperar esta cuenta en el navegador actual.');
-        }
-        group.account.passwordHash=await hashPassword(password);
-        localStorage.setItem('align_demo_group',JSON.stringify(group));
-        openGroup(group);
-      }catch(error){
-        errorBox.textContent=error.message;resetButton.disabled=false;resetButton.textContent='Usar esta contraseña y recuperar acceso';
       }
     });
   </script>
