@@ -83,9 +83,9 @@
       </div>
     </section>
     <section class="metrics">
-      <div class="metric"><span>Visitas registradas aquí</span><strong id="visits">0</strong></div>
-      <div class="metric"><span>Consumo registrado</span><strong id="sales">$0</strong></div>
-      <div class="metric"><span>Ahorro generado</span><strong id="savings">$0</strong></div>
+      <div class="metric"><span>Visitas en este aliado</span><strong id="visits">0</strong></div>
+      <div class="metric"><span>Consumo en este aliado</span><strong id="sales">$0</strong></div>
+      <div class="metric"><span>Ahorro en este aliado</span><strong id="savings">$0</strong></div>
     </section>
     <p class="disclaimer">Modo de prueba. No procesa pagos ni modifica la base oficial.</p>
   </main>
@@ -153,7 +153,13 @@
     const benefitPicker=document.getElementById('benefitPicker');
     const benefitChoice=document.getElementById('benefitChoice');
     let stream=null,scanning=false,lastFrame=0,scannedMember=null,currentOffer=null,currentPromotion=null,eligible=false;
-    const savedMetrics=JSON.parse(localStorage.getItem('align_demo_ally_metrics')||'null')||{visits:0,sales:0,savings:0};
+    const METRICS_KEY='align_demo_ally_metrics_v2';
+    const metricsByAlly=(()=>{
+      try{
+        const stored=JSON.parse(localStorage.getItem(METRICS_KEY)||'{}');
+        return stored&&typeof stored==='object'&&!Array.isArray(stored)?stored:{};
+      }catch(_){return{}}
+    })();
 
     function planFromLevel(level){
       const value=String(level||'').toLowerCase();
@@ -283,11 +289,20 @@
       }
       requestAnimationFrame(scanFrame);
     }
+    function metricsFor(offer){
+      const key=offer&&offer.id;
+      if(!key)return{visits:0,sales:0,savings:0};
+      const current=metricsByAlly[key];
+      if(!current||typeof current!=='object')metricsByAlly[key]={visits:0,sales:0,savings:0};
+      return metricsByAlly[key];
+    }
     function updateMetrics(){
-      document.getElementById('visits').textContent=savedMetrics.visits;
-      document.getElementById('sales').textContent='$'+Number(savedMetrics.sales).toLocaleString('es-MX',{maximumFractionDigits:2});
-      document.getElementById('savings').textContent='$'+Number(savedMetrics.savings).toLocaleString('es-MX',{maximumFractionDigits:2});
-      localStorage.setItem('align_demo_ally_metrics',JSON.stringify(savedMetrics));
+      const offer=OFFERS[business.value];
+      const metrics=metricsFor(offer);
+      document.getElementById('visits').textContent=Number(metrics.visits)||0;
+      document.getElementById('sales').textContent='$'+Number(metrics.sales||0).toLocaleString('es-MX',{maximumFractionDigits:2});
+      document.getElementById('savings').textContent='$'+Number(metrics.savings||0).toLocaleString('es-MX',{maximumFractionDigits:2});
+      localStorage.setItem(METRICS_KEY,JSON.stringify(metricsByAlly));
     }
     function calculateSavings(promotion,amount){
       const discount=Math.max(0,Math.min(.99,Number(promotion&&promotion.discount||0)));
@@ -302,7 +317,7 @@
       }catch(error){cameraStatus.className='camera-status error';cameraStatus.textContent=error.message}
     });
     benefitChoice.addEventListener('change',renderPromotion);
-    business.addEventListener('change',()=>{clearValidation();cameraStatus.className='camera-status';cameraStatus.textContent='Establecimiento actualizado. Escanea nuevamente al socio.'});
+    business.addEventListener('change',()=>{clearValidation();updateMetrics();cameraStatus.className='camera-status';cameraStatus.textContent='Establecimiento actualizado. Escanea nuevamente al socio.'});
     confirmButton.addEventListener('click',async()=>{
       if(!scannedMember||!currentOffer||!currentPromotion||!eligible)return;
       confirmButton.disabled=true;confirmButton.textContent='Registrando visita…';
@@ -312,7 +327,11 @@
       if(window.ALIGN_TEST_DB){
         await window.ALIGN_TEST_DB.recordVisit({visitId:'VIS-GH-'+Date.now().toString(36).toUpperCase(),socioId:scannedMember.socioId,integranteId:scannedMember.integranteId,username:scannedMember.username,visitorName:scannedMember.name,planName:scannedMember.planName,allyId:currentOffer.id,place:currentOffer.name,category:currentOffer.category,people,spent:amount,saved,benefit:currentPromotion.benefit,notes:'QR leído por cámara desde el portal general de aliados'});
       }
-      savedMetrics.visits+=1;savedMetrics.sales+=amount;savedMetrics.savings+=saved;updateMetrics();
+      const allyMetrics=metricsFor(currentOffer);
+      allyMetrics.visits=(Number(allyMetrics.visits)||0)+1;
+      allyMetrics.sales=(Number(allyMetrics.sales)||0)+amount;
+      allyMetrics.savings=(Number(allyMetrics.savings)||0)+saved;
+      updateMetrics();
       const toast=document.getElementById('toast');toast.textContent='Visita registrada · '+scannedMember.memberCode;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),2800);
       confirmButton.textContent='Visita registrada';
       setTimeout(()=>{clearValidation();confirmButton.textContent='Aplicar beneficio y registrar visita';cameraStatus.textContent='Listo para escanear al siguiente socio.'},1200);
