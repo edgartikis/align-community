@@ -1,0 +1,36 @@
+name: Restore luminous ALIGN entrance
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    if: github.event.head_commit.message != 'Restore luminous ALIGN entrance'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore cinematic light entrance
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('index.html')
+          s=p.read_text()
+          new_css='''body.is-locked{overflow:hidden}.gate{position:fixed;z-index:1000;inset:0;display:grid;place-items:center;overflow:hidden;padding:28px;text-align:center;background:radial-gradient(circle at 50% 42%,#18304f 0%,#0b1727 34%,#05070b 74%);transition:opacity .8s ease,visibility .8s ease}.gate::before,.gate::after{content:"";position:absolute;pointer-events:none}.gate::before{inset:-25%;background:conic-gradient(from 210deg at 50% 52%,transparent 0 31%,rgba(218,226,238,.08) 37%,transparent 43% 69%,rgba(218,226,238,.05) 75%,transparent 82%);animation:gateGlow 8s linear infinite}.gate::after{inset:0;background:linear-gradient(115deg,transparent 38%,rgba(255,255,255,.055) 50%,transparent 62%);transform:translateX(-100%);animation:gateSheen 4.5s ease-in-out infinite}.gate.opening{opacity:0;visibility:hidden}.gate-card{position:relative;z-index:1;width:min(620px,94vw);padding:0;background:transparent;border:0;box-shadow:none;display:flex;flex-direction:column;align-items:center;animation:gateEnter 1.1s ease both}.gate-mark{width:76px;height:76px;display:grid;place-items:center;margin:0 auto 28px;border:1px solid rgba(245,242,236,.75);border-radius:50%;font:500 2.45rem "Playfair Display",serif;box-shadow:0 0 50px rgba(173,195,224,.12)}.gate-kicker{margin:0 0 14px;font:.68rem "DM Mono",monospace;letter-spacing:.24em;text-transform:uppercase;color:#bfc7d3}.gate h2{margin:0;font-family:"Playfair Display",serif;font-size:clamp(2.5rem,7vw,5.4rem);font-weight:500;line-height:.98;letter-spacing:-.045em}.gate-copy{max-width:430px;margin:20px auto 30px;color:#c8ccd2;line-height:1.6}.gate-btn{position:relative;min-width:235px;padding:15px 26px;border:1px solid rgba(245,242,236,.75);background:rgba(245,242,236,.03);color:var(--paper);font:.7rem "DM Mono",monospace;letter-spacing:.16em;text-transform:uppercase;cursor:pointer;transition:background .25s ease,color .25s ease,transform .25s ease,box-shadow .25s ease}.gate-btn:hover{background:var(--paper);color:var(--ink);transform:translateY(-2px);box-shadow:0 15px 45px rgba(0,0,0,.28)}.gate.opening .gate-card{transform:scale(1.035);opacity:0;transition:transform .7s ease,opacity .5s ease}@keyframes gateEnter{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}@keyframes gateGlow{to{transform:rotate(360deg)}}@keyframes gateSheen{0%,52%{transform:translateX(-100%)}78%,100%{transform:translateX(100%)}}@media(prefers-reduced-motion:reduce){.gate::before,.gate::after,.gate-card{animation:none}}'''
+          pattern=r'body\.is-locked\{overflow:hidden\}\.gate\{.*?\.gate-btn:hover\{.*?\}'
+          s2,n=re.subn(pattern,new_css,s,count=1,flags=re.S)
+          if n!=1:
+              raise SystemExit(f'gate CSS replacement count={n}')
+          p.write_text(s2)
+          PY
+      - name: Commit restored entrance
+        run: |
+          git config user.name "edgartikis"
+          git config user.email "edgartikis@gmail.com"
+          git add index.html
+          git commit -m "Restore luminous ALIGN entrance"
+          git push
