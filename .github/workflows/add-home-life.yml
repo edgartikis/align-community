@@ -1,41 +1,10 @@
-name: Add dynamic ally rail
+name: Dynamic ally rail applied
 
 on:
-  push:
-    branches: ["main"]
-
-permissions:
-  contents: write
+  workflow_dispatch:
 
 jobs:
-  patch:
-    if: github.event.head_commit.message != 'Add dynamic ally rail to home'
+  done:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Patch homepage
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('index.html')
-          s=p.read_text()
-          s=s.replace('<div class="ornament">✦ · ✦ · ✦</div>','')
-          css='''\n/* living ally rail */\n.ally-showcase{padding:34px 0 42px;background:#0b0f15;border-top:1px solid rgba(198,168,107,.18);border-bottom:1px solid rgba(198,168,107,.18);overflow:hidden}.ally-showcase-head{display:flex;justify-content:space-between;align-items:end;gap:24px;padding:0 5.5vw 20px}.ally-showcase-head h2{margin:0;font-size:clamp(1.9rem,3.2vw,3.1rem);line-height:1}.ally-showcase-head p{max-width:420px;margin:0;color:#9fa6af;line-height:1.55}.ally-viewport{overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}.ally-track{display:flex;width:max-content;gap:14px;padding:4px 0;animation:allyMove 32s linear infinite}.ally-viewport:hover .ally-track{animation-play-state:paused}.ally-mini{position:relative;width:260px;height:330px;flex:0 0 auto;overflow:hidden;border:1px solid rgba(198,168,107,.25);background:#111923;transition:transform .35s ease,border-color .35s ease}.ally-mini:hover{transform:translateY(-6px);border-color:rgba(198,168,107,.55)}.ally-mini img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .65s ease,filter .35s ease;filter:saturate(.9) contrast(.98)}.ally-mini:hover img{transform:scale(1.045);filter:saturate(1.03) contrast(1.02)}.ally-mini:after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(4,8,13,.92) 0%,rgba(4,8,13,.35) 42%,transparent 72%)}.ally-mini-copy{position:absolute;z-index:2;left:18px;right:18px;bottom:18px}.ally-mini-copy span{font:500 .58rem "DM Mono",monospace;letter-spacing:.14em;text-transform:uppercase;color:#d4c29e}.ally-mini-copy h3{font-size:1.7rem;margin:6px 0 0;line-height:1}.ally-mini-copy p{margin:7px 0 0;color:#d2d6db;font-size:.82rem;line-height:1.4}.ally-note{padding:16px 5.5vw 0;font:500 .58rem "DM Mono",monospace;letter-spacing:.11em;text-transform:uppercase;color:#747d87}@keyframes allyMove{from{transform:translateX(0)}to{transform:translateX(calc(-50% - 7px))}}@media(max-width:650px){.ally-showcase{padding-top:28px}.ally-showcase-head{display:block;padding-left:7vw;padding-right:7vw}.ally-showcase-head p{margin-top:10px}.ally-viewport{overflow-x:auto;mask-image:none;-webkit-mask-image:none;scrollbar-width:none}.ally-viewport::-webkit-scrollbar{display:none}.ally-track{animation:none;padding-left:7vw;padding-right:7vw}.ally-mini{width:220px;height:285px}.ally-note{padding-left:7vw}}\n'''
-          if '/* living ally rail */' not in s:
-              s=s.replace('</style>',css+'</style>',1)
-          rail='''\n<section class="ally-showcase" aria-label="Aliados y experiencias ALIGN">\n  <div class="ally-showcase-head"><div><p class="eyebrow">Dentro de ALIGN</p><h2>Lugares que ya forman parte.</h2></div><p>Una selección en movimiento de aliados y experiencias. Descubre algo distinto cada vez que entres.</p></div>\n  <div class="ally-viewport"><div class="ally-track">\n    <a class="ally-mini" href="global-gym.html"><img src="Global1.PNG" alt="Global Gym"><div class="ally-mini-copy"><span>Fitness</span><h3>Global Gym</h3><p>Entrena con beneficios ALIGN.</p></div></a>\n    <a class="ally-mini" href="gingers.html"><img src="Ginger1.PNG" alt="Ginger's Coffee House"><div class="ally-mini-copy"><span>Coffee & Brunch</span><h3>Ginger's</h3><p>Café, brunch y momentos para compartir.</p></div></a>\n    <a class="ally-mini" href="velamar.html"><img src="CAPRI5-1.jpeg" alt="Velamar"><div class="ally-mini-copy"><span>Stay</span><h3>Velamar</h3><p>Escapadas frente al mar para miembros.</p></div></a>\n    <a class="ally-mini" href="dia-de-pesca.html"><img src="public/images/events/WhatsApp%20Image%202026-07-23%20at%206.31.29%20PM.jpeg" alt="Vaca Fishing"><div class="ally-mini-copy"><span>Explore</span><h3>Vaca Fishing</h3><p>Mar, pesca y un plan diferente.</p></div></a>\n    <a class="ally-mini" href="#eventos"><img src="public/images/events/WhatsApp%20Image%202026-07-23%20at%206.31.30%20PM.jpeg" alt="ALIGN Boat Party"><div class="ally-mini-copy"><span>Experience</span><h3>Boat Party</h3><p>Atardecer, música y comunidad.</p></div></a>\n    <a class="ally-mini" href="global-gym.html"><img src="Global1.PNG" alt="Global Gym"><div class="ally-mini-copy"><span>Fitness</span><h3>Global Gym</h3><p>Entrena con beneficios ALIGN.</p></div></a>\n    <a class="ally-mini" href="gingers.html"><img src="Ginger1.PNG" alt="Ginger's Coffee House"><div class="ally-mini-copy"><span>Coffee & Brunch</span><h3>Ginger's</h3><p>Café, brunch y momentos para compartir.</p></div></a>\n    <a class="ally-mini" href="velamar.html"><img src="CAPRI5-1.jpeg" alt="Velamar"><div class="ally-mini-copy"><span>Stay</span><h3>Velamar</h3><p>Escapadas frente al mar para miembros.</p></div></a>\n    <a class="ally-mini" href="dia-de-pesca.html"><img src="public/images/events/WhatsApp%20Image%202026-07-23%20at%206.31.29%20PM.jpeg" alt="Vaca Fishing"><div class="ally-mini-copy"><span>Explore</span><h3>Vaca Fishing</h3><p>Mar, pesca y un plan diferente.</p></div></a>\n    <a class="ally-mini" href="#eventos"><img src="public/images/events/WhatsApp%20Image%202026-07-23%20at%206.31.30%20PM.jpeg" alt="ALIGN Boat Party"><div class="ally-mini-copy"><span>Experience</span><h3>Boat Party</h3><p>Atardecer, música y comunidad.</p></div></a>\n  </div></div>\n  <div class="ally-note">Pasa el cursor para detener · En móvil desliza</div>\n</section>\n'''
-          if 'class="ally-showcase"' not in s:
-              anchor='<section id="beneficios"'
-              pos=s.find(anchor)
-              if pos<0: raise SystemExit('benefits anchor not found')
-              s=s[:pos]+rail+s[pos:]
-          p.write_text(s)
-          PY
-      - name: Commit homepage update
-        run: |
-          git config user.name "edgartikis"
-          git config user.email "edgartikis@gmail.com"
-          git add index.html
-          git commit -m "Add dynamic ally rail to home"
-          git pull --rebase origin main
-          git push
+      - run: echo "Dynamic home rail already applied."
