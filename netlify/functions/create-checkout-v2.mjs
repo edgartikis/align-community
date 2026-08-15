@@ -13,11 +13,21 @@ const allowedOrigins = new Set([
   "https://edgartikis.github.io",
 ]);
 
-const siteOrigin = (request, requestedOrigin) => {
-  const cleanRequested = String(requestedOrigin || "").trim().replace(/\/$/, "");
-  if (allowedOrigins.has(cleanRequested)) return cleanRequested;
+const siteBase = (request, requestedBase) => {
+  const cleanRequested = String(requestedBase || "").trim().replace(/\/$/, "");
+  if (cleanRequested) {
+    try {
+      const parsed = new URL(cleanRequested);
+      if (allowedOrigins.has(parsed.origin)) return cleanRequested;
+    } catch (_) {}
+  }
   const configured = process.env.MEMBER_BASE_URL?.trim().replace(/\/$/, "");
-  if (configured && allowedOrigins.has(configured)) return configured;
+  if (configured) {
+    try {
+      const parsed = new URL(configured);
+      if (allowedOrigins.has(parsed.origin)) return configured;
+    } catch (_) {}
+  }
   return new URL(request.url).origin.replace(/\/$/, "");
 };
 
@@ -48,15 +58,16 @@ export default async (request) => {
 
     const secretKey = required("STRIPE_SECRET_KEY");
     if (/^sk_live_/i.test(secretKey) || /^rk_live_/i.test(secretKey)) {
-      return json(request, { error: "Apple Pay de prueba está bloqueado porque Stripe está en modo real. Configura una clave TEST/Sandbox." }, 503);
+      return json(request, { error: "El pago de prueba está bloqueado porque Stripe está en modo real. Configura una clave TEST/Sandbox." }, 503);
     }
 
     const metadata = {
       align_membership: planKey,
       align_amount_mxn: String(plan.amount / 100),
       align_seats: String(plan.seats),
-      checkout_version: "v4-apple-pay-sandbox",
+      checkout_version: "v5-wallet-sandbox",
       test_only: "true",
+      requested_wallet: String(body.paymentMethod || "wallet"),
     };
 
     (Array.isArray(body.members) ? body.members : []).forEach((member, index) => {
@@ -72,9 +83,9 @@ export default async (request) => {
     }
 
     const stripe = new Stripe(secretKey);
-    const origin = siteOrigin(request, body.returnOrigin);
-    const successUrl = `${origin}/pago.html?plan=${encodeURIComponent(planKey)}&sandbox=success&session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl = `${origin}/pago.html?plan=${encodeURIComponent(planKey)}&sandbox=cancel`;
+    const base = siteBase(request, body.returnOrigin);
+    const successUrl = `${base}/pago.html?plan=${encodeURIComponent(planKey)}&sandbox=success&session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = `${base}/pago.html?plan=${encodeURIComponent(planKey)}&sandbox=cancel`;
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -86,7 +97,7 @@ export default async (request) => {
           recurring: { interval: "month" },
           product_data: {
             name: `${plan.name} · PRUEBA`,
-            description: `${plan.level} · Apple Pay Sandbox · No mueve dinero real`,
+            description: `${plan.level} · Wallet Sandbox · No mueve dinero real`,
           },
         },
         quantity: 1,
@@ -103,6 +114,6 @@ export default async (request) => {
     return json(request, { url: session.url, testMode: true });
   } catch (error) {
     console.error("checkout-v2", error);
-    return json(request, { error: "No pudimos iniciar Apple Pay Sandbox." }, 500);
+    return json(request, { error: "No pudimos iniciar el pago Wallet Sandbox." }, 500);
   }
 };
