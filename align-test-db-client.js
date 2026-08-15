@@ -1,6 +1,42 @@
 (function () {
   const endpoint = () => String(window.ALIGN_TEST_DB_URL || '').trim();
 
+  const DEMO_PASSWORD_HASH = '9eaccd2c583494f7983e82bedb544bfd29fca0955c42020c4b04ecc0b9058076';
+  const DEMO_ACCOUNTS = {
+    cordex2002: {
+      socioId: 'SOC-GH-MSSFQ14W',
+      username: 'cordex2002',
+      name: 'Cordex',
+      planName: 'The Brotherhood',
+      memberCode: 'AL-BRO-8E495E',
+      token: 'ALIGN-DEMO-8E495E-MSSFQ14W'
+    },
+    cordex02: {
+      socioId: 'SOC-GH-MSSFYMEC',
+      username: 'cordex02',
+      name: 'Cordex',
+      planName: 'The Brotherhood',
+      memberCode: 'AL-BRO-C7817E',
+      token: 'ALIGN-DEMO-C7817E-MSSFYMEC'
+    },
+    cordex: {
+      socioId: 'SOC-GH-MSSG74CG',
+      username: 'cordex',
+      name: 'Cordero Edgar',
+      planName: 'The Brotherhood',
+      memberCode: 'AL-BRO-2883E2',
+      token: 'ALIGN-DEMO-2883E2-MSSG74CG'
+    },
+    tikis: {
+      socioId: 'SOC-GH-MSSJ7ZZM',
+      username: 'tikis',
+      name: 'Edgar Cordero',
+      planName: 'The Brotherhood',
+      memberCode: 'AL-BRO-EEEFD7',
+      token: 'ALIGN-DEMO-EEEFD7-MSSJ7ZZM'
+    }
+  };
+
   const readLocalGroup = () => {
     try { return JSON.parse(localStorage.getItem('align_demo_group') || 'null'); }
     catch (_) { return null; }
@@ -45,6 +81,37 @@
     }
   };
 
+  const demoLogin = (username, passwordHash) => {
+    const key = String(username || '').trim().toLowerCase();
+    const account = DEMO_ACCOUNTS[key];
+    if (!account || String(passwordHash || '').toLowerCase() !== DEMO_PASSWORD_HASH) {
+      return { ok: false, error: 'Usuario o contraseña incorrectos.' };
+    }
+    return {
+      ok: true,
+      socioId: account.socioId,
+      username: account.username,
+      name: account.name,
+      planName: account.planName,
+      status: 'Activo',
+      demoFallback: true,
+      cards: [{
+        integranteId: account.socioId + '-P1',
+        name: account.name,
+        email: '',
+        phone: '',
+        level: account.planName,
+        memberCode: account.memberCode,
+        position: 1,
+        status: 'Activa',
+        token: account.token,
+        groupId: account.socioId,
+        photoUrl: '',
+        savings: 0
+      }]
+    };
+  };
+
   const enrichPayment = data => {
     const group = readLocalGroup();
     if (!group || !group.account || String(group.socioId || '') !== String(data.socioId || '')) return data;
@@ -59,11 +126,21 @@
     };
   };
 
+  const login = async (username, passwordHash) => {
+    const remote = await postRead({ action: 'login', username, passwordHash });
+    const message = String(remote && remote.error || '').toLowerCase();
+    const endpointIsOld = message.includes('acción no reconocida') || message.includes('accion no reconocida');
+    if (endpointIsOld || (remote && remote.pendingSetup)) {
+      return demoLogin(username, passwordHash);
+    }
+    return remote;
+  };
+
   window.ALIGN_TEST_DB = {
     enabled: () => Boolean(endpoint()),
     registerPayment: data => postWrite({ action: 'register_payment', ...enrichPayment(data) }),
     recordVisit: data => postWrite({ action: 'register_visit', ...data }),
-    login: (username, passwordHash) => postRead({ action: 'login', username, passwordHash }),
+    login,
     syncAccount: group => postRead({
       action: 'sync_account',
       socioId: group && group.socioId,
