@@ -14,12 +14,41 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Replace WhatsApp destination
+
+      - name: Configure Velamar WhatsApp flow
+        shell: bash
         run: |
-          files=(marmara-11.html marmara-8.html capri-5.html capri-3.html penthouse-capri.html)
-          for file in "${files[@]}"; do
-            sed -i 's/528332835633/528331472076/g' "$file"
-          done
+          python - <<'PY'
+          from pathlib import Path
+
+          files = [
+              'marmara-11.html',
+              'marmara-8.html',
+              'capri-5.html',
+              'capri-3.html',
+              'penthouse-capri.html',
+          ]
+
+          destination = '528331472076'
+          old_destination = '528332835633'
+          marker = '/* ALIGN_MEMBER_PREFILL */'
+          prefill = '''\n/* ALIGN_MEMBER_PREFILL */\n(function prefillAlignMember(){\n  try{\n    const group=JSON.parse(localStorage.getItem("align_demo_group")||"null");\n    const member=group&&(group.primary||(Array.isArray(group.cards)&&group.cards[0]));\n    if(!member)return;\n    const nameInput=document.getElementById("name");\n    const phoneInput=document.getElementById("phone");\n    if(nameInput&&member.name){nameInput.value=member.name;nameInput.readOnly=true;}\n    if(phoneInput&&member.phone){phoneInput.value=member.phone;phoneInput.readOnly=true;}\n  }catch(_){ }\n})();\n'''
+
+          for filename in files:
+              path = Path(filename)
+              text = path.read_text(encoding='utf-8')
+              text = text.replace(old_destination, destination)
+              if destination not in text:
+                  import re
+                  text = re.sub(r'https://wa\.me/\d+\?text=', f'https://wa.me/{destination}?text=', text)
+              if marker not in text:
+                  anchor = 'drawGuests();'
+                  if anchor not in text:
+                      raise SystemExit(f'No se encontró drawGuests() en {filename}')
+                  text = text.replace(anchor, anchor + prefill, 1)
+              path.write_text(text, encoding='utf-8')
+          PY
+
       - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
@@ -29,5 +58,5 @@ jobs:
             echo "No changes needed"
             exit 0
           fi
-          git commit -m "Update Velamar WhatsApp destination"
+          git commit -m "Prefill Velamar requests and route to ALIGN WhatsApp"
           git push
