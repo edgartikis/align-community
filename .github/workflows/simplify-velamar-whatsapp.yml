@@ -1,0 +1,74 @@
+name: Simplify Velamar WhatsApp
+
+on:
+  push:
+    paths:
+      - '.github/workflows/simplify-velamar-whatsapp.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  simplify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Replace booking forms with direct WhatsApp contact
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          from urllib.parse import quote
+
+          files = [
+              'marmara-11.html',
+              'marmara-8.html',
+              'capri-5.html',
+              'capri-3.html',
+              'penthouse-capri.html',
+          ]
+          message = 'Hola, soy MIEMBRO ALIGN. ¿Qué fechas hay disponibles?'
+          href = 'https://wa.me/528332835633?text=' + quote(message)
+          replacement = f'<a class="reserve" href="{href}">Consultar disponibilidad por WhatsApp</a>'
+
+          for filename in files:
+              path = Path(filename)
+              text = path.read_text(encoding='utf-8')
+
+              text = text.replace(
+                  '<button class="reserve" id="openReserve">Reservar fecha</button>',
+                  replacement
+              )
+
+              # Remove the complete booking modal/form.
+              text = re.sub(
+                  r'<div class="modal" id="modal".*?</div>\s*<script>',
+                  '<script>',
+                  text,
+                  flags=re.S,
+              )
+
+              # Remove all booking/form JavaScript while preserving gallery behavior.
+              text = re.sub(
+                  r'const modal=document\.querySelector\("#modal"\).*?(?=</script>)',
+                  '',
+                  text,
+                  flags=re.S,
+              )
+
+              path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add marmara-11.html marmara-8.html capri-5.html capri-3.html penthouse-capri.html
+          if git diff --cached --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git commit -m "Simplify Velamar booking to direct WhatsApp"
+          git push
