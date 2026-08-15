@@ -17,7 +17,6 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
           p=Path('index.html')
           s=p.read_text()
           s=s.replace('<div class="ornament">✦ · ✦ · ✦</div>','')
@@ -38,4 +37,5 @@ jobs:
           git config user.email "edgartikis@gmail.com"
           git add index.html
           git commit -m "Add dynamic ally rail to home"
+          git pull --rebase origin main
           git push
