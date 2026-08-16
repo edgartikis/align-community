@@ -31,7 +31,7 @@ body.is-locked{overflow:hidden}.gate{position:fixed;z-index:1000;inset:0;display
 
 </head>
 <body>
-<div class="gate" role="dialog" aria-modal="true" aria-labelledby="gate-title"><div class="gate-card"><div class="gate-logo-wrap"><img id="exact-landing-logo" class="gate-brand-lockup" alt="ALIGN" style="visibility:hidden"></div><h2 id="gate-title">Tu ciudad,<br>vista diferente.</h2><p class="gate-copy">Experiencias, lugares y beneficios seleccionados para quienes buscan vivir algo más.</p><button class="gate-btn" type="button">Entrar a la experiencia</button></div></div>
+<div class="gate" role="dialog" aria-modal="true" aria-labelledby="gate-title"><div class="gate-card"><div class="gate-logo-wrap"><img class="gate-brand-lockup" src="image-gen-1(20260816-192750).png?v=20260816-192750" alt="ALIGN"></div><h2 id="gate-title">Tu ciudad,<br>vista diferente.</h2><p class="gate-copy">Experiencias, lugares y beneficios seleccionados para quienes buscan vivir algo más.</p><button class="gate-btn" type="button">Entrar a la experiencia</button></div></div>
 <nav class="nav"><a class="brand align-logo-link" href="#inicio"><img class="align-wordmark-logo" src="assets/align-wordmark.png?v=transparent-5" alt="ALIGN — Belong to Something"></a><div class="navlinks"><a href="#beneficios">Beneficios</a><a href="#membresias">Membresías</a><a href="#eventos">Experiencias</a><a class="login" href="login.html">Ya soy miembro</a></div></nav>
 <main>
 <section id="inicio" class="hero"><div class="hero-inner"><p class="eyebrow">Tampico · Madero · Altamira</p><h1>La misma ciudad.<br>Distinta experiencia.</h1><p>Beneficios seleccionados, experiencias exclusivas y una comunidad para vivir tu ciudad de una forma diferente.</p><div class="actions"><a class="btn primary" href="#membresias">Registrarme</a><a class="btn soft" href="login.html">Ya soy miembro</a></div></div></section>
@@ -61,7 +61,6 @@ body.is-locked{overflow:hidden}.gate{position:fixed;z-index:1000;inset:0;display
 </main>
 <footer><span>© 2026 ALIGN Membership</span><span>Tampico · Madero · Altamira</span></footer>
 <div class="mobile-cta"><a class="btn primary" href="#membresias">Registrarme</a><a class="btn soft" href="login.html">Ya soy miembro</a></div>
-<script>(()=>{const logo=document.getElementById('exact-landing-logo');if(!logo)return;const parts=['assets/exact-logo/part0.txt','assets/exact-logo/part1.txt','assets/exact-logo/part2.txt','assets/exact-logo/part3.txt','assets/exact-logo/part4.txt','assets/exact-logo/part5.txt','assets/exact-logo/part6.txt'];Promise.all(parts.map(u=>fetch(u,{cache:'force-cache'}).then(r=>{if(!r.ok)throw new Error('logo');return r.text()}))).then(chunks=>{logo.onload=()=>{logo.style.visibility='visible'};logo.src='data:image/webp;base64,'+chunks.join('')}).catch(()=>{logo.style.display='none'})})();</script>
 <script>(()=>{const gate=document.querySelector('.gate'),button=document.querySelector('.gate-btn');if(!gate||!button)return;document.body.classList.add('is-locked');button.addEventListener('click',()=>{gate.classList.add('opening');document.body.classList.remove('is-locked');setTimeout(()=>gate.remove(),850)},{once:true})})();</script>
 </body>
 </html>
