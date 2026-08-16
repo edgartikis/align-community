@@ -25,17 +25,13 @@ body.is-locked{overflow:hidden}.gate{position:fixed;z-index:1000;inset:0;display
 <style id="align-official-brand">
 .align-logo-link,.align-logo-block{display:inline-flex!important;align-items:center!important;font-size:0!important;letter-spacing:0!important;line-height:1!important}
 .align-wordmark-logo{display:block;width:clamp(118px,14vw,158px);height:auto;max-width:42vw;object-fit:contain}
-.align-symbol-logo{display:flex!important;align-items:center!important;justify-content:center!important;font-size:0!important;border:0!important;border-radius:0!important;background:transparent!important;overflow:visible!important}
-.align-symbol-logo .align-primary-logo{display:block;width:auto;height:100%;max-width:100%;object-fit:contain}
-.gate-mark.align-symbol-logo{width:84px;height:114px;margin-left:auto;margin-right:auto}
-.mark.align-symbol-logo{width:68px;height:92px;margin-left:auto;margin-right:auto}
-.empty-mark.align-symbol-logo{width:82px;height:112px;margin-left:auto;margin-right:auto}
-.logo.align-card-logo{display:block;width:138px;height:auto;object-fit:contain}
-@media(max-width:600px){.align-wordmark-logo{width:124px}.gate-mark.align-symbol-logo{width:70px;height:96px}}
+.gate-brand-lockup{display:block;width:min(330px,76vw);height:auto;margin:0 auto 16px;background:transparent!important;mix-blend-mode:normal;filter:none;box-shadow:none}
+@media(max-width:600px){.align-wordmark-logo{width:124px}.gate-brand-lockup{width:min(300px,78vw);margin-bottom:14px}}
 </style>
+
 </head>
 <body>
-<div class="gate" role="dialog" aria-modal="true" aria-labelledby="gate-title"><div class="gate-card"><div class="gate-mark align-symbol-logo"><img class="align-primary-logo" src="assets/align-primary.png?v=transparent-3" alt="ALIGN"></div><p class="gate-kicker">ALIGN Membership</p><h2 id="gate-title">Tu ciudad,<br>vista diferente.</h2><p class="gate-copy">Experiencias, lugares y beneficios seleccionados para quienes buscan vivir algo más.</p><button class="gate-btn" type="button">Entrar a la experiencia</button></div></div>
+<div class="gate" role="dialog" aria-modal="true" aria-labelledby="gate-title"><div class="gate-card"><img class="gate-brand-lockup" src="assets/align-gate-logo.svg?v=1" alt="ALIGN — Belong to Something"><h2 id="gate-title">Tu ciudad,<br>vista diferente.</h2><p class="gate-copy">Experiencias, lugares y beneficios seleccionados para quienes buscan vivir algo más.</p><button class="gate-btn" type="button">Entrar a la experiencia</button></div></div>
 <nav class="nav"><a class="brand align-logo-link" href="#inicio"><img class="align-wordmark-logo" src="assets/align-wordmark.png" alt="ALIGN — Belong to Something"></a><div class="navlinks"><a href="#beneficios">Beneficios</a><a href="#membresias">Membresías</a><a href="#eventos">Experiencias</a><a class="login" href="login.html">Ya soy miembro</a></div></nav>
 <main>
 <section id="inicio" class="hero"><div class="hero-inner"><p class="eyebrow">Tampico · Madero · Altamira</p><h1>La misma ciudad.<br>Distinta experiencia.</h1><p>Beneficios seleccionados, experiencias exclusivas y una comunidad para vivir tu ciudad de una forma diferente.</p><div class="actions"><a class="btn primary" href="#membresias">Registrarme</a><a class="btn soft" href="login.html">Ya soy miembro</a></div></div></section>
