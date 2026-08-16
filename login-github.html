@@ -17,10 +17,23 @@
     :root{--ink:#090a0c;--paper:#f5f2ec;--muted:#aaa59c;--line:rgba(245,242,236,.18)}
     *{box-sizing:border-box}body{min-height:100vh;margin:0;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 50% 12%,#1c2939 0,#090a0c 54%);color:var(--paper);font-family:"DM Sans",sans-serif}.shell{width:min(100%,460px)}.brand{display:block;margin-bottom:28px;text-align:center;color:inherit;text-decoration:none;font-family:"Playfair Display",serif;font-size:1.35rem;letter-spacing:.2em}.panel{padding:42px 36px;border:1px solid var(--line);background:linear-gradient(145deg,rgba(23,42,69,.96),rgba(7,11,16,.98));box-shadow:0 28px 80px rgba(0,0,0,.42)}.eyebrow{margin:0 0 14px;font:500 .67rem "DM Mono",monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}h1{margin:0;font:500 clamp(2.6rem,10vw,4.4rem)/.95 "Playfair Display",serif;letter-spacing:-.045em}.copy{margin:18px 0 30px;color:#cbc7be;line-height:1.6}label{display:block;margin:18px 0 8px;font:500 .67rem "DM Mono",monospace;letter-spacing:.12em;text-transform:uppercase;color:#d9d4cb}input{width:100%;padding:15px 14px;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.24);color:#fff;font:500 1rem "DM Mono",monospace;outline:none}input:focus{border-color:#fff}.button{width:100%;margin-top:24px;padding:15px;border:1px solid #fff;background:#fff;color:#090a0c;font-weight:600;letter-spacing:.11em;text-transform:uppercase;cursor:pointer}.button:disabled{opacity:.55;cursor:wait}.error{min-height:22px;margin:14px 0 0;color:#ffd0d0;font-size:.84rem;line-height:1.45}.hint{margin:22px 0 0;color:#99958d;font-size:.76rem;line-height:1.5;text-align:center}.back{display:block;margin-top:22px;text-align:center;color:#bdb8af;text-decoration:none;font:500 .67rem "DM Mono",monospace;letter-spacing:.12em;text-transform:uppercase}@media(max-width:520px){.panel{padding:34px 24px}}
   </style>
+
+<link rel="icon" type="image/png" href="assets/align-primary.png">
+<style id="align-official-brand">
+.align-logo-link,.align-logo-block{display:inline-flex!important;align-items:center!important;font-size:0!important;letter-spacing:0!important;line-height:1!important}
+.align-wordmark-logo{display:block;width:clamp(118px,14vw,158px);height:auto;max-width:42vw;object-fit:contain}
+.align-symbol-logo{display:flex!important;align-items:center!important;justify-content:center!important;font-size:0!important;border:0!important;border-radius:0!important;background:transparent!important;overflow:visible!important}
+.align-symbol-logo .align-primary-logo{display:block;width:auto;height:100%;max-width:100%;object-fit:contain}
+.gate-mark.align-symbol-logo{width:84px;height:114px;margin-left:auto;margin-right:auto}
+.mark.align-symbol-logo{width:68px;height:92px;margin-left:auto;margin-right:auto}
+.empty-mark.align-symbol-logo{width:82px;height:112px;margin-left:auto;margin-right:auto}
+.logo.align-card-logo{display:block;width:138px;height:auto;object-fit:contain}
+@media(max-width:600px){.align-wordmark-logo{width:124px}.gate-mark.align-symbol-logo{width:70px;height:96px}}
+</style>
 </head>
 <body>
   <main class="shell">
-    <a class="brand" href="./">ALIGN</a>
+    <a class="brand align-logo-link" href="./"><img class="align-wordmark-logo" src="assets/align-wordmark.png" alt="ALIGN — Belong to Something"></a>
     <section class="panel">
       <p class="eyebrow">Acceso de miembros</p>
       <h1>Tu ciudad, desde dentro.</h1>
