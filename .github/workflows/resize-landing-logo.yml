@@ -1,0 +1,50 @@
+name: Resize ALIGN landing logo
+
+on:
+  push:
+    paths:
+      - '.github/workflows/resize-landing-logo.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  resize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Resize landing logo
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          old_desktop = '.gate-logo-wrap{position:relative;width:min(330px,76vw);margin:0 auto 16px;display:block}'
+          new_desktop = '.gate-logo-wrap{position:relative;width:min(250px,58vw);margin:0 auto 22px;display:block}'
+          old_mobile = '.gate-logo-wrap{width:min(300px,78vw);margin-bottom:14px}'
+          new_mobile = '.gate-logo-wrap{width:min(220px,56vw);margin-bottom:18px}'
+
+          if old_desktop not in s:
+              raise SystemExit('Desktop logo sizing rule not found')
+          if old_mobile not in s:
+              raise SystemExit('Mobile logo sizing rule not found')
+
+          s = s.replace(old_desktop, new_desktop, 1)
+          s = s.replace(old_mobile, new_mobile, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+
+          rm -f .github/workflows/resize-landing-logo.yml
+
+      - name: Commit resized landing logo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Refine ALIGN landing logo proportions"
+          git push origin HEAD:main
