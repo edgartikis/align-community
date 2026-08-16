@@ -1,0 +1,56 @@
+name: Apply uploaded ALIGN landing logo
+
+on:
+  push:
+    paths:
+      - '.github/workflows/set-landing-logo.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Use uploaded logo directly and remove temporary loader
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          old = '<img id="exact-landing-logo" class="gate-brand-lockup" alt="ALIGN" style="visibility:hidden">'
+          new = '<img class="gate-brand-lockup" src="image-gen-1(20260816-192750).png?v=20260816-192750" alt="ALIGN">'
+          if old not in s:
+              raise SystemExit('No se encontró el marcador actual del logo en index.html')
+          s = s.replace(old, new, 1)
+
+          s, count = re.subn(
+              r"<script>\(\(\)=>\{const logo=document\.getElementById\('exact-landing-logo'\);.*?</script>\s*",
+              '',
+              s,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit('No se encontró el cargador temporal del logo')
+
+          p.write_text(s, encoding='utf-8')
+          PY
+
+          rm -rf assets/exact-logo
+          rm -f .github/workflows/set-landing-logo.yml
+
+      - name: Commit clean landing logo update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Use uploaded ALIGN logo directly on landing"
+          git push origin HEAD:main
