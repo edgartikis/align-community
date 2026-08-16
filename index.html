@@ -25,13 +25,13 @@ body.is-locked{overflow:hidden}.gate{position:fixed;z-index:1000;inset:0;display
 <style id="align-official-brand">
 .align-logo-link,.align-logo-block{display:inline-flex!important;align-items:center!important;font-size:0!important;letter-spacing:0!important;line-height:1!important}
 .align-wordmark-logo{display:block;width:clamp(118px,14vw,158px);height:auto;max-width:42vw;object-fit:contain}
-.gate-logo-wrap{position:relative;width:min(330px,76vw);min-height:118px;margin:0 auto 16px;display:grid;place-items:center}.gate-logo-fallback{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;color:var(--paper)}.gate-logo-fallback strong{font:500 clamp(2.2rem,7vw,4.2rem) "Playfair Display",serif;letter-spacing:.12em}.gate-logo-fallback span{margin-top:5px;font:500 .58rem "DM Mono",monospace;letter-spacing:.24em}.gate-brand-lockup{position:relative;z-index:2;display:block;width:100%;height:auto;background:transparent!important;mix-blend-mode:normal;filter:none;box-shadow:none}
-@media(max-width:600px){.align-wordmark-logo{width:124px}.gate-logo-wrap{width:min(300px,78vw);min-height:105px;margin-bottom:14px}}
+.gate-logo-wrap{position:relative;width:min(330px,76vw);margin:0 auto 16px;display:block}.gate-logo-fallback{display:none!important}.gate-brand-lockup{position:relative;z-index:2;display:block;width:100%;height:auto;object-fit:contain;background:transparent!important;mix-blend-mode:normal;filter:none;box-shadow:none}
+@media(max-width:600px){.align-wordmark-logo{width:124px}.gate-logo-wrap{width:min(300px,78vw);margin-bottom:14px}}
 </style>
 
 </head>
 <body>
-<div class="gate" role="dialog" aria-modal="true" aria-labelledby="gate-title"><div class="gate-card"><div class="gate-logo-wrap"><div class="gate-logo-fallback" aria-hidden="true"><strong>ALIGN</strong><span>BELONG TO SOMETHING</span></div><img class="gate-brand-lockup" src="assets/align-primary.png?v=transparent-5" alt="ALIGN — Belong to Something" onerror="this.style.display='none';this.previousElementSibling.style.display='flex'"></div><h2 id="gate-title">Tu ciudad,<br>vista diferente.</h2><p class="gate-copy">Experiencias, lugares y beneficios seleccionados para quienes buscan vivir algo más.</p><button class="gate-btn" type="button">Entrar a la experiencia</button></div></div>
+<div class="gate" role="dialog" aria-modal="true" aria-labelledby="gate-title"><div class="gate-card"><div class="gate-logo-wrap"><img id="exact-landing-logo" class="gate-brand-lockup" alt="ALIGN" style="visibility:hidden"></div><h2 id="gate-title">Tu ciudad,<br>vista diferente.</h2><p class="gate-copy">Experiencias, lugares y beneficios seleccionados para quienes buscan vivir algo más.</p><button class="gate-btn" type="button">Entrar a la experiencia</button></div></div>
 <nav class="nav"><a class="brand align-logo-link" href="#inicio"><img class="align-wordmark-logo" src="assets/align-wordmark.png?v=transparent-5" alt="ALIGN — Belong to Something"></a><div class="navlinks"><a href="#beneficios">Beneficios</a><a href="#membresias">Membresías</a><a href="#eventos">Experiencias</a><a class="login" href="login.html">Ya soy miembro</a></div></nav>
 <main>
 <section id="inicio" class="hero"><div class="hero-inner"><p class="eyebrow">Tampico · Madero · Altamira</p><h1>La misma ciudad.<br>Distinta experiencia.</h1><p>Beneficios seleccionados, experiencias exclusivas y una comunidad para vivir tu ciudad de una forma diferente.</p><div class="actions"><a class="btn primary" href="#membresias">Registrarme</a><a class="btn soft" href="login.html">Ya soy miembro</a></div></div></section>
@@ -61,6 +61,7 @@ body.is-locked{overflow:hidden}.gate{position:fixed;z-index:1000;inset:0;display
 </main>
 <footer><span>© 2026 ALIGN Membership</span><span>Tampico · Madero · Altamira</span></footer>
 <div class="mobile-cta"><a class="btn primary" href="#membresias">Registrarme</a><a class="btn soft" href="login.html">Ya soy miembro</a></div>
+<script>(()=>{const logo=document.getElementById('exact-landing-logo');if(!logo)return;const parts=['assets/exact-logo/part0.txt','assets/exact-logo/part1.txt','assets/exact-logo/part2.txt','assets/exact-logo/part3.txt','assets/exact-logo/part4.txt','assets/exact-logo/part5.txt','assets/exact-logo/part6.txt'];Promise.all(parts.map(u=>fetch(u,{cache:'force-cache'}).then(r=>{if(!r.ok)throw new Error('logo');return r.text()}))).then(chunks=>{logo.onload=()=>{logo.style.visibility='visible'};logo.src='data:image/webp;base64,'+chunks.join('')}).catch(()=>{logo.style.display='none'})})();</script>
 <script>(()=>{const gate=document.querySelector('.gate'),button=document.querySelector('.gate-btn');if(!gate||!button)return;document.body.classList.add('is-locked');button.addEventListener('click',()=>{gate.classList.add('opening');document.body.classList.remove('is-locked');setTimeout(()=>gate.remove(),850)},{once:true})})();</script>
 </body>
 </html>
