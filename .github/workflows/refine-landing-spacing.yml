@@ -1,0 +1,48 @@
+name: Refine ALIGN landing spacing
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/refine-landing-spacing.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  refine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refine landing spacing only
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text()
+          replacements = {
+            'body.is-locked{overflow:hidden}.gate{position:fixed;z-index:1000;inset:0;display:grid;place-items:center;overflow:hidden;padding:28px;text-align:center;':
+            'body.is-locked{overflow:hidden}.gate{position:fixed;z-index:1000;inset:0;display:grid;place-items:center;overflow:hidden;padding:clamp(22px,4vw,38px);text-align:center;',
+            '.gate-card{position:relative;z-index:1;width:min(620px,94vw);display:flex;flex-direction:column;align-items:center;animation:gateEnter 1.1s ease both}':
+            '.gate-card{position:relative;z-index:1;width:min(560px,92vw);display:flex;flex-direction:column;align-items:center;animation:gateEnter 1.1s ease both}',
+            '.gate h2{margin:0;font-size:clamp(2.5rem,7vw,5.4rem);line-height:.98;letter-spacing:-.045em}':
+            '.gate h2{margin:0 auto;max-width:520px;font-size:clamp(2.5rem,7vw,5.4rem);line-height:.98;letter-spacing:-.045em}',
+            '.gate-copy{max-width:430px;margin:20px auto 30px;color:#c8ccd2;line-height:1.6}':
+            '.gate-copy{max-width:405px;margin:18px auto 24px;color:#c8ccd2;line-height:1.6}',
+            '.gate-logo-wrap{position:relative;width:min(175px,40.6vw);margin:0 auto 22px;display:block}':
+            '.gate-logo-wrap{position:relative;width:min(175px,40.6vw);margin:0 auto 26px;display:block}',
+            '@media(max-width:600px){.align-wordmark-logo{width:124px}.gate-logo-wrap{width:min(154px,39.2vw);margin-bottom:18px}}':
+            '@media(max-width:600px){.align-wordmark-logo{width:124px}.gate-logo-wrap{width:min(154px,39.2vw);margin-bottom:21px}}'
+          }
+          for old, new in replacements.items():
+            if old not in s:
+              raise SystemExit(f'Missing expected snippet: {old[:90]}')
+            s = s.replace(old, new, 1)
+          p.write_text(s)
+      - name: Commit spacing refinement
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Refine ALIGN landing spacing" || exit 0
+          git push
