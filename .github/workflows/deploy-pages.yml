@@ -19,14 +19,6 @@ jobs:
       - name: Checkout main
         uses: actions/checkout@v4
 
-      - name: One-time test ALIGN Apps Script registration
-        run: |
-          set -euo pipefail
-          URL='https://script.google.com/macros/s/AKfycbwlb66v_LE_EwmV-P8NBCIFx10G6Nfv_TbM9DOtx7KzB9NE1SWkh1nRcS6ozDJ3AAw2/exec'
-          PAYLOAD='{"action":"register_payment","mode":"ALIGN_TEST_2026","socioId":"SOC-E2E-20260817-2205","username":"testaug172205","planName":"The Brotherhood","passwordHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","paymentId":"PAY-E2E-20260817-2205","amount":0,"reference":"E2E-CHATGPT-20260817-2205","members":[{"integranteId":"SOC-E2E-20260817-2205-P1","name":"Prueba E2E ALIGN","email":"","phone":"","memberCode":"AL-E2E-2205","token":"ALIGN-E2E-20260817-2205"}]}'
-          curl -L --fail --silent --show-error -H 'Content-Type: text/plain;charset=utf-8' --data-binary "$PAYLOAD" "$URL" | tee /tmp/register.json
-          grep -q '"ok":true' /tmp/register.json
-
       - name: Publish main to gh-pages
         uses: peaceiris/actions-gh-pages@v4
         with:
