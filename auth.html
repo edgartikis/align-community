@@ -1,14 +1,17 @@
-<!doctype html><html lang="es-MX"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Acceso · ALIGN</title><style>:root{--bg:#050812;--panel:#0d1727;--text:#f5f2ec;--muted:#aeb6c3;--line:rgba(255,255,255,.15);--gold:#e3c58f}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 70% 20%,#243a5a,transparent 35%),linear-gradient(135deg,#030711,#0b1728);color:var(--text);font-family:Arial,sans-serif}a{color:inherit;text-decoration:none}.top{padding:25px 5vw;display:flex;justify-content:space-between}.brand{font-family:Georgia,serif;letter-spacing:.28em;font-size:1.4rem}.wrap{min-height:calc(100vh - 80px);display:grid;place-items:center;padding:30px 18px}.card{width:min(520px,100%);padding:34px;border:1px solid var(--line);border-radius:22px;background:rgba(13,23,39,.82);backdrop-filter:blur(12px)}.badge{display:block;width:max-content;margin:auto;padding:7px 10px;border:1px solid rgba(227,197,143,.35);border-radius:999px;color:var(--gold);font-size:.72rem;text-transform:uppercase}.mark{width:68px;height:68px;margin:18px auto;border:1px solid rgba(255,255,255,.5);border-radius:50%;display:grid;place-items:center;font-family:Georgia,serif;font-size:2.5rem}h1{text-align:center;font-family:Georgia,serif;font-weight:500;font-size:3rem;margin:0}.sub{text-align:center;color:var(--muted);line-height:1.6}.field{margin:15px 0}.field label{display:block;margin-bottom:7px;color:#c1c8d2;font-size:.75rem;text-transform:uppercase}.field input{width:100%;padding:14px;border:1px solid var(--line);border-radius:11px;background:rgba(0,0,0,.22);color:white}.primary{width:100%;padding:14px;border:1px solid rgba(255,255,255,.4);border-radius:11px;background:#17304f;color:white;font-weight:bold}.note,.msg{margin-top:17px;padding:13px;border:1px solid var(--line);border-radius:11px;color:var(--muted);line-height:1.5;font-size:.85rem}.msg{display:none;color:var(--gold)}</style>
-<link rel="icon" type="image/png" href="assets/align-primary.png?v=transparent-3">
-<style id="align-official-brand">
-.align-logo-link,.align-logo-block{display:inline-flex!important;align-items:center!important;font-size:0!important;letter-spacing:0!important;line-height:1!important}
-.align-wordmark-logo{display:block;width:clamp(118px,14vw,158px);height:auto;max-width:42vw;object-fit:contain}
-.align-symbol-logo{display:flex!important;align-items:center!important;justify-content:center!important;font-size:0!important;border:0!important;border-radius:0!important;background:transparent!important;overflow:visible!important}
-.align-symbol-logo .align-primary-logo{display:block;width:auto;height:100%;max-width:100%;object-fit:contain}
-.gate-mark.align-symbol-logo{width:84px;height:114px;margin-left:auto;margin-right:auto}
-.mark.align-symbol-logo{width:68px;height:92px;margin-left:auto;margin-right:auto}
-.empty-mark.align-symbol-logo{width:82px;height:112px;margin-left:auto;margin-right:auto}
-.logo.align-card-logo{display:block;width:138px;height:auto;object-fit:contain}
-@media(max-width:600px){.align-wordmark-logo{width:124px}.gate-mark.align-symbol-logo{width:70px;height:96px}}
-</style>
-</head><body><header class="top"><a class="brand align-logo-link" href="index.html"><img class="align-wordmark-logo" src="assets/align-wordmark.png" alt="ALIGN — Belong to Something"></a><a href="index.html">Volver</a></header><main class="wrap"><section class="card"><span class="badge">Modo prueba operativa</span><div class="mark align-symbol-logo"><img class="align-primary-logo" src="assets/align-primary.png?v=transparent-3" alt="ALIGN"></div><h1>Tu acceso ALIGN.</h1><p class="sub">Usa tu correo y código de socio para probar el recorrido. Este acceso todavía no sustituye una autenticación segura.</p><form id="form"><div class="field"><label>Nombre</label><input id="name" required placeholder="Nombre completo"></div><div class="field"><label>Correo</label><input id="email" required type="email" placeholder="correo@ejemplo.com"></div><div class="field"><label>Código de socio</label><input id="code" required placeholder="AL-BLK-000001"></div><button class="primary">Entrar al portal de prueba</button></form><div class="msg" id="msg"></div><p class="note"><strong>No se guardan contraseñas ni datos bancarios.</strong> El acceso se guarda únicamente en este navegador para probar la experiencia. Google y las cuentas reales se habilitarán después.</p></section></main><script>form.onsubmit=e=>{e.preventDefault();const c=code.value.trim().toUpperCase();if(!c.startsWith('AL-')){msg.style.display='block';msg.textContent='El código debe comenzar con AL-.';return}localStorage.setItem('align_demo_profile',JSON.stringify({name:name.value.trim(),email:email.value.trim().toLowerCase(),code:c,level:c.includes('BLK')?'Black':'Society'}));location.href='dashboard.html'};</script></body></html>
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>ALIGN Access</title>
+  <link rel="icon" type="image/png" href="assets/align-primary.png?v=transparent-3">
+</head>
+<body>
+  <script>
+    location.replace('login-github.html'+location.search+location.hash);
+  </script>
+</body>
+</html>
