@@ -19,6 +19,73 @@ jobs:
       - name: Checkout main
         uses: actions/checkout@v4
 
+      - name: Optimize homepage carousel
+        shell: bash
+        run: |
+          python -m pip install --quiet Pillow
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageOps
+
+          root = Path('.')
+          out_dir = root / 'assets' / 'carousel'
+          out_dir.mkdir(parents=True, exist_ok=True)
+
+          images = [
+              ('nuva-100.png', 'nuva.webp'),
+              ('Global1.PNG', 'global-gym.webp'),
+              ('Ginger1.PNG', 'gingers.webp'),
+              ('BURGER1.jpeg', 'buns-and-bros.webp'),
+              ('23B1C7B5-78F0-44A9-9C88-728FDFED2A23.png', 'uspin.webp'),
+              ('16E29357-5A81-4689-8681-5AEA57D3D805.png', 'padel.webp'),
+              ('CAPRI5-1.jpeg', 'velamar.webp'),
+              ('Sante1.PNG', 'sante.webp'),
+              ('public/images/events/WhatsApp Image 2026-07-23 at 6.31.29 PM.jpeg', 'vaca-fishing.webp'),
+              ('ranchomx-1.png', 'rancho-mx.webp'),
+              ('marea-1.jpg', 'marea-baja.webp'),
+              ('public/images/events/WhatsApp Image 2026-07-23 at 6.31.30 PM.jpeg', 'boat-party.webp'),
+              ('caballo1.png', 'horse-riding.webp'),
+              ('herradura-1.jpg.png', 'charreadas.webp'),
+          ]
+
+          replacements = []
+          for source_name, target_name in images:
+              source = root / source_name
+              target = out_dir / target_name
+              if not source.exists():
+                  raise FileNotFoundError(source)
+              with Image.open(source) as im:
+                  im = ImageOps.exif_transpose(im)
+                  im.thumbnail((720, 900), Image.Resampling.LANCZOS)
+                  if im.mode not in ('RGB', 'RGBA'):
+                      im = im.convert('RGB')
+                  im.save(target, 'WEBP', quality=78, method=6)
+              replacements.append((source_name.replace(' ', '%20') if source_name.startswith('public/') else source_name, f'assets/carousel/{target_name}'))
+
+          index_path = root / 'index.html'
+          html = index_path.read_text(encoding='utf-8')
+
+          # Replace only the carousel image references, preserving card order and links.
+          for source_url, optimized_url in replacements:
+              old = f'<img src="{source_url}"'
+              first = f'<img loading="eager" decoding="async" fetchpriority="high" src="{optimized_url}"'
+              lazy = f'<img loading="lazy" decoding="async" fetchpriority="low" src="{optimized_url}"'
+              if old not in html:
+                  raise RuntimeError(f'Carousel image reference not found: {source_url}')
+              # The first four cards get eager loading; the rest load lazily.
+              position = replacements.index((source_url, optimized_url))
+              html = html.replace(old, first if position < 4 else lazy, 1)
+              # Duplicate half of the infinite carousel always loads lazily and reuses cache.
+              html = html.replace(old, lazy)
+
+          index_path.write_text(html, encoding='utf-8')
+
+          original = sum((root / src).stat().st_size for src, _ in images)
+          optimized = sum((out_dir / dst).stat().st_size for _, dst in images)
+          print(f'Carousel originals: {original / 1024 / 1024:.2f} MB')
+          print(f'Carousel optimized: {optimized / 1024 / 1024:.2f} MB')
+          PY
+
       - name: Publish main to gh-pages
         uses: peaceiris/actions-gh-pages@v4
         with:
