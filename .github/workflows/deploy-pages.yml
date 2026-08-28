@@ -65,6 +65,12 @@ jobs:
           index_path = root / 'index.html'
           html = index_path.read_text(encoding='utf-8')
 
+          # Keep the welcome-cover logo on the stable official ALIGN asset.
+          html = html.replace(
+              'src="image-gen-1(20260816-192750).png?v=20260816-192750"',
+              'src="assets/align-primary.png?v=welcome-logo-2"'
+          )
+
           # Replace only the carousel image references, preserving card order and links.
           for source_url, optimized_url in replacements:
               old = f'<img src="{source_url}"'
