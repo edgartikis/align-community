@@ -26,6 +26,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           from PIL import Image, ImageOps
+          import re
 
           root = Path('.')
           out_dir = root / 'assets' / 'carousel'
@@ -65,17 +66,23 @@ jobs:
           index_path = root / 'index.html'
           html = index_path.read_text(encoding='utf-8')
 
-          # Replace only the carousel image references, preserving card order, links, and welcome cover logo.
+          # Welcome cover: use the integrated ram + ALIGN mark approved for the cover.
+          html = re.sub(
+              r'(<img class="gate-brand-lockup" src=")[^"]+(" alt="ALIGN">)',
+              r'\1assets/align-welcome-official.svg?v=official-1\2',
+              html,
+              count=1,
+          )
+
+          # Replace only the carousel image references, preserving card order and links.
           for source_url, optimized_url in replacements:
               old = f'<img src="{source_url}"'
               first = f'<img loading="eager" decoding="async" fetchpriority="high" src="{optimized_url}"'
               lazy = f'<img loading="lazy" decoding="async" fetchpriority="low" src="{optimized_url}"'
               if old not in html:
                   raise RuntimeError(f'Carousel image reference not found: {source_url}')
-              # The first four cards get eager loading; the rest load lazily.
               position = replacements.index((source_url, optimized_url))
               html = html.replace(old, first if position < 4 else lazy, 1)
-              # Duplicate half of the infinite carousel always loads lazily and reuses cache.
               html = html.replace(old, lazy)
 
           index_path.write_text(html, encoding='utf-8')
