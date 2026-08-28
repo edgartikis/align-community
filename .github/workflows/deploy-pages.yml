@@ -74,6 +74,10 @@ jobs:
               count=1,
           )
 
+          # Make the approved welcome-cover logo 15% larger on desktop and mobile.
+          html = html.replace('width:min(175px,40.6vw)', 'width:min(201px,46.7vw)')
+          html = html.replace('width:min(154px,39.2vw)', 'width:min(177px,45.1vw)')
+
           # Replace only the carousel image references, preserving card order and links.
           for source_url, optimized_url in replacements:
               old = f'<img src="{source_url}"'
