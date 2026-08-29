@@ -19,7 +19,7 @@ jobs:
       - name: Checkout main
         uses: actions/checkout@v4
 
-      - name: Optimize homepage carousel
+      - name: Optimize site images
         shell: bash
         run: |
           python -m pip install --quiet Pillow
@@ -29,8 +29,12 @@ jobs:
           import re
 
           root = Path('.')
-          out_dir = root / 'assets' / 'carousel'
-          out_dir.mkdir(parents=True, exist_ok=True)
+
+          # ------------------------------------------------------------
+          # Homepage carousel
+          # ------------------------------------------------------------
+          carousel_dir = root / 'assets' / 'carousel'
+          carousel_dir.mkdir(parents=True, exist_ok=True)
 
           images = [
               ('nuva-100.png', 'nuva.webp'),
@@ -64,7 +68,7 @@ jobs:
           replacements = []
           for source_name, target_name in images:
               source = root / source_name
-              target = out_dir / target_name
+              target = carousel_dir / target_name
               if not source.exists():
                   raise FileNotFoundError(source)
               with Image.open(source) as im:
@@ -75,25 +79,72 @@ jobs:
                   im.save(target, 'WEBP', quality=78, method=6)
               replacements.append((source_name.replace(' ', '%20') if source_name.startswith('public/') else source_name, f'assets/carousel/{target_name}'))
 
-          # Replace only the carousel image references, preserving card order, links, and welcome cover logo.
+          # Replace only carousel image references, preserving card order, links and welcome logo.
           for source_url, optimized_url in replacements:
               old = f'<img src="{source_url}"'
               first = f'<img loading="eager" decoding="async" fetchpriority="high" src="{optimized_url}"'
               lazy = f'<img loading="lazy" decoding="async" fetchpriority="low" src="{optimized_url}"'
               if old not in html:
                   raise RuntimeError(f'Carousel image reference not found: {source_url}')
-              # The first four cards get eager loading; the rest load lazily.
               position = replacements.index((source_url, optimized_url))
               html = html.replace(old, first if position < 4 else lazy, 1)
-              # Duplicate half of the infinite carousel always loads lazily and reuses cache.
               html = html.replace(old, lazy)
 
           index_path.write_text(html, encoding='utf-8')
 
-          original = sum((root / src).stat().st_size for src, _ in images)
-          optimized = sum((out_dir / dst).stat().st_size for _, dst in images)
-          print(f'Carousel originals: {original / 1024 / 1024:.2f} MB')
-          print(f'Carousel optimized: {optimized / 1024 / 1024:.2f} MB')
+          # ------------------------------------------------------------
+          # Boris Marisquería page: optimize BORIS1–BORIS8 for web
+          # ------------------------------------------------------------
+          boris_dir = root / 'assets' / 'boris'
+          boris_dir.mkdir(parents=True, exist_ok=True)
+          boris_images = [(f'BORIS{i}.jpeg', f'boris{i}.webp') for i in range(1, 9)]
+
+          original_boris = 0
+          optimized_boris = 0
+          for source_name, target_name in boris_images:
+              source = root / source_name
+              target = boris_dir / target_name
+              if not source.exists():
+                  raise FileNotFoundError(source)
+              original_boris += source.stat().st_size
+              with Image.open(source) as im:
+                  im = ImageOps.exif_transpose(im)
+                  # Large enough for full-screen hero but far lighter than camera originals.
+                  im.thumbnail((1600, 1600), Image.Resampling.LANCZOS)
+                  if im.mode not in ('RGB', 'RGBA'):
+                      im = im.convert('RGB')
+                  im.save(target, 'WEBP', quality=76, method=6)
+              optimized_boris += target.stat().st_size
+
+          boris_path = root / 'boris-marisqueria.html'
+          boris_html = boris_path.read_text(encoding='utf-8')
+
+          for i in range(1, 9):
+              boris_html = boris_html.replace(f'BORIS{i}.jpeg', f'assets/boris/boris{i}.webp')
+
+          # First hero image gets priority; the rest decode asynchronously.
+          boris_html = boris_html.replace(
+              '<img class="hero-slide active" src="assets/boris/boris1.webp"',
+              '<img class="hero-slide active" loading="eager" decoding="async" fetchpriority="high" src="assets/boris/boris1.webp"',
+              1,
+          )
+          for i in range(2, 9):
+              boris_html = boris_html.replace(
+                  f'<img class="hero-slide" src="assets/boris/boris{i}.webp"',
+                  f'<img class="hero-slide" decoding="async" src="assets/boris/boris{i}.webp"',
+                  1,
+              )
+
+          # Gallery stays lazy-loaded and uses the same optimized files.
+          boris_html = boris_html.replace('loading="lazy" src="assets/boris/', 'loading="lazy" decoding="async" src="assets/boris/')
+          boris_path.write_text(boris_html, encoding='utf-8')
+
+          original_carousel = sum((root / src).stat().st_size for src, _ in images)
+          optimized_carousel = sum((carousel_dir / dst).stat().st_size for _, dst in images)
+          print(f'Carousel originals: {original_carousel / 1024 / 1024:.2f} MB')
+          print(f'Carousel optimized: {optimized_carousel / 1024 / 1024:.2f} MB')
+          print(f'Boris originals: {original_boris / 1024 / 1024:.2f} MB')
+          print(f'Boris optimized: {optimized_boris / 1024 / 1024:.2f} MB')
           PY
 
       - name: Publish main to gh-pages
