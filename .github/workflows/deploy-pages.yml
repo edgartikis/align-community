@@ -152,6 +152,11 @@ jobs:
           print(f'Boris optimized: {optimized_boris / 1024 / 1024:.2f} MB')
           PY
 
+      - name: Optimize remaining website images
+        shell: bash
+        run: |
+          python scripts/optimize_site.py
+
       - name: Publish main to gh-pages
         uses: peaceiris/actions-gh-pages@v4
         with:
