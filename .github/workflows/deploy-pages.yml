@@ -57,7 +57,6 @@ jobs:
           index_path = root / 'index.html'
           html = index_path.read_text(encoding='utf-8')
 
-          # Boris is inserted after Buns & Bros in both halves of the infinite carousel.
           if 'href="boris-marisqueria.html"' not in html:
               boris_card = '<a class="ally-mini" href="boris-marisqueria.html"><img src="BORIS VERTICAL.png" alt="Boris Marisquería"><div class="ally-copy"><span>Restaurants · Mariscos</span><h3>Boris Marisquería</h3><p>Mariscos y beneficios exclusivos ALIGN.</p></div></a>'
               buns_pattern = r'(<a class="ally-mini" href="buns-and-bros\.html">.*?</a>)'
@@ -79,7 +78,6 @@ jobs:
                   im.save(target, 'WEBP', quality=78, method=6)
               replacements.append((source_name.replace(' ', '%20') if source_name.startswith('public/') else source_name, f'assets/carousel/{target_name}'))
 
-          # Replace only carousel image references, preserving card order, links and welcome logo.
           for source_url, optimized_url in replacements:
               old = f'<img src="{source_url}"'
               first = f'<img loading="eager" decoding="async" fetchpriority="high" src="{optimized_url}"'
@@ -92,9 +90,6 @@ jobs:
 
           index_path.write_text(html, encoding='utf-8')
 
-          # ------------------------------------------------------------
-          # Boris Marisquería page: optimize BORIS1–BORIS8 for web
-          # ------------------------------------------------------------
           boris_dir = root / 'assets' / 'boris'
           boris_dir.mkdir(parents=True, exist_ok=True)
           boris_images = [(f'BORIS{i}.jpeg', f'boris{i}.webp') for i in range(1, 9)]
@@ -117,11 +112,8 @@ jobs:
 
           boris_path = root / 'boris-marisqueria.html'
           boris_html = boris_path.read_text(encoding='utf-8')
-
           for i in range(1, 9):
               boris_html = boris_html.replace(f'BORIS{i}.jpeg', f'assets/boris/boris{i}.webp')
-
-          # First hero image gets priority; the rest decode asynchronously.
           boris_html = boris_html.replace(
               '<img class="hero-slide active" src="assets/boris/boris1.webp"',
               '<img class="hero-slide active" loading="eager" decoding="async" fetchpriority="high" src="assets/boris/boris1.webp"',
@@ -133,9 +125,6 @@ jobs:
                   f'<img class="hero-slide" decoding="async" src="assets/boris/boris{i}.webp"',
                   1,
               )
-
-          # Safari can delay the second gallery row when native lazy loading is used.
-          # The optimized files are small enough to load all eight immediately.
           boris_html = boris_html.replace('loading="lazy" src="assets/boris/', 'loading="eager" decoding="async" src="assets/boris/')
           boris_html = boris_html.replace(
               '.gallery figure{margin:0;min-height:300px;overflow:hidden;background:#17323d}',
@@ -160,7 +149,8 @@ jobs:
       - name: Optimize referenced website videos
         shell: bash
         run: |
-          ffmpeg -version >/dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
           python scripts/optimize_videos.py
 
       - name: Publish main to gh-pages
