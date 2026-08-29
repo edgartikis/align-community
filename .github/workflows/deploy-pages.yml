@@ -157,6 +157,12 @@ jobs:
         run: |
           python scripts/optimize_site.py
 
+      - name: Optimize referenced website videos
+        shell: bash
+        run: |
+          ffmpeg -version >/dev/null
+          python scripts/optimize_videos.py
+
       - name: Publish main to gh-pages
         uses: peaceiris/actions-gh-pages@v4
         with:
