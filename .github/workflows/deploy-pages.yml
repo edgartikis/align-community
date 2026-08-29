@@ -26,6 +26,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           from PIL import Image, ImageOps
+          import re
 
           root = Path('.')
           out_dir = root / 'assets' / 'carousel'
@@ -36,6 +37,7 @@ jobs:
               ('Global1.PNG', 'global-gym.webp'),
               ('Ginger1.PNG', 'gingers.webp'),
               ('BURGER1.jpeg', 'buns-and-bros.webp'),
+              ('BORIS VERTICAL.png', 'boris-marisqueria.webp'),
               ('23B1C7B5-78F0-44A9-9C88-728FDFED2A23.png', 'uspin.webp'),
               ('16E29357-5A81-4689-8681-5AEA57D3D805.png', 'padel.webp'),
               ('CAPRI5-1.jpeg', 'velamar.webp'),
@@ -47,6 +49,17 @@ jobs:
               ('caballo1.png', 'horse-riding.webp'),
               ('herradura-1.jpg.png', 'charreadas.webp'),
           ]
+
+          index_path = root / 'index.html'
+          html = index_path.read_text(encoding='utf-8')
+
+          # Boris is inserted after Buns & Bros in both halves of the infinite carousel.
+          if 'href="boris-marisqueria.html"' not in html:
+              boris_card = '<a class="ally-mini" href="boris-marisqueria.html"><img src="BORIS VERTICAL.png" alt="Boris Marisquería"><div class="ally-copy"><span>Restaurants · Mariscos</span><h3>Boris Marisquería</h3><p>Mariscos y beneficios exclusivos ALIGN.</p></div></a>'
+              buns_pattern = r'(<a class="ally-mini" href="buns-and-bros\.html">.*?</a>)'
+              if len(re.findall(buns_pattern, html)) != 2:
+                  raise RuntimeError('Expected two Buns & Bros cards in infinite carousel')
+              html = re.sub(buns_pattern, lambda m: m.group(1) + '\n' + boris_card, html)
 
           replacements = []
           for source_name, target_name in images:
@@ -61,9 +74,6 @@ jobs:
                       im = im.convert('RGB')
                   im.save(target, 'WEBP', quality=78, method=6)
               replacements.append((source_name.replace(' ', '%20') if source_name.startswith('public/') else source_name, f'assets/carousel/{target_name}'))
-
-          index_path = root / 'index.html'
-          html = index_path.read_text(encoding='utf-8')
 
           # Replace only the carousel image references, preserving card order, links, and welcome cover logo.
           for source_url, optimized_url in replacements:
