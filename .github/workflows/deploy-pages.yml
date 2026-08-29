@@ -109,7 +109,6 @@ jobs:
               original_boris += source.stat().st_size
               with Image.open(source) as im:
                   im = ImageOps.exif_transpose(im)
-                  # Large enough for full-screen hero but far lighter than camera originals.
                   im.thumbnail((1600, 1600), Image.Resampling.LANCZOS)
                   if im.mode not in ('RGB', 'RGBA'):
                       im = im.convert('RGB')
@@ -135,8 +134,14 @@ jobs:
                   1,
               )
 
-          # Gallery stays lazy-loaded and uses the same optimized files.
-          boris_html = boris_html.replace('loading="lazy" src="assets/boris/', 'loading="lazy" decoding="async" src="assets/boris/')
+          # Safari can delay the second gallery row when native lazy loading is used.
+          # The optimized files are small enough to load all eight immediately.
+          boris_html = boris_html.replace('loading="lazy" src="assets/boris/', 'loading="eager" decoding="async" src="assets/boris/')
+          boris_html = boris_html.replace(
+              '.gallery figure{margin:0;min-height:300px;overflow:hidden;background:#17323d}',
+              '.gallery figure{margin:0;aspect-ratio:4/3;min-height:0;overflow:hidden;background:#17323d}',
+              1,
+          )
           boris_path.write_text(boris_html, encoding='utf-8')
 
           original_carousel = sum((root / src).stat().st_size for src, _ in images)
