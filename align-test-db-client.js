@@ -1,6 +1,46 @@
 (function () {
   const endpoint = () => String(window.ALIGN_TEST_DB_URL || '').trim();
 
+  const enhanceAllyPortal = () => {
+    const path = String(window.location && window.location.pathname || '');
+    if (!path.includes('demo-aliados')) return;
+
+    const styleId = 'align-ally-premium-style';
+    if (!document.getElementById(styleId)) {
+      const link = document.createElement('link');
+      link.id = styleId;
+      link.rel = 'stylesheet';
+      link.href = 'portal-aliados-premium.css?v=20260831-1';
+      document.head.appendChild(link);
+    }
+
+    const applyEnhancements = () => {
+      document.body.classList.add('align-ally-premium');
+
+      const emptyLogo = document.querySelector('.empty-mark .align-primary-logo');
+      if (emptyLogo) {
+        emptyLogo.src = 'assets/align-welcome-official.svg?v=20260831-1';
+        emptyLogo.alt = 'ALIGN';
+        emptyLogo.classList.add('align-official-lockup');
+      }
+
+      const wordmark = document.querySelector('.align-wordmark-logo');
+      if (wordmark) {
+        wordmark.alt = 'ALIGN';
+        wordmark.setAttribute('loading', 'eager');
+        wordmark.setAttribute('decoding', 'async');
+      }
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', applyEnhancements, { once: true });
+    } else {
+      applyEnhancements();
+    }
+  };
+
+  enhanceAllyPortal();
+
   const DEMO_PASSWORD_HASH = '9eaccd2c583494f7983e82bedb544bfd29fca0955c42020c4b04ecc0b9058076';
   const DEMO_ACCOUNTS = {
     cordex2002: {
