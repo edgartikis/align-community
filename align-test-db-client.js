@@ -30,6 +30,44 @@
         wordmark.setAttribute('loading', 'eager');
         wordmark.setAttribute('decoding', 'async');
       }
+
+      try {
+        const businessSelect = document.querySelector('#business');
+        if (businessSelect && !businessSelect.querySelector('option[value="ancla"]')) {
+          const option = document.createElement('option');
+          option.value = 'ancla';
+          option.textContent = 'El Ancla del Canelo';
+          businessSelect.appendChild(option);
+        }
+
+        if (typeof OFFERS !== 'undefined' && !OFFERS.ancla) {
+          OFFERS.ancla = {
+            id: 'ALI-012',
+            name: 'El Ancla del Canelo',
+            category: 'Food & Experiences',
+            plans: ['brotherhood', 'duo', 'circle'],
+            promotions: [
+              {
+                label: '20% OFF · Party Boat',
+                benefit: '20% de descuento en Party Boat',
+                rules: 'Aplica a la reservación del Party Boat para grupos de 12 a 20 personas. Sujeto a disponibilidad y reservación previa.',
+                discount: .20
+              },
+              {
+                label: '15% OFF · Comida +$500',
+                benefit: '15% de descuento en consumo de comida',
+                rules: 'Aplica únicamente cuando el consumo de comida sea mayor a $500 MXN. No aplica en cuentas de $500 o menos.',
+                get discount() {
+                  const gross = Number(document.getElementById('grossTicket')?.value || 0);
+                  return gross > 500 ? .15 : 0;
+                }
+              }
+            ]
+          };
+        }
+      } catch (error) {
+        console.warn('ALIGN ally portal enhancement:', error);
+      }
     };
 
     if (document.readyState === 'loading') {
