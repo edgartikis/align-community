@@ -64,6 +64,15 @@ jobs:
                   raise RuntimeError('Expected two Buns & Bros cards in infinite carousel')
               html = re.sub(buns_pattern, lambda m: m.group(1) + '\n' + boris_card, html)
 
+          # Use the exact uploaded logo asset for El Ancla del Canelo.
+          # The image is not regenerated or redrawn; it is displayed as IMG_0999.PNG.
+          if 'href="ancla-del-canelo.html?plan=brotherhood"' not in html:
+              ancla_card = '<a class="ally-mini" href="ancla-del-canelo.html?plan=brotherhood"><img src="IMG_0999.PNG" alt="Mariscos El Ancla del Canelo" style="object-fit:contain;background:#05070a;padding:18px"><div class="ally-copy"><span>Party Boat · Mariscos</span><h3>El Ancla del Canelo</h3><p>Party Boat, comida y beneficios para miembros ALIGN.</p></div></a>'
+              buns_pattern = r'(<a class="ally-mini" href="buns-and-bros\.html">.*?</a>)'
+              if len(re.findall(buns_pattern, html)) != 2:
+                  raise RuntimeError('Expected two Buns & Bros cards in infinite carousel')
+              html = re.sub(buns_pattern, lambda m: m.group(1) + '\n' + ancla_card, html)
+
           replacements = []
           for source_name, target_name in images:
               source = root / source_name
