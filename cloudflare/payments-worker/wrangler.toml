@@ -1,0 +1,21 @@
+name = "align-payments"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+SITE_ORIGIN = "https://alignmembers.com.mx"
+STRIPE_PRICE_BROTHERHOOD_FOUNDER = "price_1UCObaE3kQapeVY6EBBRWOxA"
+STRIPE_PRICE_BROTHERHOOD_REGULAR = "price_1UCOchE3kQapeVY6UmHvHCtv"
+STRIPE_PRICE_GIRLS_FOUNDER = "price_1UCOliE3kQapeVY67WH7jhsm"
+STRIPE_PRICE_GIRLS_REGULAR = "price_1UCOloE3kQapeVY6WI2JL0xV"
+STRIPE_PRICE_RANCH_FOUNDER = "price_1UCOluE3kQapeVY66TwmVRK5"
+STRIPE_PRICE_RANCH_REGULAR = "price_1UCOlyE3kQapeVY6Pr7LCFmy"
+STRIPE_PRICE_DUO = "price_1UCOm5E3kQapeVY6v4V9uYYj"
+STRIPE_PRICE_CIRCLE = "price_1UCOmAE3kQapeVY67pUKUfTm"
+
+# PAYMENT_STATE (KV) se agrega como binding en Cloudflare después del primer deploy.
+# Los secretos se configuran en Cloudflare, nunca en GitHub:
+# STRIPE_SECRET_KEY
+# STRIPE_WEBHOOK_SECRET
+# ALIGN_DB_URL
+# ALIGN_DB_SECRET
