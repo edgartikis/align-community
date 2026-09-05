@@ -1,0 +1,23 @@
+name = "align-payments"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+# Create this namespace in Cloudflare and replace the placeholders.
+[[kv_namespaces]]
+binding = "PAYMENT_STATE"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+preview_id = "REPLACE_WITH_PREVIEW_KV_NAMESPACE_ID"
+
+[vars]
+SITE_ORIGIN = "https://alignmembers.com.mx"
+
+# Add secrets with `wrangler secret put` instead of committing values:
+# STRIPE_SECRET_KEY
+# STRIPE_WEBHOOK_SECRET
+# STRIPE_PRICE_BROTHERHOOD
+# STRIPE_PRICE_GIRLS
+# STRIPE_PRICE_RANCH
+# STRIPE_PRICE_DUO
+# STRIPE_PRICE_CIRCLE
+# ALIGN_DB_URL
+# ALIGN_DB_SECRET
