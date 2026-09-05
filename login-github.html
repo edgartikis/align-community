@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="theme-color" content="#090a0c">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Log in | ALIGN</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
+  <script src="align-test-db-config.js"></script>
+  <script src="align-test-db-client.js"></script>
+  <style>
+    :root{--ink:#090a0c;--paper:#f5f2ec;--muted:#aaa59c;--line:rgba(245,242,236,.18)}
+    *{box-sizing:border-box}body{min-height:100vh;margin:0;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 50% 12%,#1c2939 0,#090a0c 54%);color:var(--paper);font-family:"DM Sans",sans-serif}.shell{width:min(100%,460px)}.brand{display:block;margin-bottom:28px;text-align:center;color:inherit;text-decoration:none;font-family:"Playfair Display",serif;font-size:1.35rem;letter-spacing:.2em}.panel{padding:42px 36px;border:1px solid var(--line);background:linear-gradient(145deg,rgba(23,42,69,.96),rgba(7,11,16,.98));box-shadow:0 28px 80px rgba(0,0,0,.42)}.eyebrow{margin:0 0 14px;font:500 .67rem "DM Mono",monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}h1{margin:0;font:500 clamp(2.6rem,10vw,4.4rem)/.95 "Playfair Display",serif;letter-spacing:-.045em}.copy{margin:18px 0 30px;color:#cbc7be;line-height:1.6}label{display:block;margin:18px 0 8px;font:500 .67rem "DM Mono",monospace;letter-spacing:.12em;text-transform:uppercase;color:#d9d4cb}input{width:100%;padding:15px 14px;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.24);color:#fff;font:500 1rem "DM Mono",monospace;outline:none}input:focus{border-color:#fff}.button{width:100%;margin-top:24px;padding:15px;border:1px solid #fff;background:#fff;color:#090a0c;font-weight:600;letter-spacing:.11em;text-transform:uppercase;cursor:pointer}.button:disabled{opacity:.55;cursor:wait}.error{min-height:22px;margin:14px 0 0;color:#ffd0d0;font-size:.84rem;line-height:1.45}.hint{margin:22px 0 0;color:#99958d;font-size:.76rem;line-height:1.5;text-align:center}.back{display:block;margin-top:22px;text-align:center;color:#bdb8af;text-decoration:none;font:500 .67rem "DM Mono",monospace;letter-spacing:.12em;text-transform:uppercase}@media(max-width:520px){.panel{padding:34px 24px}}
+  </style>
+<link rel="icon" type="image/png" href="assets/align-primary.png?v=transparent-3">
+<style id="align-official-brand">
+.align-logo-link,.align-logo-block{display:inline-flex!important;align-items:center!important;font-size:0!important;letter-spacing:0!important;line-height:1!important}.align-wordmark-logo{display:block;width:clamp(118px,14vw,158px);height:auto;max-width:42vw;object-fit:contain}@media(max-width:600px){.align-wordmark-logo{width:124px}}
+</style>
+</head>
+<body>
+  <main class="shell">
+    <a class="brand align-logo-link" href="./"><img decoding="async" class="align-wordmark-logo" src="assets/align-wordmark.png" alt="ALIGN — Belong to Something"></a>
+    <section class="panel">
+      <p class="eyebrow">Acceso de miembros</p>
+      <h1>Tu ciudad, desde dentro.</h1>
+      <p class="copy">Ingresa con el usuario y contraseña que creaste al contratar tu membresía.</p>
+      <form id="login-form" autocomplete="off">
+        <label for="username">Nombre de usuario</label>
+        <input id="username" name="align_user" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Tu usuario ALIGN" required maxlength="24">
+        <label for="password">Contraseña</label>
+        <input id="password" name="align_access_code" type="text" inputmode="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Contraseña" required maxlength="72" style="-webkit-text-security:disc">
+        <button class="button" type="submit">Entrar a mi portal</button>
+        <p id="error" class="error" role="alert"></p>
+      </form>
+      <p class="hint">Tu cuenta activa puede iniciar sesión desde cualquier navegador o dispositivo.</p>
+    </section>
+    <a class="back" href="./">← Volver a ALIGN</a>
+  </main>
+  <script>
+    const form=document.getElementById('login-form');
+    const usernameInput=document.getElementById('username');
+    const passwordInput=document.getElementById('password');
+    const errorBox=document.getElementById('error');
+    const button=form.querySelector('.button');
+    const PLAN_KEYS={'The Brotherhood':'brotherhood','Girls Club':'girls','Ranch Club':'ranch','Duo Club':'duo','Private Circle':'circle'};
+    const hashPassword=async value=>{const bytes=new TextEncoder().encode(value);const digest=await crypto.subtle.digest('SHA-256',bytes);return[...new Uint8Array(digest)].map(byte=>byte.toString(16).padStart(2,'0')).join('');};
+    const readGroup=()=>{try{return JSON.parse(localStorage.getItem('align_demo_group')||'null')}catch(_){return null}};
+    const saveAndOpen=(group,passwordHash)=>{const cards=(group.cards||[]).map((card,index)=>({...card,planKey:card.planKey||PLAN_KEYS[card.level]||'circle',position:card.position||index+1,groupId:card.groupId||group.socioId}));const primary=cards[0];if(!primary||!primary.token)throw new Error('La membresía no tiene una tarjeta válida.');const normalized={...group,cards,primary,account:{username:group.account?.username||group.username,passwordHash:passwordHash||group.account?.passwordHash||''}};localStorage.setItem('align_demo_group',JSON.stringify(normalized));localStorage.setItem('align_primary_token',primary.token);sessionStorage.setItem('align_member_token',primary.token);sessionStorage.removeItem('align_master_access');location.replace(`mi-membresia.html?token=${encodeURIComponent(primary.token)}&demo=1&v=${Date.now()}`);};
+    form.addEventListener('submit',async event=>{event.preventDefault();errorBox.textContent='';button.disabled=true;button.textContent='Entrando…';try{const username=usernameInput.value.trim().toLowerCase();const password=passwordInput.value;if(username==='mytime'&&password.toUpperCase()==='MYTIME'){sessionStorage.setItem('align_member_token','MYTIME');sessionStorage.setItem('align_master_access','1');location.replace(`mi-membresia.html?token=MYTIME&master=1&v=${Date.now()}`);return;}const passwordHash=await hashPassword(password);let remote=null;if(window.ALIGN_TEST_DB&&window.ALIGN_TEST_DB.enabled()){remote=await window.ALIGN_TEST_DB.login(username,passwordHash);if(remote&&remote.ok){saveAndOpen({socioId:remote.socioId,username:remote.username,cards:remote.cards,account:{username:remote.username,passwordHash}},passwordHash);return;}}const local=readGroup();const localMatches=local&&local.account&&String(local.account.username||'').toLowerCase()===username&&local.account.passwordHash===passwordHash;if(localMatches){if(window.ALIGN_TEST_DB&&window.ALIGN_TEST_DB.enabled()){const sync=await window.ALIGN_TEST_DB.syncAccount(local);if(sync&&sync.ok){saveAndOpen(local,passwordHash);return;}if(remote&&remote.needsMigration){throw new Error(sync&&sync.error?sync.error:'No fue posible habilitar esta cuenta para otros dispositivos.');}}saveAndOpen(local,passwordHash);return;}if(remote&&remote.needsMigration)throw new Error('Esta cuenta fue creada antes del acceso multidispositivo. Inicia sesión una sola vez desde el navegador donde la creaste para sincronizarla; después funcionará en cualquier dispositivo.');if(remote&&!remote.networkError&&remote.error)throw new Error(remote.error);throw new Error('Usuario o contraseña incorrectos.');}catch(error){errorBox.textContent=error.message;button.disabled=false;button.textContent='Entrar a mi portal';}});
+  </script>
+</body>
+</html>
