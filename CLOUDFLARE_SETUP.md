@@ -20,7 +20,7 @@ Configuración inicial recomendada:
 - Production branch: `main`
 - Framework preset: None
 - Build command: dejar vacío
-- Build output directory: `/`
+- Build output directory: `.`
 - Compatibility date: `2026-09-05` o posterior
 
 ## 2. Crear D1
