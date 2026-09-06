@@ -9,6 +9,13 @@
     return [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');
   };
 
+  const normalizeUsername=value=>String(value||'')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g,'.')
+    .replace(/\.{2,}/g,'.')
+    .replace(/^\.+|\.+$/g,'');
+
   const start=()=>{
     const q=new URLSearchParams(location.search);
     const plan=String(q.get('plan')||'').toLowerCase();
@@ -28,14 +35,20 @@
     const note=document.querySelector('.summary .note');
     const status=document.getElementById('status');
     const error=document.getElementById('error');
+    const userInput=document.getElementById('user');
 
     if(eyebrow)eyebrow.textContent='Pago seguro / Sandbox';
     if(headingCopy)headingCopy.textContent='Serás redirigido al Checkout seguro de Stripe para completar tu suscripción mensual de prueba.';
-    if(methodsLead)methodsLead.textContent='Continúa al checkout seguro. Ahí podrás pagar con tarjeta y, cuando esté disponible, Apple Pay.';
-    if(hint)hint.textContent='Stripe maneja los datos de pago. ALIGN no almacena números de tarjeta.';
+    if(methodsLead)methodsLead.textContent='Continúa al Checkout de Stripe. En la siguiente pantalla podrás ingresar tarjeta y, si tu dispositivo lo permite, también usar Apple Pay.';
+    if(hint)hint.textContent='Los datos de tu tarjeta se capturan directamente en Stripe. ALIGN no almacena números de tarjeta.';
     if(note)note.innerHTML='<strong>Sandbox de Stripe.</strong><br>Esta prueba crea una suscripción TEST y no mueve dinero real.';
     if(separator)separator.style.display='none';
     if(manualBox)manualBox.style.display='none';
+
+    if(userInput){
+      const small=userInput.closest('.account')?.querySelector('.small');
+      if(small)small.textContent='Usuario de 4 a 24 caracteres. Puedes usar letras, números, punto, guion o guion bajo. Los espacios se convierten automáticamente en puntos.';
+    }
 
     const checkout=async()=>{
       try{
@@ -45,12 +58,14 @@
 
         if(!draft||!Array.isArray(draft.members)||!draft.members.length)throw new Error('No encontramos los datos de integrantes. Regresa al paso anterior y vuelve a continuar.');
 
-        const username=String(document.getElementById('user')?.value||'').trim().toLowerCase();
+        const rawUsername=String(userInput?.value||'');
+        const username=normalizeUsername(rawUsername);
         const password=String(document.getElementById('pass')?.value||'');
         const confirmation=String(document.getElementById('confirm')?.value||'');
         const consent=Boolean(document.getElementById('consent')?.checked);
 
-        if(!/^[a-z0-9._-]{4,24}$/i.test(username))throw new Error('El usuario debe tener de 4 a 24 caracteres.');
+        if(userInput&&username!==rawUsername.trim().toLowerCase())userInput.value=username;
+        if(!/^[a-z0-9._-]{4,24}$/i.test(username))throw new Error('El usuario debe tener de 4 a 24 caracteres y usar solo letras, números, punto, guion o guion bajo.');
         if(password.length<8||!/[A-Za-z]/.test(password)||!/[0-9]/.test(password))throw new Error('La contraseña debe tener mínimo 8 caracteres, una letra y un número.');
         if(password!==confirmation)throw new Error('Las contraseñas no coinciden.');
         if(!consent)throw new Error('Marca la casilla del Aviso de Privacidad para continuar.');
@@ -72,8 +87,8 @@
     };
 
     if(apple){
-      const label=apple.querySelector('span');
-      if(label)label.textContent='Continuar a Stripe';
+      apple.innerHTML='<span>Continuar al pago seguro</span>';
+      apple.setAttribute('aria-label','Continuar al Checkout seguro de Stripe');
       apple.onclick=checkout;
     }
   };
