@@ -198,17 +198,67 @@ async function verifyWebhook(rawBody, header, secret) {
 
 async function postDatabase(env, payload) {
   const url = required(env, "ALIGN_DB_URL"), secret = required(env, "ALIGN_DB_SECRET");
-  const response = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...payload, mode: "ALIGN_PROD_2026", secret }) });
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ...payload, mode: "ALIGN_PROD_2026", secret }),
+  });
   const text = await response.text();
-  let data; try { data = JSON.parse(text); } catch (_) { data = { ok: false, error: text }; }
-  if (!response.ok || !data?.ok) throw new Error(data?.error || "La base de ALIGN no confirmó la operación.");
+  let data = null;
+  try { data = JSON.parse(text); } catch (_) {}
+  if (!response.ok || !data?.ok) {
+    console.error("ALIGN database sync failed", {
+      status: response.status,
+      contentType: response.headers.get("content-type") || "",
+      preview: text.slice(0, 180),
+    });
+    throw new Error("La base de ALIGN no respondió correctamente.");
+  }
   return data;
+}
+
+function activationDatabasePayload(session, draftId, draft, members) {
+  return {
+    action: "register_payment",
+    paymentId: session.id,
+    reference: session.id,
+    stripeCustomerId: session.customer || "",
+    stripeSubscriptionId: session.subscription || "",
+    socioId: `STRIPE-${session.customer || draftId}`,
+    username: draft.username,
+    passwordHash: draft.passwordHash,
+    planKey: draft.plan,
+    planName: draft.planName,
+    pricingTier: draft.pricingTier,
+    amount: Number(session.amount_total || 0) / 100,
+    currency: String(session.currency || "mxn").toUpperCase(),
+    members,
+  };
+}
+
+async function retryActivationDatabaseSync(env, session, record) {
+  if (record.dbSynced !== false) return record;
+  const draftId = clean(session.metadata?.align_draft_id || session.client_reference_id, 80);
+  if (!draftId) return record;
+  const raw = await env.PAYMENT_STATE.get(`draft:${draftId}`);
+  if (!raw) return record;
+  const draft = JSON.parse(raw);
+  try {
+    await postDatabase(env, activationDatabasePayload(session, draftId, draft, record.members));
+    record.dbSynced = true;
+    record.dbSyncError = "";
+    await env.PAYMENT_STATE.put(`activation:${session.id}`, JSON.stringify(record), { expirationTtl: 60 * 60 * 24 * 365 });
+  } catch (error) {
+    record.dbSynced = false;
+    record.dbSyncError = "pending";
+  }
+  return record;
 }
 
 async function activationRecord(env, session) {
   const key = `activation:${session.id}`;
   const existing = await env.PAYMENT_STATE.get(key);
-  if (existing) return JSON.parse(existing);
+  if (existing) return retryActivationDatabaseSync(env, session, JSON.parse(existing));
 
   const draftId = clean(session.metadata?.align_draft_id || session.client_reference_id, 80);
   if (!draftId) throw new Error("Stripe no devolvió el identificador del registro.");
@@ -235,30 +285,28 @@ async function activationRecord(env, session) {
     photoUrl: "",
   }));
 
-  const record = { version: 1, sessionId: session.id, subscriptionId: session.subscription || "", customerId: session.customer || "", groupId, planKey: draft.plan, level: draft.planName, username: draft.username, members };
-
-  await postDatabase(env, {
-    action: "register_payment",
-    paymentId: session.id,
-    reference: session.id,
-    stripeCustomerId: session.customer || "",
-    stripeSubscriptionId: session.subscription || "",
-    socioId: `STRIPE-${session.customer || draftId}`,
-    username: draft.username,
-    passwordHash: draft.passwordHash,
+  const record = {
+    version: 2,
+    sessionId: session.id,
+    subscriptionId: session.subscription || "",
+    customerId: session.customer || "",
+    groupId,
     planKey: draft.plan,
-    planName: draft.planName,
-    pricingTier: draft.pricingTier,
-    amount: Number(session.amount_total || 0) / 100,
-    currency: String(session.currency || "mxn").toUpperCase(),
+    level: draft.planName,
+    username: draft.username,
     members,
-  });
+    dbSynced: false,
+    dbSyncError: "pending",
+  };
 
+  // Cloudflare KV is the operational source for the member card. Save the verified
+  // Stripe membership first so a reporting-sheet outage can never block access.
   for (const member of members) await env.PAYMENT_STATE.put(`member:${member.token}`, JSON.stringify(member));
   await env.PAYMENT_STATE.put(`group:${groupId}`, JSON.stringify({ groupId, tokens: members.map((m) => m.token) }));
   if (session.subscription) await env.PAYMENT_STATE.put(`subscription:${session.subscription}`, groupId);
   await env.PAYMENT_STATE.put(key, JSON.stringify(record), { expirationTtl: 60 * 60 * 24 * 365 });
-  return record;
+
+  return retryActivationDatabaseSync(env, session, record);
 }
 
 async function registerCheckout(env, session) { return activationRecord(env, session); }
@@ -273,7 +321,8 @@ async function updateGroupStatus(env, subscriptionId, status) {
   for (const token of group.tokens || []) {
     const raw = await env.PAYMENT_STATE.get(`member:${token}`);
     if (!raw) continue;
-    const member = JSON.parse(raw); member.status = status;
+    const member = JSON.parse(raw);
+    member.status = status;
     await env.PAYMENT_STATE.put(`member:${token}`, JSON.stringify(member));
   }
 }
@@ -281,24 +330,32 @@ async function updateGroupStatus(env, subscriptionId, status) {
 async function processEvent(env, event) {
   const object = event?.data?.object || {};
   switch (event.type) {
-    case "checkout.session.completed":
-      if (object.mode === "subscription" && ["paid", "no_payment_required"].includes(object.payment_status)) await registerCheckout(env, object);
+    case "checkout.session.completed": {
+      if (object.mode === "subscription" && ["paid", "no_payment_required"].includes(object.payment_status)) {
+        const record = await registerCheckout(env, object);
+        if (record.dbSynced === false) throw new Error("Sincronización con la base pendiente.");
+      }
       break;
-    case "invoice.paid":
-      await postDatabase(env, { action: "subscription_renewed", invoiceId: object.id || "", stripeCustomerId: object.customer || "", stripeSubscriptionId: object.subscription || object.parent?.subscription_details?.subscription || "", amount: Number(object.amount_paid || 0) / 100, currency: String(object.currency || "mxn").toUpperCase() });
-      await updateGroupStatus(env, object.subscription || object.parent?.subscription_details?.subscription || "", "Activa");
+    }
+    case "invoice.paid": {
+      const subscriptionId = object.subscription || object.parent?.subscription_details?.subscription || "";
+      await updateGroupStatus(env, subscriptionId, "Activa");
+      await postDatabase(env, { action: "subscription_renewed", invoiceId: object.id || "", stripeCustomerId: object.customer || "", stripeSubscriptionId: subscriptionId, amount: Number(object.amount_paid || 0) / 100, currency: String(object.currency || "mxn").toUpperCase() });
       break;
-    case "invoice.payment_failed":
-      await postDatabase(env, { action: "subscription_payment_failed", invoiceId: object.id || "", stripeCustomerId: object.customer || "", stripeSubscriptionId: object.subscription || object.parent?.subscription_details?.subscription || "" });
-      await updateGroupStatus(env, object.subscription || object.parent?.subscription_details?.subscription || "", "Pago pendiente");
+    }
+    case "invoice.payment_failed": {
+      const subscriptionId = object.subscription || object.parent?.subscription_details?.subscription || "";
+      await updateGroupStatus(env, subscriptionId, "Pago pendiente");
+      await postDatabase(env, { action: "subscription_payment_failed", invoiceId: object.id || "", stripeCustomerId: object.customer || "", stripeSubscriptionId: subscriptionId });
       break;
+    }
     case "customer.subscription.updated":
     case "customer.subscription.deleted": {
       const stripeStatus = object.status || (event.type.endsWith("deleted") ? "canceled" : "unknown");
-      await postDatabase(env, { action: "subscription_status", stripeCustomerId: object.customer || "", stripeSubscriptionId: object.id || "", status: stripeStatus, cancelAtPeriodEnd: Boolean(object.cancel_at_period_end), currentPeriodEnd: object.current_period_end || null });
       const active = ["active", "trialing"].includes(String(stripeStatus).toLowerCase());
       const pending = ["past_due", "unpaid", "incomplete"].includes(String(stripeStatus).toLowerCase());
       await updateGroupStatus(env, object.id || "", active ? "Activa" : pending ? "Pago pendiente" : "Inactiva");
+      await postDatabase(env, { action: "subscription_status", stripeCustomerId: object.customer || "", stripeSubscriptionId: object.id || "", status: stripeStatus, cancelAtPeriodEnd: Boolean(object.cancel_at_period_end), currentPeriodEnd: object.current_period_end || null });
       break;
     }
     default: break;
@@ -323,7 +380,11 @@ async function activateMembership(request, env) {
   const session = await stripeGet(env, `checkout/sessions/${encodeURIComponent(sessionId)}`);
   if (session.mode !== "subscription" || !["paid", "no_payment_required"].includes(session.payment_status)) return json({ pending: true }, 202, origin);
   const record = await activationRecord(env, session);
-  return json({ level: record.level, members: record.members.map(({ token, name, memberCode }) => ({ token, name, memberCode, memberUrl: `${siteOrigin(env)}/member.html?token=${encodeURIComponent(token)}` })) }, 200, origin);
+  return json({
+    level: record.level,
+    databaseSync: record.dbSynced ? "ok" : "pending",
+    members: record.members.map(({ token, name, memberCode }) => ({ token, name, memberCode, memberUrl: `${siteOrigin(env)}/member.html?token=${encodeURIComponent(token)}` })),
+  }, 200, origin);
 }
 
 async function memberCard(request, env) {
@@ -359,7 +420,9 @@ async function monthlyQr(request, env) {
   if (!raw) return json({ error: "Miembro no encontrado." }, 404, origin);
   const period = periodFor(), sig = await qrSignature(env, token, period);
   const validationUrl = new URL("/api/validate-member", apiOrigin(request));
-  validationUrl.searchParams.set("token", token); validationUrl.searchParams.set("period", period); validationUrl.searchParams.set("sig", sig);
+  validationUrl.searchParams.set("token", token);
+  validationUrl.searchParams.set("period", period);
+  validationUrl.searchParams.set("sig", sig);
   return json({ validationUrl: validationUrl.toString(), period }, 200, origin);
 }
 
