@@ -58,20 +58,20 @@ jobs:
           html = index_path.read_text(encoding='utf-8')
 
           # Social link preview for WhatsApp / iMessage / social networks.
-          social_meta = '''
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://alignmembers.com.mx/">
-<meta property="og:site_name" content="ALIGN">
-<meta property="og:title" content="ALIGN Membership">
-<meta property="og:description" content="La misma ciudad. Distinta experiencia.">
-<meta property="og:image" content="https://alignmembers.com.mx/assets/align-primary.png?v=20260905">
-<meta property="og:image:alt" content="ALIGN Membership">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="ALIGN Membership">
-<meta name="twitter:description" content="La misma ciudad. Distinta experiencia.">
-<meta name="twitter:image" content="https://alignmembers.com.mx/assets/align-primary.png?v=20260905">
-<link rel="canonical" href="https://alignmembers.com.mx/">
-'''.strip()
+          social_meta = "\n".join([
+              '<meta property="og:type" content="website">',
+              '<meta property="og:url" content="https://alignmembers.com.mx/">',
+              '<meta property="og:site_name" content="ALIGN">',
+              '<meta property="og:title" content="ALIGN Membership">',
+              '<meta property="og:description" content="La misma ciudad. Distinta experiencia.">',
+              '<meta property="og:image" content="https://alignmembers.com.mx/assets/align-primary.png?v=20260905">',
+              '<meta property="og:image:alt" content="ALIGN Membership">',
+              '<meta name="twitter:card" content="summary_large_image">',
+              '<meta name="twitter:title" content="ALIGN Membership">',
+              '<meta name="twitter:description" content="La misma ciudad. Distinta experiencia.">',
+              '<meta name="twitter:image" content="https://alignmembers.com.mx/assets/align-primary.png?v=20260905">',
+              '<link rel="canonical" href="https://alignmembers.com.mx/">',
+          ])
           if 'property="og:image"' not in html:
               html = html.replace(
                   '<title>ALIGN Membership</title>',
