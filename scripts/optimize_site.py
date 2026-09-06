@@ -185,6 +185,20 @@ def main() -> None:
             text_cache[html_file] = ''.join(pieces)
             rewritten_files.add(html_file)
 
+    # The public payment page is still kept simple in source, but the deployed
+    # version loads the Cloudflare/Stripe bridge so checkout never falls back to
+    # the old Netlify test endpoint or local card simulation.
+    pago_path = ROOT / 'pago.html'
+    if pago_path in text_cache:
+        pago_html = text_cache[pago_path]
+        bridge_tag = '<script src="stripe-checkout-bridge.js?v=20260906-1"></script>'
+        if bridge_tag not in pago_html:
+            if '</body>' not in pago_html:
+                raise RuntimeError('pago.html is missing </body>; cannot inject Stripe checkout bridge')
+            pago_html = pago_html.replace('</body>', bridge_tag + '</body>', 1)
+            text_cache[pago_path] = pago_html
+            rewritten_files.add(pago_path)
+
     for path in rewritten_files:
         path.write_text(text_cache[path], encoding='utf-8')
 
