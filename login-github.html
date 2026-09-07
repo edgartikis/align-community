@@ -27,13 +27,13 @@
       <p class="copy">Ingresa con el usuario y contraseña que creaste al contratar tu membresía.</p>
       <form id="login-form" autocomplete="on">
         <label for="username">Nombre de usuario</label>
-        <input id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Tu usuario ALIGN" required maxlength="24">
+        <input id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="ej. edgar.cordero" required maxlength="24">
         <label for="password">Contraseña</label>
         <input id="password" name="password" type="password" autocomplete="current-password" autocapitalize="none" spellcheck="false" placeholder="Contraseña" required maxlength="72">
         <button class="button" type="submit">Entrar a mi cuenta</button>
         <p id="error" class="error" role="alert"></p>
       </form>
-      <p class="hint">Tu cuenta activa puede iniciar sesión desde cualquier navegador o dispositivo.</p>
+      <p class="hint">Si escribes espacios en tu usuario, ALIGN los convierte automáticamente en puntos. Tu cuenta activa puede iniciar sesión desde cualquier navegador o dispositivo.</p>
     </section>
     <a class="back" href="./">← Volver a ALIGN</a>
   </main>
@@ -44,6 +44,7 @@
     const passwordInput=document.getElementById('password');
     const errorBox=document.getElementById('error');
     const button=form.querySelector('.button');
+    const normalizeUsername=value=>String(value||'').trim().toLowerCase().replace(/\s+/g,'.').replace(/\.{2,}/g,'.').replace(/^\.+|\.+$/g,'');
     async function hashPassword(value){const bytes=new TextEncoder().encode(value);const digest=await crypto.subtle.digest('SHA-256',bytes);return[...new Uint8Array(digest)].map(byte=>byte.toString(16).padStart(2,'0')).join('')}
     function openProduction(data){const cards=Array.isArray(data.cards)?data.cards:[];const primary=data.primary||cards.find(card=>Number(card.position)===1)||cards[0];if(!primary?.token)throw new Error('La membresía no tiene una tarjeta disponible.');localStorage.setItem('align_primary_token',primary.token);sessionStorage.setItem('align_member_token',primary.token);sessionStorage.removeItem('align_selected_member_token');location.replace(`member.html?token=${encodeURIComponent(primary.token)}&v=${Date.now()}`)}
     function openSandbox(data){const cards=Array.isArray(data.cards)?data.cards:[];const primary=cards.find(card=>Number(card.position)===1)||cards[0];if(!primary?.token)throw new Error('La cuenta de prueba no tiene una tarjeta disponible.');const group={socioId:data.socioId,username:data.username,cards,primary};localStorage.setItem('align_demo_group',JSON.stringify(group));localStorage.setItem('align_primary_token',primary.token);sessionStorage.setItem('align_member_token',primary.token);sessionStorage.removeItem('align_selected_member_token');location.replace(`mi-membresia.html?token=${encodeURIComponent(primary.token)}&demo=1&v=${Date.now()}`)}
@@ -51,7 +52,9 @@
     form.addEventListener('submit',async event=>{
       event.preventDefault();errorBox.textContent='';button.disabled=true;button.textContent='Entrando…';
       try{
-        const username=usernameInput.value.trim().toLowerCase();
+        const username=normalizeUsername(usernameInput.value);
+        if(username!==usernameInput.value.trim().toLowerCase())usernameInput.value=username;
+        if(!/^[a-z0-9._-]{4,24}$/i.test(username))throw new Error('Revisa tu nombre de usuario.');
         const passwordHash=await hashPassword(passwordInput.value);
         const production=await productionLogin(username,passwordHash);
         if(production.ok){openProduction(production.data);return}
