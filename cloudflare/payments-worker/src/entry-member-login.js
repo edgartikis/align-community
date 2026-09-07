@@ -83,6 +83,12 @@ async function draftIdForSession(env, sessionId) {
   let draftId = clean(await env.PAYMENT_STATE.get(`session:${sessionId}`), 100);
   if (draftId) return draftId;
 
+  draftId = clean(await env.PAYMENT_STATE.get(`sessions:${sessionId}`), 100);
+  if (draftId) {
+    await env.PAYMENT_STATE.put(`session:${sessionId}`, draftId, { expirationTtl: 60 * 60 * 48 });
+    return draftId;
+  }
+
   draftId = await recoverDraftIdFromStripe(env, sessionId);
   if (draftId) {
     await env.PAYMENT_STATE.put(`session:${sessionId}`, draftId, { expirationTtl: 60 * 60 * 48 });
@@ -124,6 +130,21 @@ async function accountFromSession(env, sessionId, expectedUsername = "") {
   return account;
 }
 
+async function findSessionForDraft(env, draftId) {
+  for (const prefix of ["session:", "sessions:"]) {
+    let cursor = undefined;
+    do {
+      const page = await env.PAYMENT_STATE.list({ prefix, limit: 100, cursor });
+      for (const key of page.keys || []) {
+        const mappedDraft = clean(await env.PAYMENT_STATE.get(key.name), 100);
+        if (mappedDraft === draftId) return clean(key.name.slice(prefix.length), 180);
+      }
+      cursor = page.list_complete ? undefined : page.cursor;
+    } while (cursor);
+  }
+  return "";
+}
+
 async function migrateAccount(env, username) {
   const direct = await readJson(env, `account:${username}`);
   if (direct) return direct;
@@ -134,7 +155,7 @@ async function migrateAccount(env, username) {
     const page = await env.PAYMENT_STATE.list({ prefix: "activation:", limit: 100, cursor });
     for (const key of page.keys || []) {
       inspected += 1;
-      if (inspected > 1500) return null;
+      if (inspected > 1500) break;
       const activation = await readJson(env, key.name);
       if (!activation) continue;
       const sessionId = clean(activation.sessionId || key.name.slice("activation:".length), 180);
@@ -142,7 +163,23 @@ async function migrateAccount(env, username) {
       if (account) return account;
     }
     cursor = page.list_complete ? undefined : page.cursor;
+  } while (cursor && inspected <= 1500);
+
+  cursor = undefined;
+  do {
+    const page = await env.PAYMENT_STATE.list({ prefix: "draft:", limit: 100, cursor });
+    for (const key of page.keys || []) {
+      const draft = await readJson(env, key.name);
+      if (!draft || normalizeUsername(draft.username) !== username) continue;
+      const draftId = clean(draft.draftId || key.name.slice("draft:".length), 100);
+      const sessionId = await findSessionForDraft(env, draftId);
+      if (!sessionId) continue;
+      const account = await accountFromSession(env, sessionId, username);
+      if (account) return account;
+    }
+    cursor = page.list_complete ? undefined : page.cursor;
   } while (cursor);
+
   return null;
 }
 
