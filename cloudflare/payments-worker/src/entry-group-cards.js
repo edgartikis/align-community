@@ -85,13 +85,13 @@ async function groupTokens(env, groupId, seats) {
   if (cached) {
     try {
       const tokens = JSON.parse(cached).filter(validToken);
-      if (tokens.length) return tokens;
+      if (tokens.length >= seats) return tokens.slice(0, seats);
     } catch (_) {}
   }
 
   const tokens = await discoverGroupTokens(env, groupId, seats);
-  if (tokens.length) {
-    await env.PAYMENT_STATE.put(cacheKey, JSON.stringify(tokens), {
+  if (tokens.length >= seats) {
+    await env.PAYMENT_STATE.put(cacheKey, JSON.stringify(tokens.slice(0, seats)), {
       expirationTtl: 60 * 60 * 24 * 180,
     });
   }
