@@ -1,5 +1,5 @@
 name = "align-payments"
-main = "src/entry-member-activity.js"
+main = "src/entry-member-login.js"
 compatibility_date = "2026-09-01"
 
 [[kv_namespaces]]
