@@ -30,6 +30,14 @@ function clean(value, max = 200) {
     .slice(0, max);
 }
 
+function normalizeUsername(value) {
+  return clean(value, 24)
+    .toLowerCase()
+    .replace(/\s+/g, ".")
+    .replace(/\.{2,}/g, ".")
+    .replace(/^\.+|\.+$/g, "");
+}
+
 function validUsername(value) {
   return /^[a-z0-9._-]{4,24}$/i.test(value);
 }
@@ -59,7 +67,7 @@ async function accountFromSession(env, sessionId) {
   const draftId = clean(await env.PAYMENT_STATE.get(`session:${sessionId}`), 100);
   if (!draftId) return null;
   const draft = await readJson(env, `draft:${draftId}`);
-  const username = clean(activation.username || draft?.username, 24).toLowerCase();
+  const username = normalizeUsername(activation.username || draft?.username);
   const passwordHash = clean(draft?.passwordHash, 64).toLowerCase();
   if (!validUsername(username) || !validHash(passwordHash)) return null;
 
@@ -96,7 +104,7 @@ async function migrateAccount(env, username) {
       inspected += 1;
       if (inspected > 1500) return null;
       const activation = await readJson(env, key.name);
-      if (!activation || clean(activation.username, 24).toLowerCase() !== username) continue;
+      if (!activation || normalizeUsername(activation.username) !== username) continue;
       const sessionId = clean(activation.sessionId || key.name.slice("activation:".length), 180);
       return await accountFromSession(env, sessionId);
     }
@@ -134,7 +142,7 @@ async function handleLogin(request, env) {
   if (!env.PAYMENT_STATE) return json({ error: "La base de miembros no está conectada." }, 503, origin);
 
   const body = await request.json().catch(() => ({}));
-  const username = clean(body.username, 24).toLowerCase();
+  const username = normalizeUsername(body.username);
   const passwordHash = clean(body.passwordHash, 64).toLowerCase();
   if (!validUsername(username) || !validHash(passwordHash)) {
     return json({ error: "Usuario o contraseña incorrectos." }, 401, origin);
