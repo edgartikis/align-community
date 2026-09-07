@@ -59,10 +59,10 @@ async function readJson(env, key) {
   try { return JSON.parse(raw); } catch (_) { return null; }
 }
 
-async function accountFromSession(env, sessionId) {
+async function accountFromSession(env, sessionId, expectedUsername = "") {
   if (!sessionId) return null;
   const activation = await readJson(env, `activation:${sessionId}`);
-  if (!activation?.groupId || !activation?.username) return null;
+  if (!activation?.groupId) return null;
 
   const draftId = clean(await env.PAYMENT_STATE.get(`session:${sessionId}`), 100);
   if (!draftId) return null;
@@ -70,6 +70,7 @@ async function accountFromSession(env, sessionId) {
   const username = normalizeUsername(activation.username || draft?.username);
   const passwordHash = clean(draft?.passwordHash, 64).toLowerCase();
   if (!validUsername(username) || !validHash(passwordHash)) return null;
+  if (expectedUsername && username !== expectedUsername) return null;
 
   const group = await readJson(env, `group:${activation.groupId}`);
   const tokens = Array.isArray(group?.tokens)
@@ -104,9 +105,10 @@ async function migrateAccount(env, username) {
       inspected += 1;
       if (inspected > 1500) return null;
       const activation = await readJson(env, key.name);
-      if (!activation || normalizeUsername(activation.username) !== username) continue;
+      if (!activation) continue;
       const sessionId = clean(activation.sessionId || key.name.slice("activation:".length), 180);
-      return await accountFromSession(env, sessionId);
+      const account = await accountFromSession(env, sessionId, username);
+      if (account) return account;
     }
     cursor = page.list_complete ? undefined : page.cursor;
   } while (cursor);
