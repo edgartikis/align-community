@@ -59,12 +59,43 @@ async function readJson(env, key) {
   try { return JSON.parse(raw); } catch (_) { return null; }
 }
 
+function stripeSecret(env) {
+  const value = String(env.STRIPE_SECRET_KEY || "").trim();
+  return /^([sr]k)_(test|live)_/.test(value) ? value : "";
+}
+
+async function recoverDraftIdFromStripe(env, sessionId) {
+  const secret = stripeSecret(env);
+  if (!secret || !/^cs_(test|live)_/.test(sessionId)) return "";
+  try {
+    const response = await fetch(`https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(sessionId)}`, {
+      headers: { authorization: `Bearer ${secret}` },
+    });
+    if (!response.ok) return "";
+    const session = await response.json();
+    return clean(session?.metadata?.align_draft_id || session?.client_reference_id, 100);
+  } catch (_) {
+    return "";
+  }
+}
+
+async function draftIdForSession(env, sessionId) {
+  let draftId = clean(await env.PAYMENT_STATE.get(`session:${sessionId}`), 100);
+  if (draftId) return draftId;
+
+  draftId = await recoverDraftIdFromStripe(env, sessionId);
+  if (draftId) {
+    await env.PAYMENT_STATE.put(`session:${sessionId}`, draftId, { expirationTtl: 60 * 60 * 48 });
+  }
+  return draftId;
+}
+
 async function accountFromSession(env, sessionId, expectedUsername = "") {
   if (!sessionId) return null;
   const activation = await readJson(env, `activation:${sessionId}`);
   if (!activation?.groupId) return null;
 
-  const draftId = clean(await env.PAYMENT_STATE.get(`session:${sessionId}`), 100);
+  const draftId = await draftIdForSession(env, sessionId);
   if (!draftId) return null;
   const draft = await readJson(env, `draft:${draftId}`);
   const username = normalizeUsername(activation.username || draft?.username);
