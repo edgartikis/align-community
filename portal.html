@@ -60,6 +60,7 @@ const ALLIES={
  sante:{name:'Santé Pilates',offer:'10% de descuento en paquetes de 10 y 15 clases. Precio ALIGN: $1,170 y $1,530 MXN.',url:'sante.html',button:'Ver Santé'},
  gingers:{name:"Ginger's Coffee House",offer:'10% de descuento en bebidas calientes: café, chai, matcha y demás opciones servidas calientes.',url:'gingers.html',button:"Ver Ginger's"},
  greencabana:{name:'Green Cabana',offer:'15% de descuento individual para el socio ALIGN: lunes todo el día; martes a jueves y domingo de 12:30 a 3:30 p.m. Reservaciones para eventos de 3 o más personas con un día de anticipación: 10% sobre todo el consumo.',url:'green-cabana.html',button:'Ver Green Cabana'},
+ ceramia:{name:'Cera Mia',offer:'15% de descuento en todos los productos para miembros ALIGN.',url:'cera-mia.html',button:'Ver Cera Mia'},
  uspin:{name:'USPIN',offer:'Indoor cycling, energía y comunidad con beneficios dentro de Girls Club, Duo y Private Circle.',url:'uspin.html',button:'Ver USPIN'},
  nuva:{name:'NUVA Pilates Studio',offer:'Movimiento, fuerza y bienestar con beneficios y cupo limitado para miembros elegibles.',url:'nuva.html',button:'Ver NUVA'},
  charreadas:{name:'Charreadas',offer:'Acceso preferencial a la preventa con boletos reservados para miembros de Ranch Club.',url:'charreadas.html',button:'Ver Charreadas'},
@@ -78,6 +79,7 @@ const ALLY_IMAGES={
  sante:'Sante1.PNG',
  gingers:'Ginger1.PNG',
  greencabana:'greencabana3.png',
+ ceramia:'ceramia3.png',
  uspin:'uspin-2.jpg',
  nuva:'nuva-100.png',
  charreadas:'herradura-1.jpg.png',
@@ -86,10 +88,10 @@ const ALLY_IMAGES={
 };
 const PLANS={
  brotherhood:{title:'The Brotherhood',allies:['global','padel','greencabana','rancho','horse','fishing','marea','ancla','velamar','restaurants','personalcare']},
- girls:{title:'Girls Club',allies:['global','padel','greencabana','sante','gingers','uspin','marea','nuva','velamar','restaurants','personalcare']},
+ girls:{title:'Girls Club',allies:['global','padel','greencabana','ceramia','sante','gingers','uspin','marea','nuva','velamar','restaurants','personalcare']},
  ranch:{title:'Ranch Club',allies:['global','padel','greencabana','rancho','horse','charreadas','velamar','restaurants','personalcare']},
- duo:{title:'Duo Club',allies:['global','padel','greencabana','gingers','uspin','nuva','sante','marea','rancho','horse','fishing','ancla','charreadas','velamar','restaurants','personalcare']},
- circle:{title:'Private Circle',allies:['global','padel','greencabana','gingers','uspin','nuva','sante','marea','rancho','horse','fishing','ancla','charreadas','velamar','restaurants','personalcare']}
+ duo:{title:'Duo Club',allies:['global','padel','greencabana','ceramia','gingers','uspin','nuva','sante','marea','rancho','horse','fishing','ancla','charreadas','velamar','restaurants','personalcare']},
+ circle:{title:'Private Circle',allies:['global','padel','greencabana','ceramia','gingers','uspin','nuva','sante','marea','rancho','horse','fishing','ancla','charreadas','velamar','restaurants','personalcare']}
 };
 async function fetchJson(path){const response=await fetch(`${API}${path}`,{cache:'no-store'});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'No fue posible cargar la información.');return data}
 function render(member,activityData,groupData){
