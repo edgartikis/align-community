@@ -4,6 +4,7 @@ from pathlib import Path
 from urllib.parse import quote
 import hashlib
 import os
+import re
 
 from PIL import Image, ImageOps
 
@@ -15,6 +16,44 @@ IMAGE_EXTS = {'.png', '.jpg', '.jpeg'}
 TEXT_EXTS = {'.html', '.css', '.js', '.json'}
 MIN_BYTES = 130 * 1024
 MAX_DIMENSION = 1920
+
+# Public content / ally pages that receive the shared ALIGN personality system.
+# Deliberately excluded: homepage, initial/auth/payment flows, member pages,
+# operational dashboards/portals and the Restaurants page (already custom-designed).
+PERSONALITY_PAGES = {
+    'ancla-del-canelo.html',
+    'boris-marisqueria.html',
+    'buns-and-bros.html',
+    'capri-3.html',
+    'capri-5.html',
+    'cera-mia.html',
+    'charreadas.html',
+    'cuidado-personal.html',
+    'dia-de-pesca.html',
+    'gingers.html',
+    'global-gym.html',
+    'green-cabana.html',
+    'horse-riding.html',
+    'marea-baja.html',
+    'marmara-11.html',
+    'marmara-8.html',
+    'nuva.html',
+    'padel-11-11.html',
+    'penthouse-capri.html',
+    'rancho-mx.html',
+    'sante.html',
+    'uspin.html',
+    'velamar.html',
+}
+
+PERSONALITY_STYLESHEET = '<link rel="stylesheet" href="assets/align-section-personality.css?v=20260908-1">'
+PERSONALITY_BAND = (
+    '<div class="align-personality-band" aria-hidden="true">'
+    '<div class="align-personality-band-track">'
+    '<span>BELONG TO SOMETHING <i>◆</i> LIVE WITH PURPOSE <i>◆</i> ALIGN PARTNER <i>◆</i> TAMPICO · MADERO · ALTAMIRA <i>◆</i></span>'
+    '<span>BELONG TO SOMETHING <i>◆</i> LIVE WITH PURPOSE <i>◆</i> ALIGN PARTNER <i>◆</i> TAMPICO · MADERO · ALTAMIRA <i>◆</i></span>'
+    '</div></div>'
+)
 
 # These files are identity / UI assets where pixel-perfect preservation matters more
 # than the small bandwidth win. Existing dedicated optimizers for carousel/Boris are
@@ -103,6 +142,47 @@ def optimize_image(source: Path) -> Path | None:
     return target
 
 
+def add_body_class(html: str, class_name: str) -> str:
+    match = re.search(r'<body\b[^>]*>', html, flags=re.IGNORECASE)
+    if not match:
+        return html
+    tag = match.group(0)
+    if class_name in tag:
+        return html
+
+    class_match = re.search(r'class\s*=\s*(["\'])(.*?)\1', tag, flags=re.IGNORECASE)
+    if class_match:
+        old = class_match.group(0)
+        quote_char = class_match.group(1)
+        classes = class_match.group(2).strip()
+        new = f'class={quote_char}{classes} {class_name}{quote_char}'
+        new_tag = tag.replace(old, new, 1)
+    else:
+        new_tag = tag[:-1] + f' class="{class_name}">'
+
+    return html[:match.start()] + new_tag + html[match.end():]
+
+
+def apply_personality(html: str) -> str:
+    html = add_body_class(html, 'align-personality-enabled')
+
+    if PERSONALITY_STYLESHEET not in html:
+        if '</head>' not in html:
+            raise RuntimeError('Public section page is missing </head>; cannot inject ALIGN personality stylesheet')
+        html = html.replace('</head>', PERSONALITY_STYLESHEET + '\n</head>', 1)
+
+    if 'class="align-personality-band"' not in html:
+        footer_match = re.search(r'<footer\b', html, flags=re.IGNORECASE)
+        if footer_match:
+            html = html[:footer_match.start()] + PERSONALITY_BAND + '\n' + html[footer_match.start():]
+        elif '</body>' in html:
+            html = html.replace('</body>', PERSONALITY_BAND + '\n</body>', 1)
+        else:
+            raise RuntimeError('Public section page is missing </body>; cannot inject ALIGN personality band')
+
+    return html
+
+
 def main() -> None:
     text_files = [
         p for p in ROOT.rglob('*')
@@ -184,6 +264,18 @@ def main() -> None:
         if changed:
             text_cache[html_file] = ''.join(pieces)
             rewritten_files.add(html_file)
+
+    # Apply a consistent, brand-manual-inspired layer to public content pages only.
+    # This intentionally leaves the principal/index, initial/auth flows and member
+    # experience untouched, exactly as requested.
+    for page_name in PERSONALITY_PAGES:
+        page_path = ROOT / page_name
+        if page_path not in text_cache:
+            raise FileNotFoundError(page_path)
+        personalized = apply_personality(text_cache[page_path])
+        if personalized != text_cache[page_path]:
+            text_cache[page_path] = personalized
+            rewritten_files.add(page_path)
 
     # The public payment page is still kept simple in source, but the deployed
     # version loads the Cloudflare/Stripe bridge so checkout never falls back to
