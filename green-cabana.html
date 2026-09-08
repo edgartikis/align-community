@@ -24,7 +24,7 @@
 <section class="cta"><h2>Bienvenido a ALIGN, Green Cabana.</h2><p>Los buenos lugares encuentran a su comunidad.</p><a class="button" id="returnButton" href="restaurantes.html?plan=girls">Volver a restaurantes</a></section>
 </main>
 <script>
-const params=new URLSearchParams(location.search),plan=params.get('plan')||'girls';const valid=['brotherhood','girls','ranch','duo','circle'];const safePlan=valid.includes(plan)?plan:'girls';document.querySelector('#backLink').href=`restaurantes.html?plan=${safePlan}`;document.querySelector('#returnButton').href=`restaurantes.html?plan=${safePlan}`;
+const params=new URLSearchParams(location.search),plan=params.get('plan')||'girls',fromPortal=params.get('from')==='portal';const valid=['brotherhood','girls','ranch','duo','circle'];const safePlan=valid.includes(plan)?plan:'girls';const backLink=document.querySelector('#backLink'),returnButton=document.querySelector('#returnButton');if(fromPortal){backLink.href='portal.html';backLink.textContent='← Mi portal';returnButton.href='portal.html';returnButton.textContent='Volver a mi portal'}else{backLink.href=`restaurantes.html?plan=${safePlan}`;returnButton.href=`restaurantes.html?plan=${safePlan}`}
 const slides=[...document.querySelectorAll('.hero-slide')],dots=[...document.querySelectorAll('.carousel-dot')];let current=0,timer;function show(i){current=(i+slides.length)%slides.length;slides.forEach((s,n)=>s.classList.toggle('active',n===current));dots.forEach((d,n)=>d.classList.toggle('active',n===current))}function start(){clearInterval(timer);timer=setInterval(()=>show(current+1),3200)}dots.forEach((d,i)=>d.addEventListener('click',()=>{show(i);start()}));start();
 </script>
 </body></html>
