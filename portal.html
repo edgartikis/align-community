@@ -45,7 +45,7 @@ const app=document.querySelector('#app');
 const params=new URLSearchParams(location.search);
 const token=params.get('token')||sessionStorage.getItem('align_member_token')||localStorage.getItem('align_primary_token');
 const money=new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0});
-const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c]);
+const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#039;'})[c]);
 const dateLabel=iso=>{const d=new Date(iso);return Number.isNaN(d.getTime())?'Sin registro':new Intl.DateTimeFormat('es-MX',{day:'numeric',month:'short',year:'numeric',timeZone:'America/Monterrey'}).format(d)};
 const planAliases={'The Brotherhood':'brotherhood','Girls Club':'girls','Ranch Club':'ranch','Duo Club':'duo','Private Circle':'circle'};
 const ALLIES={
@@ -59,10 +59,11 @@ const ALLIES={
  velamar:{name:'Velamar',offer:'Tarifas preferenciales en cinco alojamientos de torres Marmara y Capri.',url:'velamar.html?v=12',button:'Ver Velamar'},
  sante:{name:'Santé Pilates',offer:'10% de descuento en paquetes de 10 y 15 clases. Precio ALIGN: $1,170 y $1,530 MXN.',url:'sante.html',button:'Ver Santé'},
  gingers:{name:"Ginger's Coffee House",offer:'10% de descuento en bebidas calientes: café, chai, matcha y demás opciones servidas calientes.',url:'gingers.html',button:"Ver Ginger's"},
+ greencabana:{name:'Green Cabana',offer:'15% de descuento individual para el socio ALIGN: lunes todo el día; martes a jueves y domingo de 12:30 a 3:30 p.m. Reservaciones para eventos de 3 o más personas con un día de anticipación: 10% sobre todo el consumo.',url:'green-cabana.html',button:'Ver Green Cabana'},
  uspin:{name:'USPIN',offer:'Indoor cycling, energía y comunidad con beneficios dentro de Girls Club, Duo y Private Circle.',url:'uspin.html',button:'Ver USPIN'},
  nuva:{name:'NUVA Pilates Studio',offer:'Movimiento, fuerza y bienestar con beneficios y cupo limitado para miembros elegibles.',url:'nuva.html',button:'Ver NUVA'},
  charreadas:{name:'Charreadas',offer:'Acceso preferencial a la preventa con boletos reservados para miembros de Ranch Club.',url:'charreadas.html',button:'Ver Charreadas'},
- restaurants:{name:'Restaurantes',offer:'Buns & Bros, Boris Marisquería, Mr Smoky, Basilico, Brusketa y más aliados gastronómicos.',url:'restaurantes.html',button:'Explorar restaurantes',type:'category'},
+ restaurants:{name:'Restaurantes',offer:'Buns & Bros, Boris Marisquería, Mr Smoky, Basilico, Brusketa, Green Cabana y más aliados gastronómicos.',url:'restaurantes.html',button:'Explorar restaurantes',type:'category'},
  personalcare:{name:'Cuidado personal',offer:'Beneficios de imagen, bienestar y cuidado personal disponibles dentro de todas las membresías.',url:'cuidado-personal.html',button:'Explorar cuidado personal',type:'category'}
 };
 const ALLY_IMAGES={
@@ -76,18 +77,19 @@ const ALLY_IMAGES={
  velamar:'MARMARA11-1.jpeg',
  sante:'Sante1.PNG',
  gingers:'Ginger1.PNG',
+ greencabana:'greencabana3.png',
  uspin:'uspin-2.jpg',
  nuva:'nuva-100.png',
  charreadas:'herradura-1.jpg.png',
- restaurants:'BURGER1.jpeg',
+ restaurants:'greencabana3.png',
  personalcare:'Sante4.PNG'
 };
 const PLANS={
- brotherhood:{title:'The Brotherhood',allies:['global','padel','rancho','horse','fishing','marea','ancla','velamar','restaurants','personalcare']},
- girls:{title:'Girls Club',allies:['global','padel','sante','gingers','uspin','marea','nuva','velamar','restaurants','personalcare']},
- ranch:{title:'Ranch Club',allies:['global','padel','rancho','horse','charreadas','velamar','restaurants','personalcare']},
- duo:{title:'Duo Club',allies:['global','padel','gingers','uspin','nuva','sante','marea','rancho','horse','fishing','ancla','charreadas','velamar','restaurants','personalcare']},
- circle:{title:'Private Circle',allies:['global','padel','gingers','uspin','nuva','sante','marea','rancho','horse','fishing','ancla','charreadas','velamar','restaurants','personalcare']}
+ brotherhood:{title:'The Brotherhood',allies:['global','padel','greencabana','rancho','horse','fishing','marea','ancla','velamar','restaurants','personalcare']},
+ girls:{title:'Girls Club',allies:['global','padel','greencabana','sante','gingers','uspin','marea','nuva','velamar','restaurants','personalcare']},
+ ranch:{title:'Ranch Club',allies:['global','padel','greencabana','rancho','horse','charreadas','velamar','restaurants','personalcare']},
+ duo:{title:'Duo Club',allies:['global','padel','greencabana','gingers','uspin','nuva','sante','marea','rancho','horse','fishing','ancla','charreadas','velamar','restaurants','personalcare']},
+ circle:{title:'Private Circle',allies:['global','padel','greencabana','gingers','uspin','nuva','sante','marea','rancho','horse','fishing','ancla','charreadas','velamar','restaurants','personalcare']}
 };
 async function fetchJson(path){const response=await fetch(`${API}${path}`,{cache:'no-store'});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'No fue posible cargar la información.');return data}
 function render(member,activityData,groupData){
