@@ -1,5 +1,5 @@
 name = "align-payments"
-main = "src/entry-member-login.js"
+main = "src/main.js"
 compatibility_date = "2026-09-01"
 
 [[kv_namespaces]]
@@ -17,9 +17,9 @@ STRIPE_PRICE_RANCH_REGULAR = "price_1UCOlyE3kQapeVY6Pr7LCFmy"
 STRIPE_PRICE_DUO = "price_1UCOm5E3kQapeVY6v4V9uYYj"
 STRIPE_PRICE_CIRCLE = "price_1UCOmAE3kQapeVY67pUKUfTm"
 
+# Backend canónico: Cloudflare Worker + PAYMENT_STATE (KV).
 # Los secretos se configuran en Cloudflare, nunca en GitHub:
 # STRIPE_SECRET_KEY
 # STRIPE_WEBHOOK_SECRET
-# ALIGN_DB_URL
-# ALIGN_DB_SECRET
 # QR_SIGNING_SECRET (opcional; si falta, usa STRIPE_SECRET_KEY)
+# ALIGN_DB_URL / ALIGN_DB_SECRET (solo sincronización secundaria de reportes)
