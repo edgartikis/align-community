@@ -1,33 +1,54 @@
-# Activación segura de Stripe → ALIGN COMMUNITY
+# Stripe → ALIGN
 
-El archivo `netlify/functions/stripe-webhook.mjs` recibe pagos de Stripe y crea un socio en la primera pestaña de Google Sheets. Nunca pegues claves en este archivo ni en el chat.
+> Documento actualizado. Las instrucciones antiguas de Netlify/Google Sheets quedaron retiradas del flujo operativo.
 
-## 1. Antes de activar
+El backend oficial es el Cloudflare Worker ubicado en `cloudflare/payments-worker/` y la API pública es:
 
-1. En Stripe, revoca la clave secreta de prueba que se compartió anteriormente y crea una nueva.
-2. Crea una cuenta de servicio de Google Cloud, habilita Google Sheets API y comparte esta hoja con el correo de esa cuenta como **Editor**.
+`https://api.alignmembers.com.mx`
 
-## 2. Variables en Netlify
+Consulta también `cloudflare/payments-worker/README.md`.
 
-En **Project configuration → Environment variables**, añade:
+## Stripe TEST
 
-| Variable | Valor |
-| --- | --- |
-| `STRIPE_SECRET_KEY` | Nueva clave secreta de Stripe (prueba o producción) |
-| `STRIPE_WEBHOOK_SECRET` | Secreto que Stripe muestra al crear el endpoint |
-| `GOOGLE_SERVICE_ACCOUNT_JSON` | JSON completo de la cuenta de servicio de Google, en una sola línea |
-| `GOOGLE_SHEET_ID` | `1-uT_2WD9VBaCOizT8q6kSGsLgDW-8KbRgDYzKUyj4Z4` |
-| `GOOGLE_SHEET_TAB` | Opcional. Déjalo vacío para usar `Hoja 1` |
-| `STRIPE_SOCIETY_PRICE_ID` | ID del precio mensual Society en Stripe |
-| `STRIPE_BLACK_PRICE_ID` | ID del precio mensual Black en Stripe |
-| `MEMBER_BASE_URL` | Dominio de ALIGN, por ejemplo `https://aligncommunity.netlify.app` |
+Mantén Stripe en TEST mientras validamos el flujo completo.
 
-## 3. Webhook en Stripe
+En Cloudflare configura como secretos:
 
-Después de desplegar, en Stripe crea un endpoint con esta URL:
+- `STRIPE_SECRET_KEY` — clave TEST actual.
+- `STRIPE_WEBHOOK_SECRET` — signing secret del webhook TEST.
+- `QR_SIGNING_SECRET` — opcional; recomendado separado de Stripe antes de LIVE.
 
-`https://aligncommunity.netlify.app/.netlify/functions/stripe-webhook`
+Los Price IDs no secretos están definidos en `cloudflare/payments-worker/wrangler.toml`.
 
-Selecciona el evento `checkout.session.completed`.
+## Webhook oficial
 
-Una vez activado, cada pago de membresía añadirá una nueva fila con QR seguro y código de socio. Apple Wallet/Google Wallet se integran como la siguiente capa: necesitan una cuenta de emisor y no deben emitirse desde una hoja de cálculo directamente.
+Endpoint:
+
+`https://api.alignmembers.com.mx/api/stripe/webhook`
+
+Eventos:
+
+- `checkout.session.completed`
+- `invoice.paid`
+- `invoice.payment_failed`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+
+No crear nuevos webhooks hacia Netlify.
+
+## Comprobación antes de cobrar dinero real
+
+`https://api.alignmembers.com.mx/api/health` debe responder `ok: true`, `storage: "kv-ready"` y `stripeMode: "test"`.
+
+Después se debe completar una prueba integral de compra, activación, login, QR, visita, renovación, fallo de pago y cancelación.
+
+## Paso a LIVE
+
+1. Sustituir `STRIPE_SECRET_KEY` por una clave LIVE en Cloudflare.
+2. Crear un webhook LIVE con la misma URL de la API.
+3. Sustituir `STRIPE_WEBHOOK_SECRET` por el secreto LIVE correspondiente.
+4. Confirmar que `/api/health` muestre `stripeMode: "live"`.
+5. Hacer una compra real controlada.
+6. Validar tarjeta, QR, estado de membresía y renovación/cancelación.
+
+Nunca pegar claves secretas o `whsec_...` en GitHub.
