@@ -1,0 +1,31 @@
+name: ALIGN Backend Contract
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "cloudflare/payments-worker/**"
+      - "pago.html"
+      - "stripe-checkout-bridge.js"
+      - "login-github.html"
+      - "portal.html"
+      - "member.html"
+      - "portal-aliados.html"
+      - "profile-photo.html"
+      - "payment-success.html"
+      - "netlify.toml"
+      - "scripts/check_backend_contract.py"
+      - ".github/workflows/backend-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+      - name: Verify canonical backend
+        run: python scripts/check_backend_contract.py
