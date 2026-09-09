@@ -1,87 +1,69 @@
-# ALIGN · Migración de pagos a Cloudflare
+# ALIGN · Backend Cloudflare actual
 
-Dominio objetivo: `https://alignmembers.com.mx`
+El backend de producción ya no se define por Cloudflare Pages Functions/D1. La arquitectura canónica está en:
 
-## Qué ya está preparado en el repositorio
+`cloudflare/payments-worker/`
 
-- Pages Functions bajo `/functions/api/*`.
-- D1 como fuente de verdad de cuentas, grupos, miembros, pagos y estado de suscripción.
-- Stripe Checkout mensual.
-- Webhook idempotente para activación, renovación, pago fallido y cancelación.
-- Contraseñas con `scrypt`; nunca se guardan en texto plano ni se mandan a Stripe.
-- El sistema actual de Netlify queda intacto durante la migración para no romper la demo.
+Documentación principal:
 
-## 1. Crear el proyecto de Cloudflare Pages
+`cloudflare/payments-worker/README.md`
 
-Conecta el repositorio `edgartikis/align-community` desde Workers & Pages > Create > Pages > Connect to Git.
+## Arquitectura vigente
 
-Configuración inicial recomendada:
+- Sitio: `https://alignmembers.com.mx`
+- API: `https://api.alignmembers.com.mx`
+- Worker: `align-payments`
+- Entry point: `cloudflare/payments-worker/src/main.js`
+- Fuente operativa de verdad: Cloudflare KV `PAYMENT_STATE`
+- Pagos: Stripe Checkout mensual
+- Webhook: `https://api.alignmembers.com.mx/api/stripe/webhook`
 
-- Production branch: `main`
-- Framework preset: None
-- Build command: dejar vacío
-- Build output directory: `.`
-- Compatibility date: `2026-09-05` o posterior
+Los antiguos `/functions` (Pages/D1) y `/netlify` son legado y no deben usarse para funciones nuevas ni recibir tráfico de producción.
 
-## 2. Crear D1
+## Verificación
 
-Crea una base llamada `align-members-production`.
+Abre:
 
-En el proyecto Pages agrega un binding D1:
+`https://api.alignmembers.com.mx/api/health`
 
-- Variable name: `DB`
-- Database: `align-members-production`
+La respuesta debe indicar:
 
-Ejecuta el contenido de `migrations/0001_align_memberships.sql` en la consola de D1.
+- `ok: true`
+- `architecture: "cloudflare-worker-kv"`
+- `storage: "kv-ready"`
+- `stripeMode: "test"` mientras se realizan pruebas
 
-## 3. Variables y secrets
+## Stripe TEST antes de LIVE
 
-En Settings > Variables and Secrets agrega:
+Mantener una clave `sk_test_...`/`rk_test_...` y el webhook TEST hasta completar:
 
-- `PAYMENTS_MODE=test` mientras hacemos pruebas.
-- `STRIPE_SECRET_KEY` con una clave `sk_test_...`.
-- `STRIPE_WEBHOOK_SECRET` después de crear el endpoint en Stripe.
+1. registro;
+2. checkout;
+3. activación;
+4. login;
+5. tarjeta y QR;
+6. visita en portal de aliados;
+7. renovación;
+8. pago fallido;
+9. cancelación.
 
-No cambies `PAYMENTS_MODE` a `live` hasta terminar una compra completa en TEST.
-
-## 4. Endpoint de webhook en Stripe TEST
-
-URL:
-
-`https://alignmembers.com.mx/api/stripe-webhook`
-
-Eventos mínimos:
+Eventos necesarios:
 
 - `checkout.session.completed`
-- `checkout.session.expired`
 - `invoice.paid`
 - `invoice.payment_failed`
 - `customer.subscription.updated`
 - `customer.subscription.deleted`
 
-Copia el signing secret `whsec_...` a `STRIPE_WEBHOOK_SECRET`.
+## Paso a LIVE
 
-## 5. Verificación del backend
+Solo cuando el recorrido TEST esté certificado:
 
-Abre:
+1. configurar `STRIPE_SECRET_KEY` LIVE en Cloudflare;
+2. crear un webhook LIVE para `https://api.alignmembers.com.mx/api/stripe/webhook`;
+3. guardar su nuevo `STRIPE_WEBHOOK_SECRET`;
+4. confirmar que `/api/health` reporte `stripeMode: "live"`;
+5. ejecutar una compra real controlada;
+6. verificar pago → activación → login → QR → renovación/cancelación.
 
-`https://alignmembers.com.mx/api/health`
-
-Debe responder con `ok: true` y `database: true`.
-
-## 6. Cambio de frontend
-
-Solo después de que `/api/health` y el webhook estén operativos se cambia `pago.html` para llamar a `/api/create-checkout` y `login-github.html` para usar `/api/member-login`.
-
-Este corte se hará al final para que GitHub Pages/Netlify sigan funcionando mientras configuramos Cloudflare.
-
-## 7. Producción
-
-Después de probar:
-
-1. Cambiar Stripe a claves LIVE.
-2. Crear webhook LIVE y guardar su nuevo `whsec_...`.
-3. Cambiar `PAYMENTS_MODE=live`.
-4. Ejecutar una compra real controlada.
-5. Verificar activación, login, QR y renovación/cancelación.
-6. Cuando todo esté estable, retirar Netlify.
+No se guardan claves privadas ni signing secrets en GitHub.
