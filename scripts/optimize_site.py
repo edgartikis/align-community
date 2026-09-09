@@ -277,14 +277,14 @@ def main() -> None:
             text_cache[page_path] = personalized
             rewritten_files.add(page_path)
 
-    # The public payment page is still kept simple in source, but the deployed
-    # version loads the Cloudflare/Stripe bridge so checkout never falls back to
-    # the old Netlify test endpoint or local card simulation.
+    # pago.html now loads the canonical Cloudflare/Stripe bridge in source.
+    # Keep this fallback only for an accidental future removal, and detect the
+    # bridge by filename rather than by one exact cache-busting version.
     pago_path = ROOT / 'pago.html'
     if pago_path in text_cache:
         pago_html = text_cache[pago_path]
-        bridge_tag = '<script src="stripe-checkout-bridge.js?v=20260906-1"></script>'
-        if bridge_tag not in pago_html:
+        if 'stripe-checkout-bridge.js' not in pago_html:
+            bridge_tag = '<script src="stripe-checkout-bridge.js?v=20260908-backend-cleanup"></script>'
             if '</body>' not in pago_html:
                 raise RuntimeError('pago.html is missing </body>; cannot inject Stripe checkout bridge')
             pago_html = pago_html.replace('</body>', bridge_tag + '</body>', 1)
