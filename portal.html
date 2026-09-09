@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1119">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Mi portal | ALIGN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="assets/align-primary.png?v=transparent-5">
+<style>
+:root{--ink:#080b10;--ink2:#0f151e;--paper:#f3eee4;--navy:#10243d;--gold:#c4a46b;--muted:#9ca3ad;--line:rgba(243,238,228,.14)}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--ink);color:var(--paper);font-family:"DM Sans",sans-serif}a{color:inherit;text-decoration:none}button{font:inherit}.nav{position:sticky;top:0;z-index:20;height:76px;padding:0 5.5vw;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);background:rgba(8,11,16,.92);backdrop-filter:blur(18px)}.brand img{display:block;width:148px;height:auto}.navlinks{display:flex;align-items:center;gap:18px;font:500 .62rem "DM Mono",monospace;letter-spacing:.1em;text-transform:uppercase}.logout{border:0;background:none;color:#a5a9af;cursor:pointer;font:500 .62rem "DM Mono",monospace;letter-spacing:.1em;text-transform:uppercase}.hero{padding:76px 5.5vw 52px;background:radial-gradient(circle at 78% 0,#24466c 0,transparent 38%),linear-gradient(145deg,#111820,#090a0c)}.hero-grid{display:grid;grid-template-columns:1.45fr .75fr;gap:34px;align-items:end}.eyebrow{margin:0 0 13px;font:500 .65rem "DM Mono",monospace;letter-spacing:.15em;text-transform:uppercase;color:#aeb4bd}.hero h1{max-width:830px;margin:0;font:500 clamp(3.4rem,7vw,6.8rem)/.9 "Playfair Display",serif;letter-spacing:-.055em}.hero-copy{max-width:640px;margin:24px 0 0;color:#c5c9cf;line-height:1.68}.hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:12px 16px;border:1px solid rgba(243,238,228,.7);font:600 .64rem "DM Mono",monospace;letter-spacing:.1em;text-transform:uppercase}.btn.primary{background:var(--paper);color:var(--ink);border-color:var(--paper)}.btn.gold{border-color:rgba(196,164,107,.65);color:#e0c99f}.member-card{padding:27px;border:1px solid rgba(196,164,107,.35);background:linear-gradient(145deg,#18375a,#08131f);box-shadow:0 26px 60px rgba(0,0,0,.35)}.member-level{margin:0 0 18px;font:500 2.65rem/1 "Playfair Display",serif}.member-meta{display:grid;gap:8px;padding-top:16px;border-top:1px solid var(--line);font:500 .61rem "DM Mono",monospace;letter-spacing:.08em;text-transform:uppercase;color:#c9c1b2}.tabs{display:flex;gap:8px;padding:20px 5.5vw;border-bottom:1px solid rgba(255,255,255,.08);background:#0d1117;overflow:auto}.tabs a{white-space:nowrap;padding:10px 13px;border:1px solid rgba(255,255,255,.14);font:500 .62rem "DM Mono",monospace;letter-spacing:.1em;text-transform:uppercase}.tabs a:first-child{border-color:rgba(196,164,107,.6);color:#e0c99f}.section{padding:78px 5.5vw}.section.light{background:linear-gradient(180deg,#f3eee4,#e8dfcf);color:#181613}.section-head{display:flex;align-items:end;justify-content:space-between;gap:28px;margin-bottom:32px}.section-head h2{margin:0;font:500 clamp(2.7rem,5vw,4.9rem)/.96 "Playfair Display",serif;letter-spacing:-.045em}.section-head p{max-width:480px;margin:0;color:#9ca3ad;line-height:1.62}.light .section-head p{color:#625e57}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.metric{min-height:175px;padding:26px;border:1px solid rgba(196,164,107,.24);background:linear-gradient(145deg,#142a44,#0b1119)}.metric-label{display:block;font:500 .6rem "DM Mono",monospace;letter-spacing:.13em;text-transform:uppercase;color:#a9b0ba}.metric-value{display:block;margin-top:18px;font:500 clamp(2.6rem,5vw,4.4rem)/.92 "Playfair Display",serif;color:#f5f0e8}.dashboard-lower{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}.favorite,.latest{padding:27px;border:1px solid rgba(255,255,255,.12);background:#10161f}.favorite strong,.latest strong{display:block;margin-top:9px;font:500 2rem/1.05 "Playfair Display",serif}.favorite p,.latest p{margin:9px 0 0;color:#aeb4bc;line-height:1.55}.places-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.place{min-height:280px;padding:27px;display:flex;flex-direction:column;border:1px solid rgba(24,22,19,.14);background:rgba(255,255,255,.52)}.place.category{background:#13263d;color:#f3eee4;border-color:#a98c5b}.place h3{margin:0;font:500 2rem/1.02 "Playfair Display",serif}.place p{margin:15px 0;color:#5d5952;line-height:1.58}.place.category p{color:#c8d0d8}.place-footer{margin-top:auto;padding-top:20px;border-top:1px solid rgba(24,22,19,.12)}.place.category .place-footer{border-color:rgba(255,255,255,.14)}.tag{display:block;margin-bottom:12px;font:500 .57rem "DM Mono",monospace;letter-spacing:.1em;text-transform:uppercase;color:#78736b}.place.category .tag{color:#d1ba8f}.place .btn{border-color:#181613;color:#181613}.place.category .btn{border-color:#f3eee4;color:#f3eee4}.cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.digital-card{min-height:220px;padding:26px;display:flex;flex-direction:column;border:1px solid rgba(196,164,107,.28);background:linear-gradient(145deg,#173452,#09131f)}.digital-card h3{margin:8px 0 0;font:500 1.9rem/1.05 "Playfair Display",serif}.digital-card p{margin:11px 0 0;color:#b9c0c8;line-height:1.5}.digital-card .btn{margin-top:auto;align-self:flex-start}.frequent-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.frequent{padding:20px;border:1px solid rgba(255,255,255,.11);background:#10161f}.frequent-rank{font:500 .57rem "DM Mono",monospace;letter-spacing:.1em;text-transform:uppercase;color:#a98f63}.frequent h3{margin:9px 0 0;font:500 1.4rem/1.05 "Playfair Display",serif}.frequent p{margin:10px 0 0;color:#a8afb7;font-size:.8rem;line-height:1.5}.history{margin-top:30px;border-top:1px solid rgba(255,255,255,.12)}.history-title{margin:28px 0 14px;font:500 2rem "Playfair Display",serif}.visit{display:grid;grid-template-columns:1fr auto;gap:18px;padding:17px 0;border-top:1px solid rgba(255,255,255,.09)}.visit:first-of-type{border-top:0}.visit-place{font-weight:600}.visit-meta{margin-top:4px;color:#9098a2;font-size:.76rem}.visit-money{text-align:right}.visit-money strong{display:block}.saved{display:block;margin-top:4px;color:#b9c999;font-size:.72rem}.empty{padding:28px;border:1px dashed rgba(255,255,255,.18);color:#9aa1aa}.light .empty{border-color:rgba(24,22,19,.2);color:#6f6a63}.footer{padding:28px 5.5vw;display:flex;justify-content:space-between;gap:18px;border-top:1px solid var(--line);color:#777;font:500 .6rem "DM Mono",monospace;letter-spacing:.08em;text-transform:uppercase}.loading{min-height:60vh;display:grid;place-items:center;padding:40px}.loading-box{padding:30px;border:1px dashed rgba(255,255,255,.2);color:#aaa}@media(max-width:1000px){.hero-grid,.dashboard-lower{grid-template-columns:1fr}.metrics,.places-grid,.cards-grid{grid-template-columns:1fr 1fr}.frequent-grid{grid-template-columns:1fr 1fr}.section-head{display:block}.section-head p{margin-top:14px}}@media(max-width:650px){.nav{padding:0 6vw}.navlinks a{display:none}.hero,.section{padding-left:6vw;padding-right:6vw}.hero h1{font-size:3.5rem}.hero-actions{display:grid}.btn{width:100%}.metrics,.places-grid,.cards-grid,.frequent-grid{grid-template-columns:1fr}.tabs{padding-left:6vw}.visit{grid-template-columns:1fr}.visit-money{text-align:left}.footer{flex-direction:column}}
+
+/* Catálogo visual compacto de lugares */
+.places-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.place{min-height:0;padding:0;overflow:hidden;border-radius:16px;background:rgba(255,255,255,.62);box-shadow:0 12px 28px rgba(42,34,24,.08)}
+.place-media{position:relative;aspect-ratio:16/10;overflow:hidden;background:#d7d0c4}
+.place-media::after{content:"";position:absolute;inset:auto 0 0;height:45%;background:linear-gradient(transparent,rgba(8,11,16,.22));pointer-events:none}
+.place-media img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .35s ease}
+.place:hover .place-media img{transform:scale(1.035)}
+.place-content{display:flex;flex:1;flex-direction:column;padding:17px}
+.place h3{font-size:clamp(1.28rem,2vw,1.65rem)}
+.place p{display:-webkit-box;margin:10px 0;font-size:.875rem;line-height:1.48;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.place .eyebrow{margin-bottom:9px;font-size:.75rem}
+.place-footer{padding-top:13px}
+.place .tag{margin-bottom:10px;font-size:.7rem;line-height:1.4}
+.place .btn{width:100%;min-height:42px;padding:10px 12px;font-size:.75rem;letter-spacing:.06em}
+.place.category .place-content{background:#13263d;color:#f3eee4}
+.place-hidden{display:none}
+.places-more{display:flex;justify-content:center;margin-top:22px}
+.places-toggle{min-width:230px;border:1px solid #181613;background:transparent;color:#181613;cursor:pointer}
+@media(max-width:1000px){.places-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){.places-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.place{border-radius:12px}.place-content{padding:13px}.place h3{font-size:1.18rem}.place p{font-size:.875rem;-webkit-line-clamp:4}.place .eyebrow{font-size:.72rem}.place .tag{font-size:.68rem}.places-toggle{width:100%}}
+
+</style>
+</head>
+<body>
+<nav class="nav"><a class="brand" href="/"><img decoding="async" src="assets/align-wordmark.png?v=transparent-5" alt="ALIGN — Belong to Something"></a><div class="navlinks"><a href="#resumen">Resumen</a><a href="#lugares">Lugares</a><a href="#tarjetas">Tarjetas</a><button id="logout" class="logout">Cerrar sesión</button></div></nav>
+<div id="app" class="loading"><div class="loading-box">Cargando tu portal ALIGN…</div></div>
+<script>
+const API='https://api.alignmembers.com.mx/api';
+const app=document.querySelector('#app');
+const params=new URLSearchParams(location.search);
+const token=params.get('token')||sessionStorage.getItem('align_member_token')||localStorage.getItem('align_primary_token');
+const money=new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0});
+const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#039;'})[c]);
+const dateLabel=iso=>{const d=new Date(iso);return Number.isNaN(d.getTime())?'Sin registro':new Intl.DateTimeFormat('es-MX',{day:'numeric',month:'short',year:'numeric',timeZone:'America/Monterrey'}).format(d)};
+const planAliases={'The Brotherhood':'brotherhood','Girls Club':'girls','Ranch Club':'ranch','Duo Club':'duo','Private Circle':'circle'};
+const ALLIES={
+ global:{name:'Global Gym',offer:'10% de descuento en mensualidad, primer mes sin mantenimiento, invitados al 50% y 10% en cafetería.',url:'global-gym.html',button:'Ver Global Gym'},
+ padel:{name:'Pádel 11:11',offer:'15% de descuento en cancha y 10% en restaurante sobre el consumo individual del miembro ALIGN.',url:'padel-11-11.html',button:'Ver Pádel 11:11'},
+ rancho:{name:'Rancho MX',offer:'Estilo western con beneficios en productos Cuadra y Thompston seleccionados.',url:'rancho-mx.html',button:'Ver Rancho MX'},
+ horse:{name:'Horse Riding',offer:'Paseos a caballo en La Herradura por $350 la hora para miembros.',url:'horse-riding.html',button:'Ver Horse Riding'},
+ fishing:{name:'Vaca Fishing',offer:'Pesca, convivencia y una parada en la playa para compartir con amigos o familia.',url:'dia-de-pesca.html',button:'Ver Vaca Fishing'},
+ marea:{name:'Marea Baja',offer:'Clases de surf para vivir Playa Miramar de una forma diferente.',url:'marea-baja.html',button:'Ver Marea Baja'},
+ ancla:{name:'El Ancla del Canelo',offer:'20% de descuento en Party Boat para 12–20 personas y 15% en consumo de comida mayor a $500 MXN.',url:'ancla-del-canelo.html',button:'Ver El Ancla'},
+ velamar:{name:'Velamar',offer:'Tarifas preferenciales en cinco alojamientos de torres Marmara y Capri.',url:'velamar.html?v=12',button:'Ver Velamar'},
+ sante:{name:'Santé Pilates',offer:'10% de descuento en paquetes de 10 y 15 clases. Precio ALIGN: $1,170 y $1,530 MXN.',url:'sante.html',button:'Ver Santé'},
+ gingers:{name:"Ginger's Coffee House",offer:'10% de descuento en bebidas calientes: café, chai, matcha y demás opciones servidas calientes.',url:'gingers.html',button:"Ver Ginger's"},
+ greencabana:{name:'Green Cabana',offer:'15% de descuento individual para el socio ALIGN: lunes todo el día; martes a jueves y domingo de 12:30 a 3:30 p.m. Reservaciones para eventos de 3 o más personas con un día de anticipación: 10% sobre todo el consumo.',url:'green-cabana.html',button:'Ver Green Cabana'},
+ ceramia:{name:'Cera Mia',offer:'15% de descuento en todos los productos para miembros ALIGN.',url:'cera-mia.html',button:'Ver Cera Mia'},
+ uspin:{name:'USPIN',offer:'Indoor cycling, energía y comunidad con beneficios dentro de Girls Club, Duo y Private Circle.',url:'uspin.html',button:'Ver USPIN'},
+ nuva:{name:'NUVA Pilates Studio',offer:'Movimiento, fuerza y bienestar con beneficios y cupo limitado para miembros elegibles.',url:'nuva.html',button:'Ver NUVA'},
+ charreadas:{name:'Charreadas',offer:'Acceso preferencial a la preventa con boletos reservados para miembros de Ranch Club.',url:'charreadas.html',button:'Ver Charreadas'},
+ restaurants:{name:'Restaurantes',offer:'Buns & Bros, Boris Marisquería, Mr Smoky, Basilico, Brusketa, Green Cabana y más aliados gastronómicos.',url:'restaurantes.html',button:'Explorar restaurantes',type:'category'},
+ personalcare:{name:'Cuidado personal',offer:'Beneficios de imagen, bienestar y cuidado personal disponibles dentro de todas las membresías.',url:'cuidado-personal.html',button:'Explorar cuidado personal',type:'category'}
+};
+const ALLY_IMAGES={
+ global:'assets/webopt/Global2-5beac76111.webp',
+ padel:'assets/webopt/16E29357-5A81-4689-8681-5AEA57D3D805-81a81da3da.webp',
+ rancho:'assets/webopt/ranchomx-1-9b86a6c2b9.webp',
+ horse:'assets/webopt/caballo1-13a8c577fc.webp',
+ fishing:'https://edgartikis.github.io/align-community/assets/webopt/amigos-a6da4fa918.webp?v=20260731',
+ marea:'assets/webopt/marea-1-fdc810d4ad.webp',
+ ancla:'assets/webopt/IMG_0989-8f6c603d53.webp',
+ velamar:'assets/webopt/MARMARA11-1-d63e955a73.webp',
+ sante:'assets/webopt/Sante1-fae229d201.webp',
+ gingers:'assets/webopt/Ginger1-c2954fb276.webp',
+ greencabana:'assets/webopt/greencabana3-6429b53612.webp',
+ ceramia:'assets/webopt/ceramia3-a5e85813be.webp',
+ uspin:'assets/webopt/uspin-2-d4d1a72acd.webp',
+ nuva:'assets/webopt/nuva-100-424bef1a73.webp',
+ charreadas:'assets/webopt/herradura-1-jpg-191dea6b51.webp',
+ restaurants:'assets/webopt/greencabana3-6429b53612.webp',
+ personalcare:'assets/webopt/Sante4-c08ae4e90f.webp'
+};
+const PLANS={
+ brotherhood:{title:'The Brotherhood',allies:['global','padel','greencabana','rancho','horse','fishing','marea','ancla','velamar','restaurants','personalcare']},
+ girls:{title:'Girls Club',allies:['global','padel','greencabana','ceramia','sante','gingers','uspin','marea','nuva','velamar','restaurants','personalcare']},
+ ranch:{title:'Ranch Club',allies:['global','padel','greencabana','rancho','horse','charreadas','velamar','restaurants','personalcare']},
+ duo:{title:'Duo Club',allies:['global','padel','greencabana','ceramia','gingers','uspin','nuva','sante','marea','rancho','horse','fishing','ancla','charreadas','velamar','restaurants','personalcare']},
+ circle:{title:'Private Circle',allies:['global','padel','greencabana','ceramia','gingers','uspin','nuva','sante','marea','rancho','horse','fishing','ancla','charreadas','velamar','restaurants','personalcare']}
+};
+async function fetchJson(path){const response=await fetch(`${API}${path}`,{cache:'no-store'});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'No fue posible cargar la información.');return data}
+function render(member,activityData,groupData){
+ const activity=activityData?.activity||{};
+ const favorites=Array.isArray(activity.favoritePlaces)?activity.favoritePlaces:[];
+ const recent=Array.isArray(activity.recentVisits)?activity.recentVisits:[];
+ const cards=Array.isArray(groupData?.cards)&&groupData.cards.length?groupData.cards:[{token,name:member.name,memberCode:member.memberCode,position:1,level:member.level}];
+ const planKey=String(member.planKey||activityData?.member?.planKey||planAliases[member.level]||'').toLowerCase();
+ const plan=PLANS[planKey];
+ const places=plan?plan.allies.map(id=>({id,...ALLIES[id],image:ALLY_IMAGES[id]})).filter(item=>item.name):[];
+ const favorite=favorites[0];
+ const lastVisit=activity.lastVisit||recent[0]?.createdAt||'';
+ const cardLink=`member.html?token=${encodeURIComponent(token)}&from=portal`;
+ const placesHtml=places.length?places.map((item,index)=>{const sep=item.url.includes('?')?'&':'?';const url=`${item.url}${sep}plan=${encodeURIComponent(planKey)}&from=portal`;return `<article class="place${item.type==='category'?' category':''}${index>=8?' place-hidden':''}"><div class="place-media"><img decoding="async" loading="lazy" src="${escapeHtml(item.image)}" alt="Foto de ${escapeHtml(item.name)}"></div><div class="place-content"><div><p class="eyebrow">${item.type==='category'?'Categoría ALIGN':'Aliado incluido'}</p><h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.offer)}</p></div><div class="place-footer"><span class="tag">Incluido en ${escapeHtml(plan.title)}</span><a class="btn" href="${url}">${escapeHtml(item.button)}</a></div></div></article>`}).join(''):`<div class="empty">Todavía no pudimos identificar el menú de aliados de esta membresía.</div>`;
+ const placesMore=places.length>8?'<div class="places-more"><button class="btn places-toggle" id="placesToggle" type="button">Ver todos los lugares</button></div>':'';
+ const cardsHtml=cards.map(card=>`<article class="digital-card"><p class="eyebrow">${Number(card.position)===1?'Tarjeta titular':`Integrante ${Number(card.position)||2}`}</p><h3>${escapeHtml(card.name||'Miembro ALIGN')}</h3><p>${escapeHtml(card.memberCode||'')} · ${escapeHtml(card.level||member.level||'')}</p><a class="btn gold" href="member.html?token=${encodeURIComponent(card.token)}&from=portal">Abrir tarjeta digital</a></article>`).join('');
+ const frequentHtml=favorites.length?favorites.map((place,index)=>`<article class="frequent"><span class="frequent-rank">#${index+1} · Frecuencia</span><h3>${escapeHtml(place.place)}</h3><p>${Number(place.visits||0)} visita${Number(place.visits||0)===1?'':'s'}<br>${money.format(place.spent||0)} gastados<br>${money.format(place.savings||0)} ahorrados</p></article>`).join(''):`<div class="empty">Todavía no hay lugares frecuentes. Aparecerán conforme uses tus beneficios.</div>`;
+ const recentHtml=recent.length?recent.map(visit=>`<div class="visit"><div><div class="visit-place">${escapeHtml(visit.place)}</div><div class="visit-meta">${escapeHtml(dateLabel(visit.createdAt))}${visit.benefit?` · ${escapeHtml(visit.benefit)}`:''}</div></div><div class="visit-money"><strong>${money.format(visit.spent||0)}</strong><span class="saved">+${money.format(visit.saved||0)} ahorro</span></div></div>`).join(''):`<div class="empty">Aún no tienes salidas registradas. Cuando un aliado valide una visita, aparecerá aquí.</div>`;
+ app.className='';
+ app.innerHTML=`
+ <header class="hero"><div class="hero-grid"><div><p class="eyebrow">Bienvenido, ${escapeHtml(member.name)}</p><h1>Tu ALIGN, en un solo lugar.</h1><p class="hero-copy">Consulta cuánto has gastado y ahorrado, tus salidas, tus lugares más frecuentes, los aliados incluidos en tu membresía y tus tarjetas digitales.</p><div class="hero-actions"><a class="btn primary" href="#lugares">Ver lugares disponibles</a><a class="btn gold" href="${cardLink}">Mis tarjetas digitales</a></div></div><aside class="member-card"><p class="eyebrow">Membresía activa</p><div class="member-level">${escapeHtml(member.level)}</div><div class="member-meta"><span>${escapeHtml(member.memberCode)}</span><span>${escapeHtml(plan?.title||member.level)}</span><span>Estado · Activa</span></div></aside></div></header>
+ <div class="tabs"><a href="#resumen">Mi tablero</a><a href="#lugares">Lugares disponibles</a><a href="#tarjetas">Mis tarjetas</a><a href="#actividad">Actividad</a><a href="/#eventos">Experiencias ALIGN</a></div>
+ <section id="resumen" class="section"><div class="section-head"><div><p class="eyebrow">Mi tablero</p><h2>Tus números ALIGN.</h2></div><p>Estos datos se actualizan conforme los aliados registran tus visitas, consumo y ahorro al validar tu membresía.</p></div><div class="metrics"><article class="metric"><span class="metric-label">Número de salidas</span><strong class="metric-value">${Number(activity.visits||0)}</strong></article><article class="metric"><span class="metric-label">Total gastado</span><strong class="metric-value">${money.format(activity.spent||0)}</strong></article><article class="metric"><span class="metric-label">Total ahorrado</span><strong class="metric-value">${money.format(activity.savings||0)}</strong></article></div><div class="dashboard-lower"><article class="favorite"><p class="eyebrow">Lugar más frecuentado</p><strong>${escapeHtml(favorite?.place||'Aún sin favorito')}</strong><p>${favorite?`${Number(favorite.visits||0)} visita${Number(favorite.visits||0)===1?'':'s'} · ${money.format(favorite.savings||0)} ahorrados`:'Cuando acumules visitas, aquí aparecerá tu lugar más frecuente.'}</p></article><article class="latest"><p class="eyebrow">Última salida registrada</p><strong>${escapeHtml(lastVisit?dateLabel(lastVisit):'Sin salidas')}</strong><p>${recent[0]?`${escapeHtml(recent[0].place)} · ${money.format(recent[0].spent||0)} gastados`:'Tu historial comenzará cuando uses un beneficio ALIGN.'}</p></article></div></section>
+ <section id="lugares" class="section light"><div class="section-head"><div><p class="eyebrow">Menú de lugares disponibles</p><h2>Lo que incluye tu membresía.</h2></div><p>Esta selección corresponde a ${escapeHtml(plan?.title||member.level)}. Entra a cada aliado para ver su beneficio antes de visitarlo.</p></div><div class="places-grid">${placesHtml}</div>${placesMore}</section>
+ <section id="tarjetas" class="section"><div class="section-head"><div><p class="eyebrow">Identidad ALIGN</p><h2>Mis tarjetas digitales.</h2></div><p>Abre la tarjeta de la persona que va a usar el beneficio. El QR vigente se muestra dentro de cada tarjeta.</p></div><div class="cards-grid">${cardsHtml}</div></section>
+ <section id="actividad" class="section"><div class="section-head"><div><p class="eyebrow">Tus hábitos</p><h2>Lugares más frecuentados.</h2></div><p>Ordenados por número de visitas registradas; en caso de empate, se considera el consumo acumulado.</p></div><div class="frequent-grid">${frequentHtml}</div><div class="history"><h3 class="history-title">Actividad reciente</h3>${recentHtml}</div></section>
+ <footer class="footer"><span>© 2026 ALIGN Membership</span><span>Tampico · Madero · Altamira</span></footer>`;
+ const placesToggle=document.querySelector('#placesToggle');
+ if(placesToggle)placesToggle.addEventListener('click',()=>{document.querySelectorAll('.place-hidden').forEach(card=>card.classList.remove('place-hidden'));placesToggle.remove()});
+}
+async function load(){
+ if(!token||!/^[A-Za-z0-9_-]{20,}$/.test(token)){location.replace('login.html');return}
+ sessionStorage.setItem('align_member_token',token);localStorage.setItem('align_primary_token',token);
+ try{
+  const member=await fetchJson(`/member-card?token=${encodeURIComponent(token)}`);
+  if(!member.active)throw new Error('Tu membresía no está activa.');
+  const [activityResult,groupResult]=await Promise.allSettled([fetchJson(`/member-activity?token=${encodeURIComponent(token)}`),fetchJson(`/group-cards?token=${encodeURIComponent(token)}`)]);
+  const activity=activityResult.status==='fulfilled'?activityResult.value:{activity:{visits:Number(member.visits||0),spent:Number(member.spent||0),savings:Number(member.savings||0),favoritePlaces:[],recentVisits:[]}};
+  const group=groupResult.status==='fulfilled'?groupResult.value:{cards:[{token,name:member.name,memberCode:member.memberCode,position:1,level:member.level}]};
+  render(member,activity,group);
+ }catch(error){app.className='loading';app.innerHTML=`<div class="loading-box"><strong>No pudimos abrir tu portal.</strong><br><br>${escapeHtml(error.message)}<br><br><a class="btn" href="login.html">Volver a iniciar sesión</a></div>`}
+}
+document.querySelector('#logout').addEventListener('click',()=>{sessionStorage.removeItem('align_member_token');sessionStorage.removeItem('align_selected_member_token');localStorage.removeItem('align_primary_token');location.replace('login.html')});
+load();
+</script>
+</body>
+</html>

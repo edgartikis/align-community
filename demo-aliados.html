@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#08090b">
+  <meta name="description" content="Portal de aliados ALIGN para validar membresías y registrar visitas, consumo y ahorro.">
+  <title>Portal de Aliados · ALIGN</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script src="align-test-db-config.js"></script>
+  <script src="align-test-db-client.js"></script>
+  <link rel="icon" type="image/png" href="assets/align-primary.png?v=transparent-3">
+  <style>
+    :root{--ink:#08090b;--paper:#f4f1eb;--navy:#10233e;--panel:#101216;--line:rgba(244,241,235,.16);--muted:#a8a49c;--ok:#9ebc8c;--bad:#e7a6a6;--gold:#d9c6a5}
+    *{box-sizing:border-box}html{background:var(--ink)}body{margin:0;background:var(--ink);color:var(--paper);font-family:"DM Sans",sans-serif}button,select,input{font:inherit}button{cursor:pointer}.nav{height:76px;padding:0 5vw;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.badge{padding:7px 10px;border:1px solid var(--line);font:500 .65rem "DM Mono";letter-spacing:.12em;text-transform:uppercase;color:#d8d3cb}.shell{width:min(1180px,90vw);margin:0 auto;padding:64px 0 90px}.intro{display:flex;justify-content:space-between;gap:36px;align-items:end;margin-bottom:38px}.eyebrow{margin:0 0 14px;font:500 .68rem "DM Mono";letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}h1,h2,h3{font-family:"Playfair Display",serif;font-weight:500;margin:0}h1{font-size:clamp(2.8rem,6vw,5.4rem);line-height:.96;letter-spacing:-.04em;max-width:700px}.intro>p{max-width:430px;color:#c8c4bc;line-height:1.6}.demo-grid{display:grid;grid-template-columns:.92fr 1.08fr;gap:18px}.panel{border:1px solid var(--line);background:var(--panel);padding:30px}.panel h2{font-size:2rem;margin-bottom:26px}.field{margin-bottom:21px}.field label{display:block;margin-bottom:9px;font:500 .67rem "DM Mono";letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}select,input{width:100%;border:1px solid #373a40;background:#08090b;color:var(--paper);padding:14px;border-radius:0}.camera{position:relative;display:none;aspect-ratio:4/3;margin:0 0 14px;overflow:hidden;border:1px solid #353a42;background:#050607}.camera.on{display:block}.camera video{width:100%;height:100%;display:block;object-fit:cover}.camera-frame{position:absolute;inset:13%;border:2px solid var(--gold);box-shadow:0 0 0 999px rgba(0,0,0,.26)}.camera-frame::before,.camera-frame::after{content:"";position:absolute;width:28px;height:28px;border-color:#fff}.camera-frame::before{left:-2px;top:-2px;border-left:4px solid;border-top:4px solid}.camera-frame::after{right:-2px;bottom:-2px;border-right:4px solid;border-bottom:4px solid}.camera-note{position:absolute;left:0;right:0;bottom:8px;margin:0;text-align:center;font:.62rem "DM Mono";letter-spacing:.08em;text-transform:uppercase}.scan,.secondary{width:100%;padding:15px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}.scan{border:1px solid var(--paper);background:var(--paper);color:var(--ink)}.secondary{margin-top:9px;border:1px solid #4a4e55;background:transparent;color:var(--paper)}.scan:disabled,.secondary:disabled,.confirm:disabled{cursor:not-allowed;opacity:.48}.camera-status{min-height:20px;margin:12px 0 0;color:var(--gold);font-size:.76rem;line-height:1.45}.camera-status.error{color:var(--bad)}.hint{font-size:.75rem;color:var(--muted);line-height:1.5;margin:12px 0 0}.result{position:relative;min-height:620px;display:flex;flex-direction:column;justify-content:center;overflow:hidden;background:radial-gradient(circle at 80% 5%,#263447 0,transparent 42%),#0b0d11}.result::before{content:"A";position:absolute;right:-22px;top:-90px;font-family:"Playfair Display",serif;font-size:20rem;color:rgba(255,255,255,.025)}.empty{text-align:center;color:var(--muted);position:relative}.validation{display:none;position:relative}.validation.show{display:block}.status{display:inline-flex;gap:8px;align-items:center;padding:8px 11px;border:1px solid rgba(158,188,140,.4);color:var(--ok);font:500 .68rem "DM Mono";letter-spacing:.1em;text-transform:uppercase}.status.denied{border-color:rgba(231,166,166,.45);color:var(--bad)}.dot{width:7px;height:7px;border-radius:50%;background:currentColor}.member-row{display:flex;justify-content:space-between;gap:20px;margin:26px 0;padding-bottom:24px;border-bottom:1px solid var(--line)}.member-name{font-size:2.3rem}.member-code{font:.75rem "DM Mono";color:var(--muted);margin-top:8px}.tier{max-width:190px;text-align:right;font:500 .72rem/1.5 "DM Mono";letter-spacing:.12em;text-transform:uppercase}.benefit-label{font:.68rem "DM Mono";letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}.benefit{font-family:"Playfair Display",serif;font-size:clamp(1.9rem,4vw,3.25rem);line-height:1.03;margin:10px 0 14px}.rules{color:#c8c4bc;line-height:1.55;margin-bottom:22px}.checkout{border:1px solid var(--line);margin:22px 0 18px;background:rgba(8,9,11,.42)}.checkout-title{padding:13px 15px;border-bottom:1px solid var(--line);font:500 .66rem "DM Mono";letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}.checkout-row{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:11px 15px;border-bottom:1px solid rgba(244,241,235,.08);font-size:.86rem;color:#c8c4bc}.checkout-row:last-child{border-bottom:0}.checkout-row strong{font-family:"DM Mono";font-size:.9rem;color:var(--paper);font-weight:500}.checkout-row.total{padding-top:14px;padding-bottom:14px}.checkout-row.total span{color:var(--paper);font-weight:600}.checkout-row.total strong{font-family:"Playfair Display",serif;font-size:1.55rem}.checkout-row.saving strong{color:var(--ok)}.confirm{width:100%;padding:15px;border:1px solid var(--paper);background:transparent;color:var(--paper);font-weight:600;letter-spacing:.08em;text-transform:uppercase}.confirm:not(:disabled):hover{background:var(--paper);color:var(--ink)}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#2b2d31;border:1px solid #2b2d31;margin-top:18px}.metric{background:#101216;padding:24px}.metric span{display:block;font:.65rem "DM Mono";letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}.metric strong{display:block;font:500 2rem "Playfair Display";margin-top:8px}.data-note{margin:18px 0 0;padding:18px 20px;border:1px solid var(--line);color:#b8b4ac;font-size:.78rem;line-height:1.55}.data-note b{color:var(--paper)}.toast{position:fixed;z-index:20;right:24px;bottom:24px;background:var(--paper);color:var(--ink);padding:16px 20px;transform:translateY(160%);transition:.25s}.toast.show{transform:translateY(0)}.disclaimer{margin-top:20px;color:#777b82;font-size:.75rem;text-align:center}canvas{display:none}.align-logo-link,.align-logo-block{display:inline-flex!important;align-items:center!important;font-size:0!important;letter-spacing:0!important;line-height:1!important}.align-wordmark-logo{display:block;width:clamp(118px,14vw,158px);height:auto;max-width:42vw;object-fit:contain}.align-symbol-logo{display:flex!important;align-items:center!important;justify-content:center!important;font-size:0!important;border:0!important;border-radius:0!important;background:transparent!important;overflow:visible!important}.align-symbol-logo .align-primary-logo{display:block;width:auto;height:100%;max-width:100%;object-fit:contain}.empty-mark.align-symbol-logo{width:82px;height:112px;margin:0 auto 20px}
+    @media(max-width:800px){.intro{display:block}.intro>p{margin-top:20px}.demo-grid{grid-template-columns:1fr}.shell{padding-top:42px}.panel{padding:23px}.metrics{grid-template-columns:1fr}.result{min-height:560px}.member-row{display:block}.tier{margin-top:14px;text-align:left}.checkout-row{gap:12px}.nav{padding:0 5vw}}
+    @media(max-width:600px){.align-wordmark-logo{width:124px}.empty-mark.align-symbol-logo{width:70px;height:96px}}
+  </style>
+</head>
+<body>
+  <nav class="nav"><span class="align-logo-block"><img decoding="async" class="align-wordmark-logo" src="assets/align-wordmark.png" alt="ALIGN — Belong to Something"></span><span class="badge">Portal del aliado</span></nav>
+  <main class="shell">
+    <section class="intro">
+      <div><p class="eyebrow">Portal del aliado</p><h1>Escanea. Valida. Registra.</h1></div>
+      <p>Valida la membresía, aplica el beneficio correcto y registra el consumo. ALIGN guarda la visita, el gasto real del socio y el ahorro generado.</p>
+    </section>
+
+    <section class="demo-grid">
+      <div class="panel">
+        <h2>Escáner ALIGN</h2>
+        <div class="field">
+          <label for="business">Establecimiento</label>
+          <select id="business">
+            <option value="global">Global Gym</option>
+            <option value="uspin">USPIN</option>
+            <option value="sante">Santé Pilates</option>
+            <option value="nuva">NUVA Pilates Studio</option>
+            <option value="padel">Pádel 11:11</option>
+            <option value="gingers">Ginger's Coffee House</option>
+            <option value="rancho">Rancho MX</option>
+            <option value="horse">Horse Riding</option>
+            <option value="charreadas">Charreadas</option>
+            <option value="marea">Marea Baja Surfing School</option>
+            <option value="fishing">Vaca Fishing Tours</option>
+          </select>
+        </div>
+
+        <div class="camera" id="camera">
+          <video id="video" playsinline muted preload="metadata"></video>
+          <div class="camera-frame"></div>
+          <p class="camera-note">Coloca el QR dentro del recuadro</p>
+        </div>
+        <canvas id="canvas"></canvas>
+        <button class="scan" id="cameraButton" type="button">Activar cámara y escanear QR</button>
+        <button class="secondary" id="localButton" type="button">Usar socio de prueba de este dispositivo</button>
+        <p class="camera-status" id="cameraStatus">La primera vez, el navegador solicitará permiso para usar la cámara.</p>
+
+        <div class="field" style="margin-top:20px">
+          <label for="people">Personas que utilizaron el beneficio</label>
+          <input id="people" type="number" min="1" max="50" step="1" value="1">
+        </div>
+        <div class="field">
+          <label for="grossTicket">Consumo antes del beneficio ALIGN</label>
+          <input id="grossTicket" type="number" min="0" step="1" inputmode="decimal" placeholder="$0 MXN">
+        </div>
+        <p class="hint">Captura el precio normal antes del descuento. ALIGN calcula automáticamente cuánto debe pagar el socio y cuánto ahorró.</p>
+      </div>
+
+      <div class="panel result">
+        <div class="empty" id="empty"><div class="empty-mark align-symbol-logo"><img decoding="async" class="align-primary-logo" src="assets/align-primary.png?v=transparent-3" alt="ALIGN"></div><p>Escanea la tarjeta digital de un socio.</p></div>
+        <div class="validation" id="validation">
+          <span class="status" id="membershipStatus"><i class="dot"></i><span id="membershipText">Membresía activa</span></span>
+          <div class="member-row">
+            <div><h3 class="member-name" id="memberName">—</h3><div class="member-code" id="memberCode">—</div></div>
+            <div class="tier" id="tier">—</div>
+          </div>
+          <div class="benefit-label" id="place">—</div>
+          <div class="field" id="benefitPicker" hidden style="margin-top:14px">
+            <label for="benefitChoice">Promoción que se aplicará</label>
+            <select id="benefitChoice"></select>
+          </div>
+          <div class="benefit" id="benefit">—</div>
+          <div class="rules" id="rules">—</div>
+
+          <div class="checkout" id="checkout">
+            <div class="checkout-title">Resumen de la visita</div>
+            <div class="checkout-row"><span>Consumo normal</span><strong id="grossAmount">$0</strong></div>
+            <div class="checkout-row"><span>Beneficio aplicado</span><strong id="discountAmount">$0</strong></div>
+            <div class="checkout-row total"><span>Total a cobrar</span><strong id="netAmount">$0</strong></div>
+            <div class="checkout-row saving"><span>Ahorro del socio</span><strong id="savedAmount">$0</strong></div>
+          </div>
+          <button class="confirm" id="confirm" type="button">Aplicar beneficio y registrar visita</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="metrics">
+      <div class="metric"><span>Visitas en este aliado</span><strong id="visits">0</strong></div>
+      <div class="metric"><span>Consumo generado</span><strong id="sales">$0</strong></div>
+      <div class="metric"><span>Ahorro generado</span><strong id="savings">$0</strong></div>
+    </section>
+    <div class="data-note"><b>Cada registro alimenta el historial del miembro:</b> número de visitas, gasto real, ahorro acumulado y frecuencia por establecimiento. Con esos datos ALIGN puede identificar qué lugares visita más cada socio y medir el valor generado para cada aliado.</div>
+    <p class="disclaimer">Portal conectado a la base de pruebas de ALIGN. No procesa cobros de membresía.</p>
+  </main>
+  <div class="toast" id="toast">Visita registrada</div>
+
+  <script>
+    const ALL_PLANS=['brotherhood','girls','ranch','duo','circle'];
+    const OFFERS={
+      global:{id:'ALI-001',name:'Global Gym',category:'Fitness & Cycling',plans:ALL_PLANS,promotions:[
+        {label:'10% OFF en mensualidad',benefit:'10% de descuento en mensualidad',rules:'Aplica en la mensualidad de Global Gym al presentar una membresía ALIGN vigente.',discount:.10},
+        {label:'10% OFF en cafetería',benefit:'10% de descuento en cafetería',rules:'Aplica en consumos dentro de la cafetería de Global Gym.',discount:.10},
+        {label:'50% OFF para invitados',benefit:'50% de descuento en acceso de invitados',rules:'Aplica en el acceso de invitados conforme a las políticas operativas del gimnasio.',discount:.50},
+        {label:'Primer mes sin mantenimiento',benefit:'Primer mes sin cuota de mantenimiento',rules:'La cuota de mantenimiento se elimina durante el primer mes.',discount:0}
+      ]},
+      uspin:{id:'ALI-002',name:'USPIN',category:'Fitness & Cycling',plans:['girls','duo','circle'],promotions:[
+        {label:'10% OFF en membresía',benefit:'10% de descuento en membresía USPIN',rules:'Aplica para Ride “Ride with Soul” o Train “Train with Üs”.',discount:.10},
+        {label:'Una clase de regalo al mes',benefit:'Una clase de regalo al mes',rules:'Una clase mensual de regalo para Train o Bici. Sujeto a disponibilidad.',discount:0}
+      ]},
+      sante:{id:'ALI-003',name:'Santé Pilates',category:'Pilates',plans:['girls','duo','circle'],promotions:[
+        {label:'10% OFF · Paquete 10 clases',benefit:'Paquete de 10 clases por $1,170 MXN',rules:'Precio regular $1,300 MXN. Beneficio oficial ALIGN: 10% de descuento.',discount:.10},
+        {label:'10% OFF · Paquete 15 clases',benefit:'Paquete de 15 clases por $1,530 MXN',rules:'Precio regular $1,700 MXN. Beneficio oficial ALIGN: 10% de descuento.',discount:.10}
+      ]},
+      nuva:{id:'ALI-004',name:'NUVA Pilates Studio',category:'Pilates',plans:['girls','duo','circle'],promotions:[
+        {label:'20% OFF en paquete semestral',benefit:'Inscripción gratis + 20% OFF',rules:'Aplica en paquete semestral. Pago únicamente en efectivo o transferencia. Cupo total limitado a 20 personas.',discount:.20},
+        {label:'10% OFF en AM Club / Loyalty',benefit:'Inscripción gratis + 10% OFF',rules:'Aplica en paquete AM Club y Loyalty Program. Cupo total limitado a 20 personas.',discount:.10}
+      ]},
+      padel:{id:'ALI-005',name:'Pádel 11:11',category:'Pádel',plans:ALL_PLANS,promotions:[
+        {label:'15% OFF en cancha',benefit:'15% de descuento en cancha',rules:'Aplica en el pago de cancha para el miembro ALIGN.',discount:.15},
+        {label:'10% OFF en restaurante',benefit:'10% de descuento en restaurante',rules:'Aplica únicamente sobre el consumo individual del miembro ALIGN.',discount:.10}
+      ]},
+      gingers:{id:'ALI-006',name:"Ginger's Coffee House",category:'Coffee',plans:['girls','duo','circle'],promotions:[
+        {label:'10% OFF · Bebidas calientes',benefit:'10% de descuento en bebidas calientes',rules:'Aplica en todas las bebidas servidas calientes de Ginger’s, incluyendo café, chai, matcha y demás opciones calientes.',discount:.10}
+      ]},
+      rancho:{id:'ALI-007',name:'Rancho MX',category:'Ranch & Western',plans:['brotherhood','ranch','circle'],promotions:[
+        {label:'20% OFF · Gorra Cuadra',benefit:'20% OFF en gorra Cuadra',rules:'Aplica en modelos participantes. No acumulable con otras promociones.',discount:.20},
+        {label:'10% OFF · Bota Cuadra',benefit:'10% OFF en bota Cuadra',rules:'Aplica en modelos participantes. No acumulable con otras promociones.',discount:.10},
+        {label:'10% OFF · Sombrero Thompston',benefit:'10% OFF en sombrero Thompston',rules:'Aplica en modelos participantes. No acumulable con otras promociones.',discount:.10},
+        {label:'30% OFF · Zapato Cuadra',benefit:'30% OFF en zapato Cuadra',rules:'Aplica en modelos participantes. No acumulable con otras promociones.',discount:.30}
+      ]},
+      horse:{id:'ALI-008',name:'Horse Riding',category:'Ranch & Western',plans:ALL_PLANS,promotions:[
+        {label:'Tarifa ALIGN · $350',benefit:'Paseo a caballo por $350 MXN',rules:'Precio regular $500. Tarifa ALIGN por persona por hora, sujeta a disponibilidad y reservación previa.',discount:.30}
+      ]},
+      charreadas:{id:'ALI-009',name:'Charreadas',category:'Ranch & Western',plans:['ranch','circle'],promotions:[
+        {label:'Preventa preferencial',benefit:'Acceso preferencial a preventa',rules:'Acceso antes de la venta general. Cupo de referencia: 150 boletos. El precio depende de cada charreada.',discount:0}
+      ]},
+      marea:{id:'ALI-010',name:'Marea Baja',category:'Outdoor & Adventure',plans:['brotherhood','girls','duo','circle'],byPlan:{
+        brotherhood:[{label:'Clase ALIGN · $250',benefit:'Clase de surf por $250 MXN',rules:'Precio regular $350. Ahorro de $100 por clase.',discount:1-250/350}],
+        girls:[{label:'Clase ALIGN · $250',benefit:'Clase de surf por $250 MXN',rules:'Precio regular $350. Ahorro de $100 por clase.',discount:1-250/350}],
+        duo:[{label:'Clase ALIGN · $250',benefit:'Clase de surf por $250 MXN',rules:'Precio regular $350. Tarifa preferencial sujeta a disponibilidad.',discount:1-250/350}],
+        circle:[{label:'Beneficio 2×1',benefit:'2×1 en clase de surf',rules:'Reserva una clase y tu acompañante entra sin costo adicional.',discount:.50}]
+      }},
+      fishing:{id:'ALI-011',name:'Vaca Fishing',category:'Outdoor & Adventure',plans:['brotherhood','circle'],promotions:[
+        {label:'Tarifa ALIGN · $1,166 por hora',benefit:'Tarifa de $1,166 MXN por hora',rules:'Precio regular $1,500 por hora. Experiencia sujeta a reservación y disponibilidad.',discount:1-1166/1500},
+        {label:'Reserva 5 horas + 1 gratis',benefit:'Sexta hora sin costo',rules:'Reserva cinco horas y recibe la sexta hora sin costo.',discount:1/6}
+      ]}
+    };
+
+    const business=document.getElementById('business');
+    const video=document.getElementById('video');
+    const canvas=document.getElementById('canvas');
+    const context=canvas.getContext('2d',{willReadFrequently:true});
+    const camera=document.getElementById('camera');
+    const cameraButton=document.getElementById('cameraButton');
+    const localButton=document.getElementById('localButton');
+    const cameraStatus=document.getElementById('cameraStatus');
+    const confirmButton=document.getElementById('confirm');
+    const benefitPicker=document.getElementById('benefitPicker');
+    const benefitChoice=document.getElementById('benefitChoice');
+    const grossTicket=document.getElementById('grossTicket');
+    let stream=null,scanning=false,lastFrame=0,scannedMember=null,currentOffer=null,currentPromotion=null,eligible=false;
+
+    const METRICS_KEY='align_demo_ally_metrics_v3';
+    const metricsByAlly=(()=>{try{const stored=JSON.parse(localStorage.getItem(METRICS_KEY)||'{}');return stored&&typeof stored==='object'&&!Array.isArray(stored)?stored:{}}catch(_){return{}}})();
+
+    function planFromLevel(level){const value=String(level||'').toLowerCase();if(value.includes('brotherhood'))return'brotherhood';if(value.includes('girls'))return'girls';if(value.includes('ranch'))return'ranch';if(value.includes('duo'))return'duo';if(value.includes('circle'))return'circle';if(value.includes('universal'))return'master';return''}
+    function decodeField(value){try{return decodeURIComponent(value||'')}catch(_){return value||''}}
+    function parseMember(raw){
+      const text=String(raw||'').trim();
+      if(text==='ALIGN-MYTIME-UNIVERSAL')return{socioId:'MASTER',integranteId:'MASTER',username:'master',name:'Edgar',planKey:'master',planName:'Universal Access',memberCode:'MYTIME',token:'MYTIME'};
+      if(text.startsWith('ALIGNTEST|')){const p=text.split('|').slice(1).map(decodeField);return{socioId:p[0],integranteId:p[1],username:p[2],name:p[3],planKey:p[4],planName:p[5],memberCode:p[6],token:p[7]}}
+      const group=JSON.parse(localStorage.getItem('align_demo_group')||'null');
+      if(group&&Array.isArray(group.cards)){const token=text.split('/').filter(Boolean).pop();const card=group.cards.find(item=>item.token===token||item.memberCode===text);if(card)return memberFromCard(group,card)}
+      throw new Error('Este QR no pertenece a una membresía de prueba ALIGN.');
+    }
+    function memberFromCard(group,card){return{socioId:group.socioId||'',integranteId:(group.socioId||'')+'-P'+(card.position||1),username:group.account&&group.account.username||'',name:card.name||'',planKey:card.planKey||planFromLevel(card.level),planName:card.level||'',memberCode:card.memberCode||'',token:card.token||''}}
+    function promotionsFor(offer,plan){if(!offer.byPlan)return offer.promotions||[];if(plan==='master')return Object.values(offer.byPlan).flat().filter((promo,index,list)=>list.findIndex(item=>item.label===promo.label)===index);return offer.byPlan[plan]||[]}
+    function money(value){return'$'+Number(value||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2})}
+    function checkoutFor(promotion,gross){const amount=Math.max(0,Number(gross||0));const discount=Math.max(0,Math.min(.99,Number(promotion&&promotion.discount||0)));const saved=Math.round(amount*discount*100)/100;const net=Math.max(0,Math.round((amount-saved)*100)/100);return{gross:amount,discount,saved,net}}
+    function renderCheckout(){const data=checkoutFor(currentPromotion,grossTicket.value);document.getElementById('grossAmount').textContent=money(data.gross);document.getElementById('discountAmount').textContent=data.discount?money(data.saved)+' · '+Math.round(data.discount*10000)/100+'%':'Sin descuento monetario';document.getElementById('netAmount').textContent=money(data.net);document.getElementById('savedAmount').textContent=money(data.saved);return data}
+    function renderPromotion(){const promotions=promotionsFor(currentOffer,scannedMember.planKey||planFromLevel(scannedMember.planName));currentPromotion=promotions[Number(benefitChoice.value)||0]||promotions[0]||null;document.getElementById('benefit').textContent=currentPromotion?currentPromotion.benefit:'Beneficio no incluido';document.getElementById('rules').textContent=currentPromotion?currentPromotion.rules:'El paquete de este socio no incluye promociones en este aliado.';renderCheckout()}
+
+    function useMember(member){
+      if(!member||!member.name||!member.memberCode)throw new Error('El QR no contiene una identidad válida.');
+      scannedMember=member;currentOffer=OFFERS[business.value];const plan=member.planKey||planFromLevel(member.planName);scannedMember.planKey=plan;eligible=plan==='master'||currentOffer.plans.includes(plan);
+      document.getElementById('empty').style.display='none';document.getElementById('validation').classList.add('show');document.getElementById('memberName').textContent=member.name;document.getElementById('memberCode').textContent=member.memberCode;document.getElementById('tier').textContent=member.planName||plan;document.getElementById('place').textContent=currentOffer.name;
+      const promotions=eligible?promotionsFor(currentOffer,plan):[];benefitChoice.innerHTML=promotions.map((promo,index)=>`<option value="${index}">${promo.label}</option>`).join('');benefitPicker.hidden=promotions.length<2;
+      if(eligible)renderPromotion();else{currentPromotion=null;document.getElementById('benefit').textContent='Beneficio no incluido';document.getElementById('rules').textContent='El paquete de este socio no incluye promociones en este aliado.';renderCheckout()}
+      const status=document.getElementById('membershipStatus');status.classList.toggle('denied',!eligible);document.getElementById('membershipText').textContent=eligible?'Membresía activa':'Sin beneficio para este aliado';confirmButton.disabled=!eligible;cameraStatus.className='camera-status';cameraStatus.textContent='QR leído correctamente. Captura el consumo y confirma la visita.';
+    }
+    function clearValidation(){scannedMember=null;currentOffer=null;currentPromotion=null;eligible=false;document.getElementById('validation').classList.remove('show');document.getElementById('empty').style.display='block';benefitPicker.hidden=true;benefitChoice.innerHTML='';confirmButton.disabled=true;renderCheckout()}
+    function stopCamera(){scanning=false;if(stream)stream.getTracks().forEach(track=>track.stop());stream=null;video.srcObject=null;camera.classList.remove('on');cameraButton.textContent='Activar cámara y escanear QR'}
+    function cameraErrorMessage(error){if(error&&error.name==='NotAllowedError')return'Permiso de cámara rechazado. Actívalo desde la configuración del navegador y vuelve a intentar.';if(error&&error.name==='NotFoundError')return'No se encontró una cámara disponible en este dispositivo.';if(error&&error.name==='NotReadableError')return'La cámara está siendo utilizada por otra aplicación. Ciérrala y vuelve a intentar.';return error&&error.message||'No fue posible activar la cámara.'}
+    async function startCamera(){try{clearValidation();stopCamera();if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error('Este navegador no permite usar la cámara. Prueba en Chrome o Safari actualizado.');cameraStatus.className='camera-status';cameraStatus.textContent='Solicitando permiso para la cámara…';stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});video.srcObject=stream;await video.play();camera.classList.add('on');scanning=true;cameraButton.textContent='Cancelar escaneo';cameraStatus.textContent='Cámara activa. Apunta al QR de la tarjeta digital.';requestAnimationFrame(scanFrame)}catch(error){stopCamera();cameraStatus.className='camera-status error';cameraStatus.textContent=cameraErrorMessage(error)}}
+    async function scanFrame(time){if(!scanning)return;if(video.readyState>=2&&time-lastFrame>180){lastFrame=time;canvas.width=video.videoWidth;canvas.height=video.videoHeight;context.drawImage(video,0,0,canvas.width,canvas.height);let raw='';try{if('BarcodeDetector'in window){const detector=new BarcodeDetector({formats:['qr_code']});const codes=await detector.detect(canvas);raw=codes[0]&&codes[0].rawValue||''}}catch(_){raw=''}if(!raw&&window.jsQR){const image=context.getImageData(0,0,canvas.width,canvas.height);const code=jsQR(image.data,image.width,image.height,{inversionAttempts:'attemptBoth'});raw=code&&code.data||''}if(raw){try{const member=parseMember(raw);stopCamera();if(navigator.vibrate)navigator.vibrate(120);useMember(member);return}catch(error){cameraStatus.className='camera-status error';cameraStatus.textContent=error.message}}}requestAnimationFrame(scanFrame)}
+
+    function metricsFor(offer){const key=offer&&offer.id;if(!key)return{visits:0,sales:0,savings:0};const current=metricsByAlly[key];if(!current||typeof current!=='object')metricsByAlly[key]={visits:0,sales:0,savings:0};return metricsByAlly[key]}
+    function updateMetrics(){const offer=OFFERS[business.value];const metrics=metricsFor(offer);document.getElementById('visits').textContent=Number(metrics.visits)||0;document.getElementById('sales').textContent=money(metrics.sales||0);document.getElementById('savings').textContent=money(metrics.savings||0);localStorage.setItem(METRICS_KEY,JSON.stringify(metricsByAlly))}
+
+    cameraButton.addEventListener('click',()=>scanning?stopCamera():startCamera());
+    localButton.addEventListener('click',()=>{try{stopCamera();const group=JSON.parse(localStorage.getItem('align_demo_group')||'null');if(!group||!group.primary)throw new Error('Primero crea una membresía de prueba en este dispositivo.');useMember(memberFromCard(group,group.primary))}catch(error){cameraStatus.className='camera-status error';cameraStatus.textContent=error.message}});
+    benefitChoice.addEventListener('change',renderPromotion);
+    grossTicket.addEventListener('input',renderCheckout);
+    business.addEventListener('change',()=>{clearValidation();updateMetrics();cameraStatus.className='camera-status';cameraStatus.textContent='Establecimiento actualizado. Escanea nuevamente al socio.'});
+
+    confirmButton.addEventListener('click',async()=>{
+      if(!scannedMember||!currentOffer||!currentPromotion||!eligible)return;
+      confirmButton.disabled=true;confirmButton.textContent='Registrando visita…';
+      const checkout=renderCheckout();
+      const people=Math.max(1,Math.min(50,Math.round(Number(document.getElementById('people').value||1))));
+      try{
+        if(window.ALIGN_TEST_DB){await window.ALIGN_TEST_DB.recordVisit({visitId:'VIS-GH-'+Date.now().toString(36).toUpperCase(),socioId:scannedMember.socioId,integranteId:scannedMember.integranteId,username:scannedMember.username,visitorName:scannedMember.name,planName:scannedMember.planName,allyId:currentOffer.id,place:currentOffer.name,category:currentOffer.category,people,spent:checkout.net,saved:checkout.saved,benefit:currentPromotion.benefit,notes:'Consumo normal '+checkout.gross.toFixed(2)+' MXN · descuento '+(checkout.discount*100).toFixed(2)+'% · total pagado '+checkout.net.toFixed(2)+' MXN'})}
+        const allyMetrics=metricsFor(currentOffer);allyMetrics.visits=(Number(allyMetrics.visits)||0)+1;allyMetrics.sales=(Number(allyMetrics.sales)||0)+checkout.net;allyMetrics.savings=(Number(allyMetrics.savings)||0)+checkout.saved;updateMetrics();
+        const toast=document.getElementById('toast');toast.textContent='Visita registrada · '+scannedMember.memberCode+' · '+money(checkout.saved)+' ahorrados';toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),3000);confirmButton.textContent='Visita registrada';
+        setTimeout(()=>{grossTicket.value='';document.getElementById('people').value='1';clearValidation();confirmButton.textContent='Aplicar beneficio y registrar visita';cameraStatus.textContent='Listo para escanear al siguiente socio.'},1200);
+      }catch(error){confirmButton.disabled=false;confirmButton.textContent='Aplicar beneficio y registrar visita';cameraStatus.className='camera-status error';cameraStatus.textContent='No fue posible registrar la visita: '+(error&&error.message||'error desconocido')}
+    });
+
+    window.addEventListener('pagehide',stopCamera);
+    updateMetrics();clearValidation();
+  </script>
+</body>
+</html>
