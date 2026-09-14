@@ -18,7 +18,21 @@ const ALLIES = Object.freeze({
   "ALI-009": { key: "charreadas", name: "Charreadas", category: "Ranch & Western" },
   "ALI-010": { key: "marea", name: "Marea Baja", category: "Outdoor & Adventure" },
   "ALI-011": { key: "fishing", name: "Vaca Fishing", category: "Outdoor & Adventure" },
+  "ALI-012": { key: "velamar", name: "Velamar", category: "Alojamientos" },
   "ALI-013": { key: "ancla", name: "El Ancla del Canelo", category: "Food & Experiences" },
+  "ALI-014": { key: "ceramia", name: "Cera Mía", category: "Arte & Cerámica" },
+  "ALI-015": { key: "buns", name: "Buns & Bros", category: "Restaurantes" },
+  "ALI-016": { key: "poke", name: "Poke Burrito", category: "Restaurantes" },
+  "ALI-017": { key: "boris", name: "Boris Marisquería", category: "Restaurantes" },
+  "ALI-018": { key: "greencabana", name: "Green Cabana", category: "Restaurantes" },
+  "ALI-019": { key: "dentistapaulina", name: "Dentista Paulina", category: "Salud & Cuidado" },
+  "ALI-020": { key: "masajista", name: "Masajista", category: "Salud & Cuidado" },
+  "ALI-021": { key: "mrsmoky", name: "Mr Smoky", category: "Restaurantes" },
+  "ALI-022": { key: "xcape", name: "XCAPE", category: "Viajes & Experiencias" },
+  "ALI-023": { key: "studiopalmas", name: "Studio Palmas", category: "Bienestar & Cuidado" },
+  "ALI-024": { key: "veterinaria", name: "Veterinaria", category: "Servicios" },
+  "ALI-025": { key: "nuvello", name: "Nuvello", category: "Bienestar & Cuidado" },
+  "ALI-026": { key: "dentistajessica", name: "Dentista Jessica Manzur", category: "Salud & Cuidado" },
 });
 
 function cors(origin = "") {
@@ -26,7 +40,7 @@ function cors(origin = "") {
   return {
     "access-control-allow-origin": allowed,
     "access-control-allow-methods": "GET,POST,OPTIONS",
-    "access-control-allow-headers": "content-type",
+    "access-control-allow-headers": "content-type,authorization",
     vary: "Origin",
   };
 }
@@ -42,6 +56,18 @@ function clean(value, max = 200) {
 function amount(value, max = 1000000) {
   const number = Number(value);
   return Number.isFinite(number) ? Math.max(0, Math.min(max, Math.round(number * 100) / 100)) : 0;
+}
+
+function normalizeCredential(value) {
+  return clean(value, 100)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function expectedPassword(name) {
+  return normalizeCredential(name).replace(/[aeiou]/g, "");
 }
 
 function addCalendarMonth(iso) {
@@ -82,6 +108,43 @@ function qrSecret(env) {
   const secret = String(env.QR_SIGNING_SECRET || env.STRIPE_SECRET_KEY || "").trim();
   if (!secret) throw new Error("No está configurada la firma de QR.");
   return secret;
+}
+
+function base64UrlEncode(value) {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function base64UrlDecode(value) {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const binary = atob(normalized + "=".repeat((4 - normalized.length % 4) % 4));
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+function publicAlly(ally) {
+  return { allyId: ally.allyId, key: ally.key, name: ally.name, category: ally.category };
+}
+
+async function createAllySession(env, allyId) {
+  const payload = base64UrlEncode(JSON.stringify({ allyId, exp: Date.now() + 12 * 60 * 60 * 1000, nonce: crypto.randomUUID() }));
+  const signature = await hmacBase64Url(qrSecret(env), `ally-session:${payload}`);
+  return `${payload}.${signature}`;
+}
+
+async function allyFromSession(request, env) {
+  const authorization = request.headers.get("authorization") || "";
+  const token = authorization.replace(/^Bearer\s+/i, "").trim();
+  const [payload, signature, extra] = token.split(".");
+  if (!payload || !signature || extra) throw new Error("La sesión del aliado no es válida. Inicia sesión nuevamente.");
+  const expected = await hmacBase64Url(qrSecret(env), `ally-session:${payload}`);
+  if (!constantTimeEqual(expected, signature)) throw new Error("La sesión del aliado no es válida. Inicia sesión nuevamente.");
+  let data;
+  try { data = JSON.parse(base64UrlDecode(payload)); } catch (_) { throw new Error("La sesión del aliado no es válida. Inicia sesión nuevamente."); }
+  if (!Number.isFinite(data.exp) || Date.now() >= data.exp) throw new Error("La sesión del aliado expiró. Inicia sesión nuevamente.");
+  return allyFor(data.allyId);
 }
 
 function cycleKey(period) { return `${period.validFrom}|${period.validUntil}`; }
@@ -130,6 +193,43 @@ function allyFor(id) {
   return { allyId, ...ally };
 }
 
+function allyByUsername(username) {
+  const normalized = normalizeCredential(username);
+  for (const [allyId, ally] of Object.entries(ALLIES)) {
+    if (normalizeCredential(ally.name) === normalized) return { allyId, ...ally };
+  }
+  return null;
+}
+
+async function handleAllyLogin(request, env) {
+  const origin = request.headers.get("origin") || "";
+  if (!env.PAYMENT_STATE) return json({ ok: false, error: "El acceso de aliados no está disponible." }, 503, origin);
+  const body = await request.json();
+  const username = normalizeCredential(body.username);
+  const password = normalizeCredential(body.password);
+  const ip = clean(request.headers.get("cf-connecting-ip") || "unknown", 80);
+  const rateKey = `ally-login-rate:${ip}:${username || "empty"}`;
+  const rateRaw = await env.PAYMENT_STATE.get(rateKey);
+  let attempts = Number(rateRaw || 0);
+  if (attempts >= 8) return json({ ok: false, error: "Demasiados intentos. Espera 15 minutos e inténtalo nuevamente." }, 429, origin);
+  const ally = allyByUsername(username);
+  const valid = Boolean(ally && constantTimeEqual(password, expectedPassword(ally.name)));
+  if (!valid) {
+    attempts += 1;
+    await env.PAYMENT_STATE.put(rateKey, String(attempts), { expirationTtl: 15 * 60 });
+    return json({ ok: false, error: "Usuario o contraseña incorrectos." }, 401, origin);
+  }
+  await env.PAYMENT_STATE.delete(rateKey);
+  const token = await createAllySession(env, ally.allyId);
+  return json({ ok: true, token, ally: publicAlly(ally), expiresIn: 12 * 60 * 60 }, 200, origin);
+}
+
+async function handleAllySession(request, env) {
+  const origin = request.headers.get("origin") || "";
+  const ally = await allyFromSession(request, env);
+  return json({ ok: true, ally: publicAlly(ally) }, 200, origin);
+}
+
 async function postDatabase(env, payload) {
   const url = String(env.ALIGN_DB_URL || "").trim();
   const secret = String(env.ALIGN_DB_SECRET || "").trim();
@@ -155,13 +255,13 @@ async function allyMetrics(env, allyId) {
 
 async function handleAllyScan(request, env) {
   const origin = request.headers.get("origin") || "";
+  const ally = await allyFromSession(request, env);
   const body = await request.json();
-  const ally = allyFor(body.allyId);
   const verified = await verifiedMemberFromQr(env, body.qr);
   const member = verified.member;
   return json({
     ok: true,
-    ally,
+    ally: publicAlly(ally),
     member: {
       name: member.name,
       level: member.level,
@@ -177,8 +277,8 @@ async function handleAllyScan(request, env) {
 
 async function handleRegisterVisit(request, env) {
   const origin = request.headers.get("origin") || "";
+  const ally = await allyFromSession(request, env);
   const body = await request.json();
-  const ally = allyFor(body.allyId);
   const verified = await verifiedMemberFromQr(env, body.qr);
   const member = verified.member;
   const clientVisitId = clean(body.clientVisitId, 100);
@@ -265,21 +365,26 @@ async function handleRegisterVisit(request, env) {
 
 async function handleMetrics(request, env) {
   const origin = request.headers.get("origin") || "";
-  const ally = allyFor(new URL(request.url).searchParams.get("allyId"));
-  return json({ ok: true, ally, metrics: await allyMetrics(env, ally.allyId) }, 200, origin);
+  const ally = await allyFromSession(request, env);
+  return json({ ok: true, ally: publicAlly(ally), metrics: await allyMetrics(env, ally.allyId) }, 200, origin);
 }
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(request.headers.get("origin") || "") });
+    if (request.method === "OPTIONS" && url.pathname.startsWith("/api/ally/")) {
+      return new Response(null, { status: 204, headers: cors(request.headers.get("origin") || "") });
+    }
     try {
+      if (url.pathname === "/api/ally/login" && request.method === "POST") return await handleAllyLogin(request, env);
+      if (url.pathname === "/api/ally/session" && request.method === "GET") return await handleAllySession(request, env);
       if (url.pathname === "/api/ally/scan" && request.method === "POST") return await handleAllyScan(request, env);
       if (url.pathname === "/api/ally/visit" && request.method === "POST") return await handleRegisterVisit(request, env);
       if (url.pathname === "/api/ally/metrics" && request.method === "GET") return await handleMetrics(request, env);
     } catch (error) {
       console.error("ALIGN ally portal", error);
-      return json({ ok: false, error: error?.message || "No fue posible procesar la visita." }, 400, request.headers.get("origin") || "");
+      const status = /sesión|expiró/i.test(error?.message || "") ? 401 : 400;
+      return json({ ok: false, error: error?.message || "No fue posible procesar la visita." }, status, request.headers.get("origin") || "");
     }
     return billingWorker.fetch(request, env);
   },
