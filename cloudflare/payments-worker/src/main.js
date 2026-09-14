@@ -1,6 +1,6 @@
 import apiWorker from "./entry-member-login.js";
 
-const BACKEND_VERSION = "2026-09-08-canonical-v1";
+const BACKEND_VERSION = "2026-09-14-ally-auth-v2";
 
 function stripeMode(env) {
   const key = String(env.STRIPE_SECRET_KEY || "").trim();
