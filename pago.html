@@ -31,7 +31,7 @@
 </div>
 </main>
 <script>
-const PLANS={brotherhood:{name:'The Brotherhood',price:'$249 MXN / mes',regular:299,founder:true,seats:1},girls:{name:'Girls Club',price:'$249 MXN / mes',regular:299,founder:true,seats:1},ranch:{name:'Ranch Club',price:'$249 MXN / mes',regular:299,founder:true,seats:1},duo:{name:'Duo Club',price:'$349 MXN / mes',seats:2},circle:{name:'Private Circle',price:'$499 MXN / mes',seats:3}};
+const PLANS={brotherhood:{name:'The Brotherhood',price:'$249 MXN / mes',regular:299,founder:true,seats:1},girls:{name:'Girls Club',price:'$249 MXN / mes',regular:299,founder:true,seats:1},ranch:{name:'Cowboys',price:'$249 MXN / mes',regular:299,founder:true,seats:1},duo:{name:'Duo Club',price:'$349 MXN / mes',seats:2},circle:{name:'Private Circle',price:'$499 MXN / mes',seats:3}};
 const params=new URLSearchParams(location.search),planKey=String(params.get('plan')||'').toLowerCase(),plan=PLANS[planKey];
 if(!plan){location.replace('./#membresias');throw new Error('Plan inválido');}
 const draftKey='align_registration_draft_'+planKey;

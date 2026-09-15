@@ -3,7 +3,7 @@ const STRIPE_API = 'https://api.stripe.com/v1/checkout/sessions';
 const PLANS = {
   brotherhood: { name: 'The Brotherhood', amount: 24900 },
   girls: { name: 'Girls Club', amount: 24900 },
-  ranch: { name: 'Ranch Club', amount: 24900 },
+  ranch: { name: 'Cowboys', amount: 24900 },
   duo: { name: 'Duo Club', amount: 34900 },
   circle: { name: 'Private Circle', amount: 49900 },
 };
