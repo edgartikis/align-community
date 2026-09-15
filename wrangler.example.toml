@@ -1,0 +1,11 @@
+# Copia este archivo como wrangler.toml solo para desarrollo/local CLI.
+# En Cloudflare Pages, los bindings y secrets también se pueden configurar desde el dashboard.
+name = "align-members"
+compatibility_date = "2026-09-05"
+pages_build_output_dir = "."
+
+[[d1_databases]]
+binding = "DB"
+database_name = "align-members-production"
+database_id = "PEGA_AQUI_EL_DATABASE_ID"
+preview_database_id = "DB"

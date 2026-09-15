@@ -1,0 +1,280 @@
+import memberActivityWorker from "./entry-member-activity.js";
+
+const ALLOWED_ORIGINS = new Set([
+  "https://alignmembers.com.mx",
+  "https://www.alignmembers.com.mx",
+  "https://edgartikis.github.io",
+]);
+
+function cors(origin = "") {
+  const allowed = ALLOWED_ORIGINS.has(origin) ? origin : "https://alignmembers.com.mx";
+  return {
+    "access-control-allow-origin": allowed,
+    "access-control-allow-methods": "GET,POST,OPTIONS",
+    "access-control-allow-headers": "content-type",
+    vary: "Origin",
+  };
+}
+
+function json(body, status = 200, origin = "") {
+  return Response.json(body, {
+    status,
+    headers: { ...cors(origin), "cache-control": "no-store" },
+  });
+}
+
+function clean(value, max = 200) {
+  return String(value == null ? "" : value)
+    .replace(/[\u0000-\u001F\u007F]/g, " ")
+    .trim()
+    .slice(0, max);
+}
+
+function normalizeUsername(value) {
+  return clean(value, 24)
+    .toLowerCase()
+    .replace(/\s+/g, ".")
+    .replace(/\.{2,}/g, ".")
+    .replace(/^\.+|\.+$/g, "");
+}
+
+function validUsername(value) {
+  return /^[a-z0-9._-]{4,24}$/i.test(value);
+}
+
+function validHash(value) {
+  return /^[a-f0-9]{64}$/.test(value);
+}
+
+function constantTimeEqual(a, b) {
+  if (!a || !b || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+async function readJson(env, key) {
+  const raw = await env.PAYMENT_STATE.get(key);
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch (_) { return null; }
+}
+
+function stripeSecret(env) {
+  const value = String(env.STRIPE_SECRET_KEY || "").trim();
+  return /^([sr]k)_(test|live)_/.test(value) ? value : "";
+}
+
+async function recoverDraftIdFromStripe(env, sessionId) {
+  const secret = stripeSecret(env);
+  if (!secret || !/^cs_(test|live)_/.test(sessionId)) return "";
+  try {
+    const response = await fetch(`https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(sessionId)}`, {
+      headers: { authorization: `Bearer ${secret}` },
+    });
+    if (!response.ok) return "";
+    const session = await response.json();
+    return clean(session?.metadata?.align_draft_id || session?.client_reference_id, 100);
+  } catch (_) {
+    return "";
+  }
+}
+
+async function draftIdForSession(env, sessionId) {
+  let draftId = clean(await env.PAYMENT_STATE.get(`session:${sessionId}`), 100);
+  if (draftId) return draftId;
+
+  draftId = clean(await env.PAYMENT_STATE.get(`sessions:${sessionId}`), 100);
+  if (draftId) {
+    await env.PAYMENT_STATE.put(`session:${sessionId}`, draftId, { expirationTtl: 60 * 60 * 48 });
+    return draftId;
+  }
+
+  draftId = await recoverDraftIdFromStripe(env, sessionId);
+  if (draftId) {
+    await env.PAYMENT_STATE.put(`session:${sessionId}`, draftId, { expirationTtl: 60 * 60 * 48 });
+  }
+  return draftId;
+}
+
+async function accountFromSession(env, sessionId, expectedUsername = "") {
+  if (!sessionId) return null;
+  const activation = await readJson(env, `activation:${sessionId}`);
+  if (!activation?.groupId) return null;
+
+  const draftId = await draftIdForSession(env, sessionId);
+  if (!draftId) return null;
+  const draft = await readJson(env, `draft:${draftId}`);
+  const username = normalizeUsername(activation.username || draft?.username);
+  const passwordHash = clean(draft?.passwordHash, 64).toLowerCase();
+  if (!validUsername(username) || !validHash(passwordHash)) return null;
+  if (expectedUsername && username !== expectedUsername) return null;
+
+  const group = await readJson(env, `group:${activation.groupId}`);
+  const tokens = Array.isArray(group?.tokens)
+    ? group.tokens.filter((token) => /^[A-Za-z0-9_-]{20,}$/.test(String(token || "")))
+    : Array.isArray(activation.members)
+      ? activation.members.map((member) => member?.token).filter((token) => /^[A-Za-z0-9_-]{20,}$/.test(String(token || "")))
+      : [];
+  if (!tokens.length) return null;
+
+  const account = {
+    version: 1,
+    username,
+    passwordHash,
+    groupId: activation.groupId,
+    primaryToken: tokens[0],
+    tokens,
+    createdAt: activation.members?.[0]?.joinedAt || new Date().toISOString(),
+  };
+  await env.PAYMENT_STATE.put(`account:${username}`, JSON.stringify(account));
+  return account;
+}
+
+async function findSessionForDraft(env, draftId) {
+  for (const prefix of ["session:", "sessions:"]) {
+    let cursor = undefined;
+    do {
+      const page = await env.PAYMENT_STATE.list({ prefix, limit: 100, cursor });
+      for (const key of page.keys || []) {
+        const mappedDraft = clean(await env.PAYMENT_STATE.get(key.name), 100);
+        if (mappedDraft === draftId) return clean(key.name.slice(prefix.length), 180);
+      }
+      cursor = page.list_complete ? undefined : page.cursor;
+    } while (cursor);
+  }
+  return "";
+}
+
+async function migrateAccount(env, username) {
+  const direct = await readJson(env, `account:${username}`);
+  if (direct) return direct;
+
+  let cursor = undefined;
+  let inspected = 0;
+  do {
+    const page = await env.PAYMENT_STATE.list({ prefix: "activation:", limit: 100, cursor });
+    for (const key of page.keys || []) {
+      inspected += 1;
+      if (inspected > 1500) break;
+      const activation = await readJson(env, key.name);
+      if (!activation) continue;
+      const sessionId = clean(activation.sessionId || key.name.slice("activation:".length), 180);
+      const account = await accountFromSession(env, sessionId, username);
+      if (account) return account;
+    }
+    cursor = page.list_complete ? undefined : page.cursor;
+  } while (cursor && inspected <= 1500);
+
+  cursor = undefined;
+  do {
+    const page = await env.PAYMENT_STATE.list({ prefix: "draft:", limit: 100, cursor });
+    for (const key of page.keys || []) {
+      const draft = await readJson(env, key.name);
+      if (!draft || normalizeUsername(draft.username) !== username) continue;
+      const draftId = clean(draft.draftId || key.name.slice("draft:".length), 100);
+      const sessionId = await findSessionForDraft(env, draftId);
+      if (!sessionId) continue;
+      const account = await accountFromSession(env, sessionId, username);
+      if (account) return account;
+    }
+    cursor = page.list_complete ? undefined : page.cursor;
+  } while (cursor);
+
+  return null;
+}
+
+async function cardsForAccount(env, account) {
+  const group = await readJson(env, `group:${account.groupId}`);
+  const tokens = Array.isArray(group?.tokens) && group.tokens.length ? group.tokens : account.tokens || [];
+  const cards = [];
+  for (const token of tokens) {
+    const member = await readJson(env, `member:${token}`);
+    if (!member) continue;
+    cards.push({
+      token,
+      name: clean(member.name, 100),
+      level: clean(member.level, 60),
+      planKey: clean(member.planKey, 30),
+      memberCode: clean(member.memberCode, 60),
+      status: clean(member.status, 30),
+      position: Math.max(1, Math.round(Number(member.position) || 1)),
+      photoUrl: String(member.photoUrl || ""),
+      savings: Math.max(0, Number(member.savings || 0)),
+      groupId: clean(member.groupId || account.groupId, 100),
+    });
+  }
+  cards.sort((a, b) => a.position - b.position);
+  return cards;
+}
+
+async function handleLogin(request, env) {
+  const origin = request.headers.get("origin") || "";
+  if (!env.PAYMENT_STATE) return json({ error: "La base de miembros no está conectada." }, 503, origin);
+
+  const body = await request.json().catch(() => ({}));
+  const username = normalizeUsername(body.username);
+  const passwordHash = clean(body.passwordHash, 64).toLowerCase();
+  if (!validUsername(username) || !validHash(passwordHash)) {
+    return json({ error: "Usuario o contraseña incorrectos." }, 401, origin);
+  }
+
+  const account = await migrateAccount(env, username);
+  if (!account || !constantTimeEqual(clean(account.passwordHash, 64).toLowerCase(), passwordHash)) {
+    return json({ error: "Usuario o contraseña incorrectos." }, 401, origin);
+  }
+
+  const cards = await cardsForAccount(env, account);
+  if (!cards.length) return json({ error: "La membresía no tiene tarjetas disponibles." }, 404, origin);
+  if (!cards.some((card) => card.status === "Activa")) {
+    return json({ error: "La membresía no está activa. Revisa el estado de tu mensualidad." }, 403, origin);
+  }
+
+  const primary = cards.find((card) => card.position === 1) || cards[0];
+  return json({
+    ok: true,
+    username,
+    groupId: account.groupId,
+    planKey: primary.planKey,
+    planName: primary.level,
+    primary,
+    cards,
+  }, 200, origin);
+}
+
+async function captureActivation(request, env) {
+  const response = await memberActivityWorker.fetch(request, env);
+  if (!response.ok) return response;
+  try {
+    const url = new URL(request.url);
+    const sessionId = clean(url.searchParams.get("session_id"), 180);
+    if (sessionId) await accountFromSession(env, sessionId);
+  } catch (error) {
+    console.error("ALIGN login account capture", error);
+  }
+  return response;
+}
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+
+    if (url.pathname === "/api/member-login" && request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: cors(request.headers.get("origin") || "") });
+    }
+
+    if (url.pathname === "/api/member-login" && request.method === "POST") {
+      try {
+        return await handleLogin(request, env);
+      } catch (error) {
+        console.error("ALIGN member login", error);
+        return json({ error: "No pudimos iniciar sesión." }, 500, request.headers.get("origin") || "");
+      }
+    }
+
+    if (url.pathname === "/api/activate-membership" && request.method === "GET") {
+      return captureActivation(request, env);
+    }
+
+    return memberActivityWorker.fetch(request, env);
+  },
+};
