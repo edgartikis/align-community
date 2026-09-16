@@ -16,6 +16,10 @@ on:
       - "netlify.toml"
       - "scripts/check_backend_contract.py"
       - ".github/workflows/backend-contract.yml"
+  pull_request:
+    paths:
+      - "cloudflare/payments-worker/**"
+      - ".github/workflows/backend-contract.yml"
   workflow_dispatch:
 
 permissions:
@@ -29,3 +33,9 @@ jobs:
         uses: actions/checkout@v4
       - name: Verify canonical backend
         run: python scripts/check_backend_contract.py
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify billing lifecycle and QR access
+        run: node --test cloudflare/payments-worker/test/*.test.js
