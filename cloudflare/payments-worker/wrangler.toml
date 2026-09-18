@@ -10,7 +10,7 @@ id = "4504d6bcead74cdfa7e3a76599f641fc"
 SITE_ORIGIN = "https://alignmembers.com.mx"
 
 # Safe Stripe mode switch. Keep TEST until both LIVE secrets exist in Cloudflare.
-STRIPE_MODE = "test"
+STRIPE_MODE = "live"
 
 # Stripe TEST prices (current production behavior while STRIPE_MODE=test).
 STRIPE_PRICE_BROTHERHOOD_FOUNDER = "price_1UCObaE3kQapeVY6EBBRWOxA"
