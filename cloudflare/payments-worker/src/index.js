@@ -57,10 +57,24 @@ function siteOrigin(env) { return String(env.SITE_ORIGIN || "https://alignmember
 function apiOrigin(request) { return new URL(request.url).origin; }
 function memberCode(prefix, index) { return `AL-${prefix}-${crypto.randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase()}${index || ""}`; }
 
+function stripeMode(env) {
+  return String(env.STRIPE_MODE || "test").trim().toLowerCase() === "live" ? "live" : "test";
+}
+
+function stripeEnvName(env, baseName) {
+  return stripeMode(env) === "live" ? `${baseName}_LIVE` : baseName;
+}
+
 function stripeSecret(env) {
-  const secret = required(env, "STRIPE_SECRET_KEY");
-  if (!/^sk_(test|live)_/.test(secret) && !/^rk_(test|live)_/.test(secret)) throw new Error("La clave privada de Stripe no tiene un formato válido.");
+  const mode = stripeMode(env);
+  const secret = required(env, mode === "live" ? "STRIPE_SECRET_KEY_LIVE" : "STRIPE_SECRET_KEY");
+  const expected = mode === "live" ? /^(sk|rk)_live_/ : /^(sk|rk)_test_/;
+  if (!expected.test(secret)) throw new Error(`La clave privada de Stripe no corresponde al modo ${mode.toUpperCase()}.`);
   return secret;
+}
+
+function stripeWebhookSecret(env) {
+  return required(env, stripeMode(env) === "live" ? "STRIPE_WEBHOOK_SECRET_LIVE" : "STRIPE_WEBHOOK_SECRET");
 }
 
 async function stripePost(env, path, params) {
@@ -97,7 +111,7 @@ async function countSubscriptionsForPrice(env, priceId, stopAt) {
 async function founderCount(env) {
   let total = 0;
   for (const envName of FOUNDER_PRICE_ENVS) {
-    const priceId = required(env, envName);
+    const priceId = required(env, stripeEnvName(env, envName));
     total += await countSubscriptionsForPrice(env, priceId, FOUNDER_LIMIT - total);
     if (total >= FOUNDER_LIMIT) return total;
   }
@@ -105,10 +119,11 @@ async function founderCount(env) {
 }
 
 async function resolvePrice(env, plan) {
-  if (plan.standardPriceEnv) return { priceId: required(env, plan.standardPriceEnv), tier: "standard", founderCount: null };
+  if (plan.standardPriceEnv) return { priceId: required(env, stripeEnvName(env, plan.standardPriceEnv)), tier: "standard", founderCount: null };
   const used = await founderCount(env);
   const founder = used < FOUNDER_LIMIT;
-  return { priceId: required(env, founder ? plan.founderPriceEnv : plan.regularPriceEnv), tier: founder ? "founder" : "regular", founderCount: used };
+  const envName = founder ? plan.founderPriceEnv : plan.regularPriceEnv;
+  return { priceId: required(env, stripeEnvName(env, envName)), tier: founder ? "founder" : "regular", founderCount: used };
 }
 
 async function createCheckout(request, env) {
@@ -197,10 +212,8 @@ async function verifyWebhook(rawBody, header, secret) {
 }
 
 function shouldSyncReporting(env) {
-  const stripeKey = String(env.STRIPE_SECRET_KEY || "").trim();
-
   // Nunca enviar datos de Stripe TEST a la base de reportes de producción.
-  if (/^(sk|rk)_test_/.test(stripeKey)) return false;
+  if (stripeMode(env) !== "live") return false;
 
   return Boolean(env.ALIGN_DB_URL && env.ALIGN_DB_SECRET);
 }
@@ -430,7 +443,7 @@ async function processEvent(env, event) {
 
 async function stripeWebhook(request, env) {
   if (!env.PAYMENT_STATE) throw new Error("Falta conectar el binding PAYMENT_STATE de Cloudflare KV.");
-  const rawBody = await request.text(), secret = required(env, "STRIPE_WEBHOOK_SECRET");
+  const rawBody = await request.text(), secret = stripeWebhookSecret(env);
   const valid = await verifyWebhook(rawBody, request.headers.get("stripe-signature"), secret);
   if (!valid) return new Response("Firma inválida.", { status: 400 });
   const event = JSON.parse(rawBody), eventKey = `event:${event.id}`;
