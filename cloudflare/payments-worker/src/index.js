@@ -83,6 +83,188 @@ async function stripeGet(env, path, params = {}) {
   return payload;
 }
 
+async function stripeDelete(env, path) {
+  const response = await fetch(`https://api.stripe.com/v1/${path}`, {
+    method: "DELETE",
+    headers: { authorization: `Bearer ${stripeSecret(env)}` },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error?.message || "Stripe rechazó la eliminación.");
+  return payload;
+}
+
+const E2E_NEW_USER_NONCE = "align-e2e-20260918-7f3a9c";
+const E2E_NEW_USER_STATE = "e2e:new-user:state";
+const E2E_NEW_USER = Object.freeze({
+  username: "e2e0918a",
+  passwordHash: "49e265e6cec2e7360e98dc56028ef629c84315a03b98f56c013862a1797881d2",
+  name: "Diego Prueba",
+  email: "align.e2e.0918@example.com",
+  phone: "+52 833 000 0000",
+  plan: "brotherhood",
+});
+
+function isE2ePreview(request, env) {
+  const url = new URL(request.url);
+  const stripeKey = String(env.STRIPE_SECRET_KEY || "").trim();
+  return url.hostname.startsWith("e2e-new-user-sandbox-")
+    && url.hostname.endsWith(".workers.dev")
+    && /^(sk|rk)_test_/.test(stripeKey)
+    && url.searchParams.get("nonce") === E2E_NEW_USER_NONCE;
+}
+
+async function e2eNewUserRun(request, env) {
+  if (!isE2ePreview(request, env)) return json({ error: "Not found." }, 404);
+  const existingRaw = await env.PAYMENT_STATE.get(E2E_NEW_USER_STATE);
+  if (existingRaw) {
+    const existing = JSON.parse(existingRaw);
+    return json({ ok: true, reused: true, ...existing }, 200);
+  }
+
+  const plan = PLANS[E2E_NEW_USER.plan];
+  const price = await resolvePrice(env, plan);
+  const draftId = randomId();
+  const joinedAt = new Date().toISOString();
+  const draft = {
+    version: 3,
+    draftId,
+    plan: E2E_NEW_USER.plan,
+    planName: plan.name,
+    seats: plan.seats,
+    stripePriceId: price.priceId,
+    pricingTier: price.tier,
+    founderCountAtCheckout: price.founderCount,
+    username: E2E_NEW_USER.username,
+    passwordHash: E2E_NEW_USER.passwordHash,
+    members: [{ name: E2E_NEW_USER.name, email: E2E_NEW_USER.email, phone: E2E_NEW_USER.phone }],
+    createdAt: joinedAt,
+  };
+  await env.PAYMENT_STATE.put(`draft:${draftId}`, JSON.stringify(draft), { expirationTtl: 60 * 60 * 48 });
+
+  const customer = await stripePost(env, "customers", {
+    email: E2E_NEW_USER.email,
+    name: E2E_NEW_USER.name,
+    phone: E2E_NEW_USER.phone,
+    source: "tok_visa",
+    description: "ALIGN automated new-user E2E sandbox",
+    "metadata[align_e2e]": "new_user",
+    "metadata[align_username]": E2E_NEW_USER.username,
+  });
+
+  const subscription = await stripePost(env, "subscriptions", {
+    customer: customer.id,
+    "items[0][price]": price.priceId,
+    "items[0][quantity]": "1",
+    "metadata[align_draft_id]": draftId,
+    "metadata[align_plan]": E2E_NEW_USER.plan,
+    "metadata[align_pricing_tier]": price.tier,
+    "metadata[align_e2e]": "new_user",
+    payment_behavior: "error_if_incomplete",
+  });
+
+  const sessionId = `cs_test_e2e_${crypto.randomUUID().replace(/-/g, "")}`;
+  await env.PAYMENT_STATE.put(`session:${sessionId}`, draftId, { expirationTtl: 60 * 60 * 48 });
+
+  const syntheticCheckout = {
+    id: sessionId,
+    mode: "subscription",
+    payment_status: "paid",
+    customer: customer.id,
+    subscription: subscription.id,
+    amount_total: 24900,
+    currency: "mxn",
+    client_reference_id: draftId,
+    metadata: {
+      align_draft_id: draftId,
+      align_plan: E2E_NEW_USER.plan,
+      align_pricing_tier: price.tier,
+      align_e2e: "new_user",
+    },
+  };
+
+  // Exercise the same checkout.session.completed handler twice to verify idempotency.
+  await processEvent(env, { type: "checkout.session.completed", data: { object: syntheticCheckout } });
+  await processEvent(env, { type: "checkout.session.completed", data: { object: syntheticCheckout } });
+
+  const activationRaw = await env.PAYMENT_STATE.get(`activation:${sessionId}`);
+  if (!activationRaw) throw new Error("La activación E2E no fue creada.");
+  const activation = JSON.parse(activationRaw);
+  const groupRaw = await env.PAYMENT_STATE.get(`group:${activation.groupId}`);
+  const group = groupRaw ? JSON.parse(groupRaw) : null;
+  const tokens = Array.isArray(group?.tokens) ? group.tokens : [];
+  if (tokens.length !== 1) throw new Error(`Se esperaban 1 tarjeta y se encontraron ${tokens.length}.`);
+
+  const memberRaw = await env.PAYMENT_STATE.get(`member:${tokens[0]}`);
+  const member = memberRaw ? JSON.parse(memberRaw) : null;
+  if (!member || member.status !== "Activa") throw new Error("La tarjeta E2E no quedó activa.");
+
+  const account = {
+    version: 1,
+    username: E2E_NEW_USER.username,
+    passwordHash: E2E_NEW_USER.passwordHash,
+    groupId: activation.groupId,
+    primaryToken: tokens[0],
+    tokens,
+    createdAt: member.joinedAt || joinedAt,
+  };
+  await env.PAYMENT_STATE.put(`account:${E2E_NEW_USER.username}`, JSON.stringify(account));
+
+  await stripePost(env, `subscriptions/${encodeURIComponent(subscription.id)}`, {
+    "metadata[align_group_id]": activation.groupId,
+    "metadata[align_draft_id]": draftId,
+    "metadata[align_plan]": E2E_NEW_USER.plan,
+    "metadata[align_pricing_tier]": price.tier,
+    "metadata[align_e2e]": "new_user",
+  });
+
+  const invoiceId = typeof subscription.latest_invoice === "string" ? subscription.latest_invoice : subscription.latest_invoice?.id || "";
+  const invoice = invoiceId ? await stripeGet(env, `invoices/${encodeURIComponent(invoiceId)}`) : null;
+
+  const state = {
+    username: E2E_NEW_USER.username,
+    name: E2E_NEW_USER.name,
+    plan: E2E_NEW_USER.plan,
+    pricingTier: price.tier,
+    draftId,
+    sessionId,
+    stripeCustomerId: customer.id,
+    stripeSubscriptionId: subscription.id,
+    stripeInvoiceId: invoice?.id || invoiceId,
+    stripeInvoiceStatus: invoice?.status || null,
+    groupId: activation.groupId,
+    token: tokens[0],
+    memberCode: member.memberCode,
+    memberStatus: member.status,
+    cardCount: tokens.length,
+    duplicateSafe: tokens.length === 1,
+    checkoutHandlerInvocations: 2,
+  };
+  await env.PAYMENT_STATE.put(E2E_NEW_USER_STATE, JSON.stringify(state), { expirationTtl: 60 * 60 * 24 });
+  return json({ ok: true, reused: false, ...state }, 200);
+}
+
+async function e2eNewUserCleanup(request, env) {
+  if (!isE2ePreview(request, env)) return json({ error: "Not found." }, 404);
+  const raw = await env.PAYMENT_STATE.get(E2E_NEW_USER_STATE);
+  if (!raw) return json({ ok: true, cleaned: false, reason: "no_state" }, 200);
+  const state = JSON.parse(raw);
+  const keys = [
+    `account:${state.username}`,
+    `draft:${state.draftId}`,
+    `session:${state.sessionId}`,
+    `activation:${state.sessionId}`,
+    `group:${state.groupId}`,
+    `member:${state.token}`,
+    `subscription:${state.stripeSubscriptionId}`,
+    E2E_NEW_USER_STATE,
+  ];
+  for (const key of keys) await env.PAYMENT_STATE.delete(key);
+  if (state.stripeCustomerId) {
+    try { await stripeDelete(env, `customers/${encodeURIComponent(state.stripeCustomerId)}`); } catch (_) {}
+  }
+  return json({ ok: true, cleaned: true, username: state.username, keysDeleted: keys.length }, 200);
+}
+
 async function countSubscriptionsForPrice(env, priceId, stopAt) {
   let total = 0, startingAfter = "";
   do {
@@ -514,6 +696,8 @@ export default {
       const url = new URL(request.url), origin = request.headers.get("origin") || "";
       if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(origin) });
       if (url.pathname === "/api/health" && request.method === "GET") return json({ ok: true, service: "ALIGN payments", founderLimit: FOUNDER_LIMIT }, 200, origin);
+      if (url.pathname === "/e2e-new-user-run" && request.method === "GET") return await e2eNewUserRun(request, env);
+      if (url.pathname === "/e2e-new-user-cleanup" && request.method === "GET") return await e2eNewUserCleanup(request, env);
       if (url.pathname === "/api/checkout" && request.method === "POST") return await createCheckout(request, env);
       if (url.pathname === "/api/stripe/webhook" && request.method === "POST") return await stripeWebhook(request, env);
       if (url.pathname === "/api/activate-membership" && request.method === "GET") return await activateMembership(request, env);
