@@ -23,6 +23,7 @@ El Worker actual expone, entre otras, estas rutas:
 - `POST /api/stripe/webhook` — procesa pagos, renovaciones, fallos y cancelaciones.
 - `GET /api/activate-membership` — activa/recupera una compra completada.
 - `POST /api/member-login` — acceso del titular.
+- `GET|POST /api/member-billing` — estado de mensualidad, cancelación al fin del periodo, reactivación, cambio de tarjeta y resuscripción segura.
 - `GET /api/member-card` — información de tarjeta vigente.
 - `GET /api/group-cards` — tarjetas de Duo / Private Circle.
 - `GET /api/member-activity` — visitas, gasto, ahorro y lugares frecuentes.
