@@ -243,28 +243,22 @@ async function billingSummary(env, memberSession) {
   };
 }
 
-function billingReturnTarget(request, env, memberSession, result, includeSetupId = false) {
-  const url = new URL(request.url);
-  const isPreview = url.hostname.startsWith("member-self-service-billing-") && url.hostname.endsWith(".workers.dev");
-  if (isPreview) {
-    const suffix = includeSetupId ? `&setup_session_id={CHECKOUT_SESSION_ID}` : "";
-    return `${url.origin}/billing-preview?billing=${encodeURIComponent(result)}${suffix}`;
-  }
+function billingReturnTarget(env, memberSession, result, includeSetupId = false) {
   const base = siteOrigin(env);
   const token = encodeURIComponent(memberSession.primaryToken);
   const suffix = includeSetupId ? `&setup_session_id={CHECKOUT_SESSION_ID}` : "";
   return `${base}/portal.html?token=${token}&billing=${encodeURIComponent(result)}${suffix}`;
 }
 
-async function createSetupCheckout(request, env, memberSession, summary) {
+async function createSetupCheckout(env, memberSession, summary) {
   if (!summary.customer?.id) throw new Error("No encontramos el cliente de Stripe.");
   return stripeRequest(env, "POST", "checkout/sessions", {
     mode: "setup",
     customer: summary.customer.id,
     "payment_method_types[0]": "card",
     locale: "es",
-    success_url: billingReturnTarget(request, env, memberSession, "payment-updated", true),
-    cancel_url: billingReturnTarget(request, env, memberSession, "payment-canceled"),
+    success_url: billingReturnTarget(env, memberSession, "payment-updated", true),
+    cancel_url: billingReturnTarget(env, memberSession, "payment-canceled"),
     "metadata[align_group_id]": memberSession.groupId,
     "metadata[align_action]": "payment_method_update",
   });
@@ -305,7 +299,7 @@ async function confirmSetupCheckout(env, memberSession, summary, setupSessionId)
   }
 }
 
-async function createResubscribeCheckout(request, env, memberSession, summary) {
+async function createResubscribeCheckout(env, memberSession, summary) {
   const subscription = summary.subscription;
   const priceId = subscriptionPrice(subscription);
   const customerId = summary.customer?.id || "";
@@ -319,8 +313,8 @@ async function createResubscribeCheckout(request, env, memberSession, summary) {
     "line_items[0][quantity]": "1",
     "payment_method_collection": "always",
     locale: "es",
-    success_url: billingReturnTarget(request, env, memberSession, "resubscribed"),
-    cancel_url: billingReturnTarget(request, env, memberSession, "resubscribe-canceled"),
+    success_url: billingReturnTarget(env, memberSession, "resubscribed"),
+    cancel_url: billingReturnTarget(env, memberSession, "resubscribe-canceled"),
     "metadata[align_group_id]": memberSession.groupId,
     "metadata[align_plan]": plan,
     "metadata[align_pricing_tier]": tier,
@@ -351,13 +345,13 @@ async function handleBilling(request, env) {
     if (!summary.public.canResume || !summary.subscription?.id) throw new Error("Esta membresía no tiene una cancelación pendiente.");
     await stripeRequest(env, "POST", `subscriptions/${encodeURIComponent(summary.subscription.id)}`, { cancel_at_period_end: "false" });
   } else if (action === "change_payment") {
-    const checkout = await createSetupCheckout(request, env, memberSession, summary);
+    const checkout = await createSetupCheckout(env, memberSession, summary);
     return json({ ok: true, url: checkout.url }, 200, origin);
   } else if (action === "confirm_payment") {
     await confirmSetupCheckout(env, memberSession, summary, clean(body.setupSessionId, 180));
   } else if (action === "resubscribe") {
     if (!summary.public.canResubscribe) throw new Error("Esta membresía no necesita una reactivación completa.");
-    const checkout = await createResubscribeCheckout(request, env, memberSession, summary);
+    const checkout = await createResubscribeCheckout(env, memberSession, summary);
     return json({ ok: true, url: checkout.url }, 200, origin);
   } else {
     throw new Error("Acción de mensualidad no válida.");
@@ -367,32 +361,6 @@ async function handleBilling(request, env) {
   return json({ ok: true, ...summary.public }, 200, origin);
 }
 
-
-function billingPreviewPage(request) {
-  const url = new URL(request.url);
-  if (!(url.hostname.startsWith("member-self-service-billing-") && url.hostname.endsWith(".workers.dev"))) {
-    return new Response("Not found", { status: 404 });
-  }
-  return new Response(`<!doctype html><html lang="es-MX"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ALIGN Billing Preview</title><style>body{margin:0;background:#080b10;color:#f3eee4;font:16px system-ui,sans-serif}.wrap{max-width:760px;margin:40px auto;padding:24px}.card{padding:24px;border:1px solid #445;background:#10243d;margin-bottom:16px}input,button{width:100%;box-sizing:border-box;padding:13px;margin:7px 0;border:1px solid #667;background:#0b1119;color:#fff}button{cursor:pointer;background:#f3eee4;color:#080b10;font-weight:700}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.muted{color:#aeb4bd}.ok{color:#b8d9b8}.warn{color:#e0c99f}pre{white-space:pre-wrap;word-break:break-word;background:#05070a;padding:14px;border:1px solid #334}@media(max-width:620px){.row{grid-template-columns:1fr}}</style></head><body><main class="wrap"><h1>ALIGN · Billing Preview</h1><p class="muted">Solo rama de prueba. Stripe Sandbox.</p><section class="card" id="loginBox"><input id="username" placeholder="Usuario" autocomplete="username"><input id="password" type="password" placeholder="Contraseña" autocomplete="current-password"><button id="login">Entrar</button><div id="loginMsg" class="warn"></div></section><section class="card" id="billingBox" hidden><h2>Mensualidad</h2><pre id="summary">Cargando…</pre><div class="row"><button data-action="change_payment">Cambiar tarjeta</button><button data-action="cancel">Cancelar renovación</button><button data-action="resume">Reactivar renovación</button><button data-action="resubscribe">Reactivar membresía</button></div><div id="msg" class="warn"></div></section></main><script>
-const qs=new URLSearchParams(location.search);
-const key='align_preview_billing_session';
-let session=sessionStorage.getItem(key)||'';
-const enc=new TextEncoder();
-const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
-async function sha256(v){return hex(await crypto.subtle.digest('SHA-256',enc.encode(v)))}
-async function api(action,payload={}){
- const opt={method:action?'POST':'GET',headers:{'content-type':'application/json',authorization:'Bearer '+session}};
- if(action)opt.body=JSON.stringify({action,...payload});
- const r=await fetch('/api/member-billing',opt),d=await r.json().catch(()=>({}));
- if(!r.ok)throw new Error(d.error||'Error');
- return d;
-}
-async function refresh(){if(!session)return;document.querySelector('#loginBox').hidden=true;document.querySelector('#billingBox').hidden=false;try{const d=await api();document.querySelector('#summary').textContent=JSON.stringify(d,null,2);const allowed={change_payment:d.canChangePayment,cancel:d.canCancel,resume:d.canResume,resubscribe:d.canResubscribe};document.querySelectorAll('[data-action]').forEach(b=>{b.disabled=!allowed[b.dataset.action];b.style.opacity=b.disabled?'.35':'1';b.style.cursor=b.disabled?'not-allowed':'pointer'});document.querySelector('#msg').textContent=''}catch(e){document.querySelector('#msg').textContent=e.message}}
-document.querySelector('#login').onclick=async()=>{const u=document.querySelector('#username').value.trim(),p=document.querySelector('#password').value;const m=document.querySelector('#loginMsg');m.textContent='';try{const r=await fetch('/api/member-login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({username:u,passwordHash:await sha256(p)})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'No se pudo iniciar sesión');session=d.sessionToken||'';if(!session)throw new Error('No se creó sesión de billing');sessionStorage.setItem(key,session);await refresh()}catch(e){m.textContent=e.message}};
-document.querySelectorAll('[data-action]').forEach(b=>b.onclick=async()=>{const a=b.dataset.action,m=document.querySelector('#msg');m.textContent='';try{if(a==='cancel'&&!confirm('¿Programar cancelación al final del periodo?'))return;const d=await api(a);if(d.url){location.assign(d.url);return}m.textContent='OK';await refresh()}catch(e){m.textContent=e.message}});
-(async()=>{if(qs.get('billing')==='payment-updated'&&qs.get('setup_session_id')&&session){try{await api('confirm_payment',{setupSessionId:qs.get('setup_session_id')});history.replaceState({},'',location.pathname+'?billing=payment-saved')}catch(e){document.querySelector('#loginMsg').textContent=e.message}}await refresh()})();
-</script></body></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
-}
 
 async function recoverDraftIdFromStripe(env, sessionId) {
   const secret = stripeSecret(env);
@@ -589,10 +557,6 @@ async function captureActivation(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-
-    if (url.pathname === "/billing-preview" && request.method === "GET") {
-      return billingPreviewPage(request);
-    }
 
     if ((url.pathname === "/api/member-login" || url.pathname === "/api/member-billing") && request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: cors(request.headers.get("origin") || "") });
