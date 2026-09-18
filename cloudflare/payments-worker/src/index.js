@@ -345,9 +345,23 @@ async function activationRecord(env, session) {
 
 async function registerCheckout(env, session) { return activationRecord(env, session); }
 
-async function updateGroupStatus(env, subscriptionId, status) {
-  if (!subscriptionId) return;
-  const groupId = await env.PAYMENT_STATE.get(`subscription:${subscriptionId}`);
+async function resolveSubscriptionGroup(env, subscriptionId, metadata = {}) {
+  if (!subscriptionId) return "";
+  let groupId = clean(await env.PAYMENT_STATE.get(`subscription:${subscriptionId}`), 100);
+  if (groupId) return groupId;
+
+  groupId = clean(metadata?.align_group_id, 100);
+  if (!groupId) return "";
+
+  const groupRaw = await env.PAYMENT_STATE.get(`group:${groupId}`);
+  if (!groupRaw) return "";
+
+  await env.PAYMENT_STATE.put(`subscription:${subscriptionId}`, groupId);
+  return groupId;
+}
+
+async function updateGroupStatus(env, subscriptionId, status, metadata = {}) {
+  const groupId = await resolveSubscriptionGroup(env, subscriptionId, metadata);
   if (!groupId) return;
   const groupRaw = await env.PAYMENT_STATE.get(`group:${groupId}`);
   if (!groupRaw) return;
@@ -383,12 +397,13 @@ async function processEvent(env, event) {
       await postDatabase(env, { action: "subscription_payment_failed", invoiceId: object.id || "", stripeCustomerId: object.customer || "", stripeSubscriptionId: subscriptionId });
       break;
     }
+    case "customer.subscription.created":
     case "customer.subscription.updated":
     case "customer.subscription.deleted": {
       const stripeStatus = object.status || (event.type.endsWith("deleted") ? "canceled" : "unknown");
       const active = ["active", "trialing"].includes(String(stripeStatus).toLowerCase());
       const pending = ["past_due", "unpaid", "incomplete"].includes(String(stripeStatus).toLowerCase());
-      await updateGroupStatus(env, object.id || "", active ? "Activa" : pending ? "Pago pendiente" : "Inactiva");
+      await updateGroupStatus(env, object.id || "", active ? "Activa" : pending ? "Pago pendiente" : "Inactiva", object.metadata || {});
       await postDatabase(env, { action: "subscription_status", stripeCustomerId: object.customer || "", stripeSubscriptionId: object.id || "", status: stripeStatus, cancelAtPeriodEnd: Boolean(object.cancel_at_period_end), currentPeriodEnd: object.current_period_end || null });
       break;
     }
