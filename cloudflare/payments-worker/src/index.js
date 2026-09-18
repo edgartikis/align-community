@@ -196,27 +196,61 @@ async function verifyWebhook(rawBody, header, secret) {
   return sig.v1.some((candidate) => constantTimeEqual(expected, candidate));
 }
 
+function shouldSyncReporting(env) {
+  const stripeKey = String(env.STRIPE_SECRET_KEY || "").trim();
+
+  // Nunca enviar datos de Stripe TEST a la base de reportes de producción.
+  if (/^(sk|rk)_test_/.test(stripeKey)) return false;
+
+  return Boolean(env.ALIGN_DB_URL && env.ALIGN_DB_SECRET);
+}
+
 async function postDatabase(env, payload) {
-  const url = required(env, "ALIGN_DB_URL"), secret = required(env, "ALIGN_DB_SECRET");
+  if (!shouldSyncReporting(env)) {
+    console.log("ALIGN reporting sync skipped", {
+      action: payload?.action || "",
+      reason: "stripe_test_mode",
+    });
+
+    return {
+      ok: true,
+      skipped: true,
+      reason: "stripe_test_mode",
+    };
+  }
+
+  const url = required(env, "ALIGN_DB_URL");
+  const secret = required(env, "ALIGN_DB_SECRET");
+
   const response = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ ...payload, mode: "ALIGN_PROD_2026", secret }),
+    body: JSON.stringify({
+      ...payload,
+      mode: "ALIGN_PROD_2026",
+      secret,
+    }),
   });
+
   const text = await response.text();
   let data = null;
-  try { data = JSON.parse(text); } catch (_) {}
+
+  try {
+    data = JSON.parse(text);
+  } catch (_) {}
+
   if (!response.ok || !data?.ok) {
     console.error("ALIGN database sync failed", {
       status: response.status,
       contentType: response.headers.get("content-type") || "",
       preview: text.slice(0, 180),
     });
+
     throw new Error("La base de ALIGN no respondió correctamente.");
   }
+
   return data;
 }
-
 function activationDatabasePayload(session, draftId, draft, members) {
   return {
     action: "register_payment",
