@@ -278,6 +278,20 @@ async function confirmSetupCheckout(env, memberSession, summary, setupSessionId)
       default_payment_method: paymentMethodId,
     });
   }
+
+  const recoverable = ["past_due", "unpaid", "incomplete"].includes(String(summary.subscription?.status || "").toLowerCase());
+  const latestInvoiceId = typeof summary.subscription?.latest_invoice === "string"
+    ? summary.subscription.latest_invoice
+    : summary.subscription?.latest_invoice?.id || "";
+  if (recoverable && /^in_/.test(latestInvoiceId)) {
+    try {
+      await stripeRequest(env, "POST", `invoices/${encodeURIComponent(latestInvoiceId)}/pay`, {
+        payment_method: paymentMethodId,
+      });
+    } catch (error) {
+      console.error("ALIGN invoice retry after payment method update", error);
+    }
+  }
 }
 
 async function createResubscribeCheckout(env, memberSession, summary) {
