@@ -68,16 +68,26 @@ function fallbackPeriod(member) {
   return { validFrom, validUntil };
 }
 
-function periodFromSubscription(subscription, fallbackIso = new Date().toISOString()) {
-  const start = Number(subscription?.current_period_start || 0);
-  const end = Number(subscription?.current_period_end || 0);
-  if (start > 0 && end > start) {
-    return {
-      validFrom: new Date(start * 1000).toISOString(),
-      validUntil: new Date(end * 1000).toISOString(),
-    };
+function periodFromSubscription(subscription) {
+  // Stripe Basil+ moved billing dates from the subscription onto each item.
+  // ALIGN currently sells one recurring item per subscription. If more are
+  // present, only grant access for the period shared by all of them.
+  const items = subscription?.items?.data;
+  const sources = Array.isArray(items) && items.length ? items : [subscription];
+  const periods = sources.map((item) => ({
+    start: Number(item?.current_period_start),
+    end: Number(item?.current_period_end),
+  }));
+  if (periods.some(({ start, end }) => !Number.isFinite(start) || !Number.isFinite(end) || start <= 0 || end <= start)) {
+    throw new Error("Stripe no devolvió un periodo de facturación válido.");
   }
-  return { validFrom: fallbackIso, validUntil: addCalendarMonth(fallbackIso) };
+  const start = Math.max(...periods.map((period) => period.start));
+  const end = Math.min(...periods.map((period) => period.end));
+  if (end <= start) throw new Error("Los periodos de facturación no coinciden.");
+  return {
+    validFrom: new Date(start * 1000).toISOString(),
+    validUntil: new Date(end * 1000).toISOString(),
+  };
 }
 
 async function putMemberPeriod(env, token, period) {
