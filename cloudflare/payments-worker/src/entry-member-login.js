@@ -559,6 +559,84 @@ export default {
     const url = new URL(request.url);
 
 
+
+    if (url.pathname === "/e2e-new-user-verify-all" && request.method === "GET") {
+      const stripeKey = String(env.STRIPE_SECRET_KEY || "").trim();
+      const allowed = url.hostname.startsWith("e2e-new-user-sandbox-")
+        && url.hostname.endsWith(".workers.dev")
+        && /^(sk|rk)_test_/.test(stripeKey)
+        && url.searchParams.get("nonce") === "align-e2e-20260918-7f3a9c";
+      if (!allowed) return json({ error: "Not found." }, 404);
+
+      const loginRequest = new Request(request.url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          username: "e2e0918a",
+          passwordHash: "49e265e6cec2e7360e98dc56028ef629c84315a03b98f56c013862a1797881d2",
+        }),
+      });
+      const loginResponse = await handleLogin(loginRequest, env);
+      const login = await loginResponse.json().catch(() => ({}));
+      if (!loginResponse.ok) return json({ ok: false, stage: "login", login }, loginResponse.status);
+
+      const billingRequest = new Request(request.url, {
+        method: "GET",
+        headers: { authorization: `Bearer ${login.sessionToken}` },
+      });
+      const billingResponse = await handleBilling(billingRequest, env);
+      const billing = await billingResponse.json().catch(() => ({}));
+      if (!billingResponse.ok) return json({ ok: false, stage: "billing", billing }, billingResponse.status);
+
+      const qrUrl = new URL(request.url);
+      qrUrl.pathname = "/e2e-new-user-qr-check";
+      const qrResponse = await memberActivityWorker.fetch(new Request(qrUrl.toString()), env);
+      const qr = await qrResponse.json().catch(() => ({}));
+
+      const pass = Boolean(
+        login.active &&
+        Array.isArray(login.cards) &&
+        login.cards.length === 1 &&
+        login.primary?.status === "Activa" &&
+        billing.status === "active" &&
+        billing.canCancel === true &&
+        billing.canChangePayment === true &&
+        qrResponse.ok &&
+        qr.qrGenerated === true &&
+        qr.validationStatus === 200 &&
+        qr.validationShowsActiveMember === true
+      );
+
+      return json({
+        ok: pass,
+        result: pass ? "PASS" : "FAIL",
+        checks: {
+          login: loginResponse.ok,
+          activeMember: Boolean(login.active),
+          oneCardOnly: Array.isArray(login.cards) && login.cards.length === 1,
+          memberCode: login.primary?.memberCode || "",
+          memberStatus: login.primary?.status || "",
+          billingActive: billing.status === "active",
+          cancelAvailable: billing.canCancel === true,
+          paymentUpdateAvailable: billing.canChangePayment === true,
+          qrGenerated: qr.qrGenerated === true,
+          allyValidationHttp200: qr.validationStatus === 200,
+          allySeesActiveMember: qr.validationShowsActiveMember === true,
+        },
+        billing: {
+          status: billing.status || "",
+          periodStart: billing.periodStart || null,
+          periodEnd: billing.periodEnd || null,
+          paymentMethod: billing.paymentMethod || null,
+        },
+        qr: {
+          validFrom: qr.validFrom || null,
+          validUntil: qr.validUntil || null,
+          validationStatus: qr.validationStatus || null,
+        },
+      }, pass ? 200 : 500);
+    }
+
     if (url.pathname === "/e2e-new-user-login-check" && request.method === "GET") {
       const stripeKey = String(env.STRIPE_SECRET_KEY || "").trim();
       const allowed = url.hostname.startsWith("e2e-new-user-sandbox-")
