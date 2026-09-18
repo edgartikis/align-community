@@ -8,6 +8,11 @@ id = "4504d6bcead74cdfa7e3a76599f641fc"
 
 [vars]
 SITE_ORIGIN = "https://alignmembers.com.mx"
+
+# Safe Stripe mode switch. Keep TEST until both LIVE secrets exist in Cloudflare.
+STRIPE_MODE = "test"
+
+# Stripe TEST prices (current production behavior while STRIPE_MODE=test).
 STRIPE_PRICE_BROTHERHOOD_FOUNDER = "price_1UCObaE3kQapeVY6EBBRWOxA"
 STRIPE_PRICE_BROTHERHOOD_REGULAR = "price_1UCOchE3kQapeVY6UmHvHCtv"
 STRIPE_PRICE_GIRLS_FOUNDER = "price_1UCOliE3kQapeVY67WH7jhsm"
@@ -17,9 +22,21 @@ STRIPE_PRICE_RANCH_REGULAR = "price_1UCOlyE3kQapeVY6Pr7LCFmy"
 STRIPE_PRICE_DUO = "price_1UCOm5E3kQapeVY6v4V9uYYj"
 STRIPE_PRICE_CIRCLE = "price_1UCOmAE3kQapeVY67pUKUfTm"
 
+# Stripe LIVE prices. Used only when STRIPE_MODE=live.
+STRIPE_PRICE_BROTHERHOOD_FOUNDER_LIVE = "price_1UHAjyE2qRZRC8p2NFE5nsgH"
+STRIPE_PRICE_BROTHERHOOD_REGULAR_LIVE = "price_1UHAjxE2qRZRC8p2PL3eBgdq"
+STRIPE_PRICE_GIRLS_FOUNDER_LIVE = "price_1UHAjyE2qRZRC8p2hoe8BFo7"
+STRIPE_PRICE_GIRLS_REGULAR_LIVE = "price_1UHAjxE2qRZRC8p2Q0YMZHWu"
+STRIPE_PRICE_RANCH_FOUNDER_LIVE = "price_1UHAjyE2qRZRC8p288ZRPAOn"
+STRIPE_PRICE_RANCH_REGULAR_LIVE = "price_1UHAjxE2qRZRC8p2ejNved1E"
+STRIPE_PRICE_DUO_LIVE = "price_1UHAjxE2qRZRC8p2csZ0xQq0"
+STRIPE_PRICE_CIRCLE_LIVE = "price_1UHAjxE2qRZRC8p2odXD4Bc5"
+
 # Backend canónico: Cloudflare Worker + PAYMENT_STATE (KV).
 # Los secretos se configuran en Cloudflare, nunca en GitHub:
-# STRIPE_SECRET_KEY
-# STRIPE_WEBHOOK_SECRET
-# QR_SIGNING_SECRET (opcional; si falta, usa STRIPE_SECRET_KEY)
+# STRIPE_SECRET_KEY (TEST actual)
+# STRIPE_WEBHOOK_SECRET (TEST actual)
+# STRIPE_SECRET_KEY_LIVE (añadir antes de STRIPE_MODE=live)
+# STRIPE_WEBHOOK_SECRET_LIVE (añadir antes de STRIPE_MODE=live)
+# QR_SIGNING_SECRET (opcional; si falta, usa la clave Stripe del modo activo)
 # ALIGN_DB_URL / ALIGN_DB_SECRET (solo sincronización secundaria de reportes)
