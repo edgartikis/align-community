@@ -302,6 +302,39 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return baseWorker.fetch(request, env);
+
+    if (url.pathname === "/e2e-new-user-qr-check" && request.method === "GET") {
+      const stripeKey = String(env.STRIPE_SECRET_KEY || "").trim();
+      const allowed = url.hostname.startsWith("e2e-new-user-sandbox-")
+        && url.hostname.endsWith(".workers.dev")
+        && /^(sk|rk)_test_/.test(stripeKey)
+        && url.searchParams.get("nonce") === "align-e2e-20260918-7f3a9c";
+      if (!allowed) return Response.json({ error: "Not found." }, { status: 404 });
+
+      const stateRaw = await env.PAYMENT_STATE.get("e2e:new-user:state");
+      if (!stateRaw) return Response.json({ ok: false, error: "Run the new-user E2E first." }, { status: 409 });
+      const state = JSON.parse(stateRaw);
+
+      const qrRequest = new Request(`${url.origin}/api/monthly-qr?token=${encodeURIComponent(state.token)}`);
+      const qrResponse = await handleCycleQr(qrRequest, env);
+      const qr = await qrResponse.json().catch(() => ({}));
+      if (!qrResponse.ok || !qr.validationUrl) {
+        return Response.json({ ok: false, stage: "qr", qr }, { status: qrResponse.status });
+      }
+
+      const validationResponse = await handleValidation(new Request(qr.validationUrl), env);
+      const validationHtml = await validationResponse.text();
+      return Response.json({
+        ok: validationResponse.status === 200,
+        qrGenerated: qrResponse.ok,
+        validFrom: qr.validFrom || null,
+        validUntil: qr.validUntil || null,
+        validationStatus: validationResponse.status,
+        validationShowsActiveMember: /Miembro activo/i.test(validationHtml),
+        memberCode: state.memberCode,
+      }, { status: validationResponse.status === 200 ? 200 : 500, headers: { "cache-control": "no-store" } });
+    }
+
     if (url.pathname === "/api/activate-membership" && request.method === "GET") return handleActivation(request, env);
     if (url.pathname === "/api/stripe/webhook" && request.method === "POST") return handleWebhook(request, env);
     if (url.pathname === "/api/member-card" && request.method === "GET") return handleMemberCard(request, env);
