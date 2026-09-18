@@ -558,6 +558,59 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
+
+    if (url.pathname === "/e2e-new-user-login-check" && request.method === "GET") {
+      const stripeKey = String(env.STRIPE_SECRET_KEY || "").trim();
+      const allowed = url.hostname.startsWith("e2e-new-user-sandbox-")
+        && url.hostname.endsWith(".workers.dev")
+        && /^(sk|rk)_test_/.test(stripeKey)
+        && url.searchParams.get("nonce") === "align-e2e-20260918-7f3a9c";
+      if (!allowed) return json({ error: "Not found." }, 404);
+
+      const loginRequest = new Request(request.url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          username: "e2e0918a",
+          passwordHash: "49e265e6cec2e7360e98dc56028ef629c84315a03b98f56c013862a1797881d2",
+        }),
+      });
+      const loginResponse = await handleLogin(loginRequest, env);
+      const login = await loginResponse.json().catch(() => ({}));
+      if (!loginResponse.ok) return json({ ok: false, stage: "login", login }, loginResponse.status);
+
+      const billingRequest = new Request(request.url, {
+        method: "GET",
+        headers: { authorization: `Bearer ${login.sessionToken}` },
+      });
+      const billingResponse = await handleBilling(billingRequest, env);
+      const billing = await billingResponse.json().catch(() => ({}));
+      return json({
+        ok: loginResponse.ok && billingResponse.ok,
+        login: {
+          username: login.username,
+          groupId: login.groupId,
+          planKey: login.planKey,
+          planName: login.planName,
+          active: login.active,
+          billingOnly: login.billingOnly,
+          cardCount: Array.isArray(login.cards) ? login.cards.length : 0,
+          memberCode: login.primary?.memberCode || "",
+          memberStatus: login.primary?.status || "",
+        },
+        billing: {
+          status: billing.status || "",
+          cancelAtPeriodEnd: Boolean(billing.cancelAtPeriodEnd),
+          periodStart: billing.periodStart || null,
+          periodEnd: billing.periodEnd || null,
+          paymentMethod: billing.paymentMethod || null,
+          canCancel: Boolean(billing.canCancel),
+          canChangePayment: Boolean(billing.canChangePayment),
+          canResubscribe: Boolean(billing.canResubscribe),
+        },
+      }, billingResponse.ok ? 200 : billingResponse.status);
+    }
+
     if ((url.pathname === "/api/member-login" || url.pathname === "/api/member-billing") && request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: cors(request.headers.get("origin") || "") });
     }
