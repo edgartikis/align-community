@@ -380,8 +380,25 @@ async function processEvent(env, event) {
   switch (event.type) {
     case "checkout.session.completed": {
       if (object.mode === "subscription" && ["paid", "no_payment_required"].includes(object.payment_status)) {
-        const record = await registerCheckout(env, object);
-        if (record.dbSynced === false) throw new Error("Sincronización con la base pendiente.");
+        const existingGroupId = clean(object.metadata?.align_group_id, 100);
+        const subscriptionId = typeof object.subscription === "string" ? object.subscription : object.subscription?.id || "";
+        if (existingGroupId && subscriptionId) {
+          const groupRaw = await env.PAYMENT_STATE.get(`group:${existingGroupId}`);
+          if (!groupRaw) throw new Error("La membresía existente ya no está disponible.");
+          await env.PAYMENT_STATE.put(`subscription:${subscriptionId}`, existingGroupId);
+          await updateGroupStatus(env, subscriptionId, "Activa", { align_group_id: existingGroupId });
+          await postDatabase(env, {
+            action: "subscription_status",
+            stripeCustomerId: object.customer || "",
+            stripeSubscriptionId: subscriptionId,
+            status: "active",
+            cancelAtPeriodEnd: false,
+            currentPeriodEnd: null,
+          });
+        } else {
+          const record = await registerCheckout(env, object);
+          if (record.dbSynced === false) throw new Error("Sincronización con la base pendiente.");
+        }
       }
       break;
     }
