@@ -34,6 +34,19 @@
 @media(max-width:1000px){.places-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.places-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.place{border-radius:12px}.place-content{padding:13px}.place h3{font-size:1.18rem}.place p{font-size:.875rem;-webkit-line-clamp:4}.place .eyebrow{font-size:.72rem}.place .tag{font-size:.68rem}.places-toggle{width:100%}}
 
+
+/* Mensualidad self-service */
+.billing-panel{padding:28px;border:1px solid rgba(196,164,107,.28);background:linear-gradient(145deg,#142a44,#0b1119)}
+.billing-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;align-items:start}
+.billing-status{display:grid;gap:9px;font:500 .7rem "DM Mono",monospace;letter-spacing:.07em;text-transform:uppercase;color:#c7cbd1}
+.billing-status strong{font:500 2rem/1.05 "Playfair Display",serif;letter-spacing:-.02em;text-transform:none;color:#f5f0e8}
+.billing-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end}
+.billing-actions .btn{background:transparent;color:var(--paper);cursor:pointer}
+.billing-actions .danger{border-color:rgba(213,126,126,.7);color:#efb4b4}
+.billing-note{margin:14px 0 0;color:#9ca3ad;line-height:1.55;font-size:.86rem}
+.billing-message{margin-top:14px;min-height:1.2em;color:#d9c6a5;font-size:.82rem}
+@media(max-width:800px){.billing-grid{grid-template-columns:1fr}.billing-actions{justify-content:flex-start}.billing-actions .btn{width:100%}}
+
 </style>
 </head>
 <body>
@@ -44,6 +57,7 @@ const API='https://api.alignmembers.com.mx/api';
 const app=document.querySelector('#app');
 const params=new URLSearchParams(location.search);
 const token=params.get('token')||sessionStorage.getItem('align_member_token')||localStorage.getItem('align_primary_token');
+const billingSession=sessionStorage.getItem('align_billing_session')||'';
 const money=new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0});
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#039;'})[c]);
 const dateLabel=iso=>{const d=new Date(iso);return Number.isNaN(d.getTime())?'Sin registro':new Intl.DateTimeFormat('es-MX',{day:'numeric',month:'short',year:'numeric',timeZone:'America/Monterrey'}).format(d)};
@@ -94,7 +108,61 @@ const PLANS={
  circle:{title:'Private Circle',allies:['global','padel','greencabana','ceramia','gingers','uspin','nuva','sante','marea','rancho','horse','fishing','ancla','charreadas','velamar','restaurants','personalcare']}
 };
 async function fetchJson(path){const response=await fetch(`${API}${path}`,{cache:'no-store'});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'No fue posible cargar la información.');return data}
-function render(member,activityData,groupData){
+
+async function billingFetch(action=null,payload={}){
+ if(!billingSession)throw new Error('Vuelve a iniciar sesión para administrar tu mensualidad.');
+ const options={method:action?'POST':'GET',headers:{authorization:`Bearer ${billingSession}`,'content-type':'application/json'},cache:'no-store'};
+ if(action)options.body=JSON.stringify({action,...payload});
+ const response=await fetch(`${API}/member-billing`,options);
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok)throw new Error(data.error||'No fue posible administrar tu mensualidad.');
+ return data;
+}
+const billingDate=seconds=>seconds?new Intl.DateTimeFormat('es-MX',{day:'numeric',month:'long',year:'numeric',timeZone:'America/Monterrey'}).format(new Date(Number(seconds)*1000)):'Sin fecha';
+function billingSectionHtml(billing){
+ if(!billingSession)return `<section id="mensualidad" class="section"><div class="section-head"><div><p class="eyebrow">Mensualidad</p><h2>Administra tu membresía.</h2></div><p>Por seguridad, vuelve a iniciar sesión para cambiar tu tarjeta o administrar la renovación.</p></div><div class="billing-panel"><a class="btn gold" href="login.html">Volver a iniciar sesión</a></div></section>`;
+ if(!billing)return `<section id="mensualidad" class="section"><div class="section-head"><div><p class="eyebrow">Mensualidad</p><h2>Administra tu membresía.</h2></div></div><div class="billing-panel"><p class="billing-note">No pudimos cargar los datos de Stripe. Intenta nuevamente.</p></div></section>`;
+ const status=String(billing.status||'').toLowerCase();
+ const statusLabel=billing.cancelAtPeriodEnd?'Activa · cancelación programada':status==='active'?'Activa':status==='trialing'?'Activa':status==='past_due'||status==='unpaid'?'Pago pendiente':status==='canceled'||status==='incomplete_expired'?'Cancelada':status||'Sin estado';
+ const renewal=billing.periodEnd?billingDate(billing.periodEnd):'Sin fecha';
+ const payment=billing.paymentMethod?.last4?`${String(billing.paymentMethod.brand||'Tarjeta').toUpperCase()} •••• ${billing.paymentMethod.last4}`:'Método administrado por Stripe';
+ const actions=[];
+ if(billing.canChangePayment)actions.push('<button class="btn gold" type="button" data-billing-action="change_payment">Cambiar tarjeta</button>');
+ if(billing.canCancel)actions.push('<button class="btn danger" type="button" data-billing-action="cancel">Cancelar renovación</button>');
+ if(billing.canResume)actions.push('<button class="btn gold" type="button" data-billing-action="resume">Reactivar renovación</button>');
+ if(billing.canResubscribe)actions.push('<button class="btn primary" type="button" data-billing-action="resubscribe">Reactivar membresía</button>');
+ const note=billing.cancelAtPeriodEnd?`Seguirás teniendo beneficios y QR activo hasta el ${renewal}. Puedes reactivar la renovación antes de esa fecha.`:billing.canResubscribe?'Tu membresía terminó. Puedes reactivarla conservando tu misma tarjeta ALIGN y tu historial.':'La renovación mensual se cobra automáticamente con Stripe. Puedes actualizar tu tarjeta en cualquier momento.';
+ return `<section id="mensualidad" class="section"><div class="section-head"><div><p class="eyebrow">Mensualidad</p><h2>Administra tu membresía.</h2></div><p>Cambios protegidos por tu sesión de miembro. ALIGN nunca recibe ni almacena los datos completos de tu tarjeta.</p></div><div class="billing-panel"><div class="billing-grid"><div class="billing-status"><span>Estado</span><strong>${escapeHtml(statusLabel)}</strong><span>Próximo corte / vigencia · ${escapeHtml(renewal)}</span><span>Pago · ${escapeHtml(payment)}</span><p class="billing-note">${escapeHtml(note)}</p><div id="billingMessage" class="billing-message"></div></div><div class="billing-actions">${actions.join('')||'<span class="billing-note">Sin acciones pendientes.</span>'}</div></div></div></section>`;
+}
+function bindBillingActions(){
+ document.querySelectorAll('[data-billing-action]').forEach(button=>button.addEventListener('click',async()=>{
+  const action=button.dataset.billingAction;
+  const message=document.querySelector('#billingMessage');
+  const original=button.textContent;
+  try{
+   if(action==='cancel'&&!confirm('¿Quieres cancelar la renovación? Tu membresía seguirá activa hasta terminar el periodo ya pagado.'))return;
+   button.disabled=true;button.textContent='Procesando…';if(message)message.textContent='';
+   const data=await billingFetch(action);
+   if(data.url){location.assign(data.url);return}
+   if(message)message.textContent=action==='cancel'?'Cancelación programada. Tus beneficios siguen activos hasta el fin del periodo.':action==='resume'?'Renovación reactivada.':'Cambio guardado.';
+   setTimeout(()=>location.reload(),650);
+  }catch(error){if(message)message.textContent=error.message;button.disabled=false;button.textContent=original}
+ }));
+}
+function insertBillingSection(member,billing){
+ const resumen=document.querySelector('#resumen');
+ if(resumen&&!document.querySelector('#mensualidad'))resumen.insertAdjacentHTML('afterend',billingSectionHtml(billing));
+ const tabs=document.querySelector('.tabs');
+ if(tabs&&!tabs.querySelector('a[href="#mensualidad"]'))tabs.insertAdjacentHTML('beforeend','<a href="#mensualidad">Mensualidad</a>');
+ bindBillingActions();
+}
+function renderInactive(member,billing){
+ app.className='';
+ app.innerHTML=`<header class="hero"><div class="hero-grid"><div><p class="eyebrow">Hola, ${escapeHtml(member.name)}</p><h1>Tu membresía puede volver.</h1><p class="hero-copy">Conservamos tu identidad ALIGN, tu tarjeta y tu historial. Reactiva tu mensualidad para volver a usar beneficios y QR.</p></div><aside class="member-card"><p class="eyebrow">Membresía inactiva</p><div class="member-level">${escapeHtml(member.level)}</div><div class="member-meta"><span>${escapeHtml(member.memberCode)}</span><span>Estado · ${escapeHtml(member.status||'Inactiva')}</span></div></aside></div></header><div class="tabs"><a href="#mensualidad">Mensualidad</a></div>${billingSectionHtml(billing)}<footer class="footer"><span>© 2026 ALIGN Membership</span><span>Tampico · Madero · Altamira</span></footer>`;
+ bindBillingActions();
+}
+
+function render(member,activityData,groupData,billing){
  const activity=activityData?.activity||{};
  const favorites=Array.isArray(activity.favoritePlaces)?activity.favoritePlaces:[];
  const recent=Array.isArray(activity.recentVisits)?activity.recentVisits:[];
@@ -121,20 +189,32 @@ function render(member,activityData,groupData){
  <footer class="footer"><span>© 2026 ALIGN Membership</span><span>Tampico · Madero · Altamira</span></footer>`;
  const placesToggle=document.querySelector('#placesToggle');
  if(placesToggle)placesToggle.addEventListener('click',()=>{document.querySelectorAll('.place-hidden').forEach(card=>card.classList.remove('place-hidden'));placesToggle.remove()});
+ insertBillingSection(member,billing);
 }
 async function load(){
  if(!token||!/^[A-Za-z0-9_-]{20,}$/.test(token)){location.replace('login.html');return}
  sessionStorage.setItem('align_member_token',token);localStorage.setItem('align_primary_token',token);
  try{
-  const member=await fetchJson(`/member-card?token=${encodeURIComponent(token)}`);
-  if(!member.active)throw new Error('Tu membresía no está activa.');
+  if(params.get('billing')==='payment-updated'&&params.get('setup_session_id')&&billingSession){
+   await billingFetch('confirm_payment',{setupSessionId:params.get('setup_session_id')});
+   history.replaceState({},'',`portal.html?token=${encodeURIComponent(token)}&billing=payment-saved`);
+  }
+  let member=await fetchJson(`/member-card?token=${encodeURIComponent(token)}`);
+  if(!member.active&&params.get('billing')==='resubscribed'){
+   for(let attempt=0;attempt<4&&!member.active;attempt+=1){await new Promise(resolve=>setTimeout(resolve,900));member=await fetchJson(`/member-card?token=${encodeURIComponent(token)}`)}
+  }
+  const billing=billingSession?await billingFetch().catch(()=>null):null;
+  if(!member.active){
+   if(billing){renderInactive(member,billing);return}
+   throw new Error('Tu membresía no está activa. Vuelve a iniciar sesión para administrarla.');
+  }
   const [activityResult,groupResult]=await Promise.allSettled([fetchJson(`/member-activity?token=${encodeURIComponent(token)}`),fetchJson(`/group-cards?token=${encodeURIComponent(token)}`)]);
   const activity=activityResult.status==='fulfilled'?activityResult.value:{activity:{visits:Number(member.visits||0),spent:Number(member.spent||0),savings:Number(member.savings||0),favoritePlaces:[],recentVisits:[]}};
   const group=groupResult.status==='fulfilled'?groupResult.value:{cards:[{token,name:member.name,memberCode:member.memberCode,position:1,level:member.level}]};
-  render(member,activity,group);
+  render(member,activity,group,billing);
  }catch(error){app.className='loading';app.innerHTML=`<div class="loading-box"><strong>No pudimos abrir tu portal.</strong><br><br>${escapeHtml(error.message)}<br><br><a class="btn" href="login.html">Volver a iniciar sesión</a></div>`}
 }
-document.querySelector('#logout').addEventListener('click',()=>{sessionStorage.removeItem('align_member_token');sessionStorage.removeItem('align_selected_member_token');localStorage.removeItem('align_primary_token');location.replace('login.html')});
+document.querySelector('#logout').addEventListener('click',()=>{sessionStorage.removeItem('align_member_token');sessionStorage.removeItem('align_selected_member_token');sessionStorage.removeItem('align_billing_session');localStorage.removeItem('align_primary_token');location.replace('login.html')});
 load();
 </script>
 </body>
