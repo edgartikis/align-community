@@ -37,11 +37,11 @@
     const error=document.getElementById('error');
     const userInput=document.getElementById('user');
 
-    if(eyebrow)eyebrow.textContent='Pago seguro / Sandbox';
-    if(headingCopy)headingCopy.textContent='Serás redirigido al Checkout seguro de Stripe para completar tu suscripción mensual de prueba.';
+    if(eyebrow)eyebrow.textContent='Pago seguro / Stripe';
+    if(headingCopy)headingCopy.textContent='Serás redirigido al Checkout seguro de Stripe para completar tu suscripción mensual.';
     if(methodsLead)methodsLead.textContent='Continúa al Checkout de Stripe. En la siguiente pantalla podrás ingresar tarjeta y, si tu dispositivo lo permite, también usar Apple Pay.';
     if(hint)hint.textContent='Los datos de tu tarjeta se capturan directamente en Stripe. ALIGN no almacena números de tarjeta.';
-    if(note)note.innerHTML='<strong>Sandbox de Stripe.</strong><br>Esta prueba crea una suscripción TEST y no mueve dinero real.';
+    if(note)note.innerHTML='<strong>Suscripción mensual segura.</strong><br>Tu pago se procesa con Stripe y la membresía se renueva automáticamente cada mes hasta que decidas cancelar.';
     if(separator)separator.style.display='none';
     if(manualBox)manualBox.style.display='none';
 
@@ -76,7 +76,7 @@
         let data;try{data=JSON.parse(text)}catch(_){data={error:text}}
         if(!response.ok||!data?.url)throw new Error(data?.error||'No se pudo abrir Stripe Checkout.');
 
-        sessionStorage.setItem('align_sandbox_account_'+plan,JSON.stringify({username,passwordHash}));
+        sessionStorage.setItem('align_checkout_account_'+plan,JSON.stringify({username,passwordHash}));
         location.assign(data.url);
       }catch(e){
         console.error('ALIGN Stripe Checkout:',e);
