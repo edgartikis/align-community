@@ -18,9 +18,9 @@
 <nav class="nav"><a class="brand align-logo-link" href="./"><img class="align-wordmark-logo" src="assets/align-wordmark.png" alt="ALIGN — Belong to Something"></a><a class="back" href="./#membresias">← Cambiar membresía</a></nav>
 <main class="shell">
 <div class="steps"><span>01 Integrantes</span><i></i><b>02 Pago</b><i></i><span>03 Identidad</span></div>
-<header class="heading"><div><p class="eyebrow">Pago seguro / Sandbox</p><h1>Activa tu<br>membresía.</h1></div><p>Continúa al Checkout seguro de Stripe para completar tu suscripción mensual de prueba.</p></header>
+<header class="heading"><div><p class="eyebrow">Pago seguro / Stripe</p><h1>Activa tu<br>membresía.</h1></div><p>Continúa al Checkout seguro de Stripe para completar tu suscripción mensual.</p></header>
 <div class="grid">
-<aside class="summary"><div><span class="chip">STRIPE TEST</span><div class="plan" id="planName"></div><div class="price" id="planPrice"></div><p class="seats" id="planSeats"></p></div><div class="note"><strong>Sandbox de Stripe.</strong><br>Esta etapa todavía no mueve dinero real. Antes de activar LIVE validaremos el flujo completo.</div></aside>
+<aside class="summary"><div><span class="chip">PAGO SEGURO</span><div class="plan" id="planName"></div><div class="price" id="planPrice"></div><p class="seats" id="planSeats"></p></div><div class="note"><strong>Suscripción mensual segura.</strong><br>Tu pago se procesa con Stripe y la membresía se renueva automáticamente cada mes hasta que decidas cancelar.</div></aside>
 <section class="pay">
 <p class="eyebrow">Acceso del titular</p><h2>Crea tu acceso.</h2>
 <section class="account"><div class="field"><label for="user">Nombre de usuario</label><input id="user" autocomplete="username" maxlength="24" placeholder="edgar.align"></div><div class="row"><div class="field"><label for="pass">Contraseña</label><input id="pass" type="password" autocomplete="new-password" maxlength="72" placeholder="Mínimo 8 caracteres"></div><div class="field"><label for="confirm">Confirmar contraseña</label><input id="confirm" type="password" autocomplete="new-password" maxlength="72" placeholder="Repite tu contraseña"></div></div><p class="small">Usuario de 4 a 24 caracteres. Contraseña con mínimo 8 caracteres, una letra y un número.</p></section>
@@ -42,6 +42,6 @@ document.querySelector('#planPrice').textContent=plan.founder?'PRECIO FUNDADOR �
 document.querySelector('#planSeats').textContent=plan.seats===1?'1 integrante · 1 tarjeta digital personal':plan.seats+' integrantes · '+plan.seats+' tarjetas digitales personales';
 if(plan.founder)document.querySelector('#planSeats').insertAdjacentHTML('afterend',`<div class="founder-pay-note"><strong>FOUNDING 150</strong>Primeros 150 miembros: $249 MXN al mes. Precio regular posterior: $${plan.regular} MXN. Conservas tu tarifa Fundador mientras la membresía permanezca activa; si cancelas y regresas, aplica el precio vigente.</div>`);
 </script>
-<script src="stripe-checkout-bridge.js?v=20260908-backend-cleanup"></script>
+<script src="stripe-checkout-bridge.js?v=20260918-live"></script>
 </body>
 </html>
