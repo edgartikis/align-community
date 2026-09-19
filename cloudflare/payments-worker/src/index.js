@@ -388,6 +388,54 @@ async function updateGroupStatus(env, subscriptionId, status, metadata = {}) {
   }
 }
 
+function invoicePaidPayload(object) {
+  return {
+    invoiceId: object.id || "",
+    stripeCustomerId: object.customer || "",
+    stripeSubscriptionId: object.subscription || object.parent?.subscription_details?.subscription || "",
+    amount: Number(object.amount_paid || 0) / 100,
+    currency: String(object.currency || "mxn").toUpperCase(),
+  };
+}
+
+function pendingInvoicePaidKey(subscriptionId) {
+  return `pending:invoice-paid:${subscriptionId}`;
+}
+
+async function applyInvoicePaid(env, payload) {
+  const subscriptionId = clean(payload?.stripeSubscriptionId, 120);
+  if (!subscriptionId) return true;
+
+  const groupId = await resolveSubscriptionGroup(env, subscriptionId);
+  if (!groupId) return false;
+
+  await updateGroupStatus(env, subscriptionId, "Activa");
+  await postDatabase(env, { action: "subscription_renewed", ...payload });
+  return true;
+}
+
+async function deferInvoicePaid(env, payload) {
+  const subscriptionId = clean(payload?.stripeSubscriptionId, 120);
+  if (!subscriptionId) return;
+  await env.PAYMENT_STATE.put(
+    pendingInvoicePaidKey(subscriptionId),
+    JSON.stringify(payload),
+    { expirationTtl: 60 * 60 * 48 },
+  );
+}
+
+async function replayPendingInvoicePaid(env, subscriptionId) {
+  subscriptionId = clean(subscriptionId, 120);
+  if (!subscriptionId) return;
+
+  const key = pendingInvoicePaidKey(subscriptionId);
+  const raw = await env.PAYMENT_STATE.get(key);
+  if (!raw) return;
+
+  const processed = await applyInvoicePaid(env, JSON.parse(raw));
+  if (processed) await env.PAYMENT_STATE.delete(key);
+}
+
 async function processEvent(env, event) {
   const object = event?.data?.object || {};
   switch (event.type) {
@@ -408,17 +456,27 @@ async function processEvent(env, event) {
             cancelAtPeriodEnd: false,
             currentPeriodEnd: null,
           });
+          await replayPendingInvoicePaid(env, subscriptionId);
         } else {
           const record = await registerCheckout(env, object);
           if (record.dbSynced === false) throw new Error("Sincronización con la base pendiente.");
+          await replayPendingInvoicePaid(env, subscriptionId || record.subscriptionId);
         }
       }
       break;
     }
     case "invoice.paid": {
-      const subscriptionId = object.subscription || object.parent?.subscription_details?.subscription || "";
-      await updateGroupStatus(env, subscriptionId, "Activa");
-      await postDatabase(env, { action: "subscription_renewed", invoiceId: object.id || "", stripeCustomerId: object.customer || "", stripeSubscriptionId: subscriptionId, amount: Number(object.amount_paid || 0) / 100, currency: String(object.currency || "mxn").toUpperCase() });
+      const payload = invoicePaidPayload(object);
+      const processed = await applyInvoicePaid(env, payload);
+      if (!processed) {
+        // Stripe can deliver invoice.paid before checkout.session.completed.
+        // Acknowledge the event and replay it after checkout creates the subscription -> group mapping.
+        await deferInvoicePaid(env, payload);
+        console.log("ALIGN invoice.paid deferred until checkout activation", {
+          invoiceId: payload.invoiceId,
+          stripeSubscriptionId: payload.stripeSubscriptionId,
+        });
+      }
       break;
     }
     case "invoice.payment_failed": {
