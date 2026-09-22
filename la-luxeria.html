@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#07182E">
+<title>La Luxería | ALIGN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="assets/align-primary.png?v=transparent-3">
+<style>
+:root{--navy:#07182E;--paper:#f4f1eb;--ink:#111;--muted:#666b71;--line:#d8d8d8}
+*{box-sizing:border-box}body{margin:0;background:#fff;color:var(--ink);font-family:"DM Sans",sans-serif}a{color:inherit;text-decoration:none}
+.nav{display:flex;justify-content:space-between;align-items:center;padding:20px 5vw;border-bottom:1px solid #e7e7e7;background:#fff;position:sticky;top:0;z-index:10}
+.align-wordmark-logo{display:block;width:clamp(118px,14vw,158px);height:auto;max-width:42vw;object-fit:contain}.back{font:500 .68rem "DM Mono",monospace;letter-spacing:.1em;text-transform:uppercase;color:#60656b}
+.hero{display:grid;grid-template-columns:1.05fr .95fr;min-height:620px;background:var(--paper)}
+.hero-copy{padding:80px 5vw;display:flex;flex-direction:column;justify-content:center}.eyebrow{margin:0 0 14px;font:500 .68rem "DM Mono",monospace;letter-spacing:.15em;text-transform:uppercase;color:#7a7f84}
+.hero h1,.section h2{font-family:"Playfair Display",serif;font-weight:500;letter-spacing:-.05em}.hero h1{margin:0;font-size:clamp(4rem,8vw,7.2rem);line-height:.88}.lead{max-width:620px;margin:26px 0 0;color:#565b60;line-height:1.75;font-size:1.03rem}
+.badge{display:inline-flex;width:max-content;margin-top:28px;padding:11px 14px;background:var(--navy);color:#fff;font:500 .65rem "DM Mono",monospace;letter-spacing:.08em;text-transform:uppercase}
+.hero-visual{display:grid;place-items:center;padding:48px;background:#fff}.hero-visual img{width:min(88%,620px);height:auto;object-fit:contain}
+.section{padding:78px 5vw}.section.navy{background:var(--navy);color:#fff}.section-head{display:flex;justify-content:space-between;align-items:end;gap:30px;margin-bottom:34px}.section h2{margin:0;font-size:clamp(2.8rem,5vw,5rem);line-height:.93}.section-head p{max-width:520px;margin:0;color:var(--muted);line-height:1.7}.navy .section-head p{color:#c7cdd4}
+.benefit{display:grid;grid-template-columns:.8fr 1.2fr;gap:24px;align-items:stretch}.benefit-big{display:flex;flex-direction:column;justify-content:center;padding:38px;border:1px solid rgba(255,255,255,.22)}.benefit-big strong{font-family:"Playfair Display",serif;font-size:clamp(4rem,9vw,8rem);font-weight:500;line-height:.8}.benefit-big span{margin-top:18px;font:500 .7rem "DM Mono",monospace;letter-spacing:.12em;text-transform:uppercase;color:#d4d9df}.benefit-copy{padding:38px;border:1px solid rgba(255,255,255,.22);display:flex;align-items:center}.benefit-copy p{margin:0;color:#dfe3e7;line-height:1.8;font-size:1.02rem}
+.services-list{display:flex;flex-wrap:wrap;gap:10px;margin:0;padding:0;list-style:none}.services-list li{padding:11px 13px;border:1px solid #cfd2d5;background:#fff;font:500 .67rem "DM Mono",monospace;letter-spacing:.06em;text-transform:uppercase}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:28px}.service{border:1px solid var(--line);background:#fff;overflow:hidden}.service img{display:block;width:100%;aspect-ratio:1/1;object-fit:cover}.service-copy{padding:20px}.service h3{margin:0;font-family:"Playfair Display",serif;font-size:1.8rem;font-weight:500}.service p{margin:8px 0 0;color:#666;line-height:1.55}.discount{display:inline-block;margin-top:13px;color:var(--navy);font:600 .67rem "DM Mono",monospace;letter-spacing:.08em;text-transform:uppercase}
+.note{margin-top:24px;padding:18px 20px;background:#f7f7f5;border-left:3px solid var(--navy);color:#64696e;line-height:1.65}
+.cta-section{padding:64px 5vw;background:var(--paper);display:flex;justify-content:space-between;align-items:center;gap:26px}.cta-section h2{font-family:"Playfair Display",serif;font-weight:500;font-size:clamp(2.4rem,4vw,4rem);margin:0}.button{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:13px 18px;border:1px solid var(--navy);background:var(--navy);color:#fff;font:600 .67rem "DM Mono",monospace;letter-spacing:.08em;text-transform:uppercase}
+.footer{padding:28px 5vw;display:flex;justify-content:space-between;gap:15px;border-top:1px solid #eee;color:#777;font:500 .65rem "DM Mono",monospace;letter-spacing:.08em;text-transform:uppercase}
+@media(max-width:900px){.hero,.benefit{grid-template-columns:1fr}.hero{min-height:0}.hero-copy{padding-top:64px;padding-bottom:58px}.grid{grid-template-columns:1fr 1fr}.section-head{display:block}.section-head p{margin-top:14px}}
+@media(max-width:620px){.nav,.section,.hero-copy,.cta-section,.footer{padding-left:6vw;padding-right:6vw}.grid{grid-template-columns:1fr}.hero-visual{padding:32px 6vw}.cta-section,.footer{flex-direction:column;align-items:flex-start}.hero h1{font-size:4rem}}
+</style>
+</head>
+<body>
+<nav class="nav"><a href="./"><img class="align-wordmark-logo" src="assets/align-wordmark.png" alt="ALIGN — Belong to Something"></a><a class="back" id="backLink" href="package-allies.html?plan=girls">← Aliados incluidos</a></nav>
+<header class="hero">
+  <div class="hero-copy">
+    <p class="eyebrow">ALIGN × La Luxería Laser Spa</p>
+    <h1>La Luxería.</h1>
+    <p class="lead">Tecnología estética, bienestar y cuidado personal en una selección de servicios disponible para Girls Club, Duo Club y Private Circle.</p>
+    <span class="badge">10% de descuento · miembros elegibles ALIGN</span>
+  </div>
+  <div class="hero-visual"><img src="LALUXERIALOGO.jpeg" alt="La Luxería Laser Spa"></div>
+</header>
+
+<section class="section navy" id="beneficio">
+  <div class="section-head"><div><p class="eyebrow">Beneficio ALIGN</p><h2>10% OFF.</h2></div><p>El beneficio aplica a los servicios mostrados en esta sección para miembros vigentes de Girls Club, Duo Club y Private Circle.</p></div>
+  <div class="benefit"><div class="benefit-big"><strong>10%</strong><span>de descuento</span></div><div class="benefit-copy"><p>Presenta tu membresía ALIGN vigente al solicitar el servicio. El descuento se aplica sobre los servicios listados abajo.</p></div></div>
+</section>
+
+<section class="section" id="servicios">
+  <div class="section-head"><div><p class="eyebrow">Servicios incluidos</p><h2>Elige tu experiencia.</h2></div><p>Consulta la selección de tratamientos y servicios de La Luxería disponibles con beneficio ALIGN.</p></div>
+  <ul class="services-list">
+    <li>Hollywood Peel</li><li>U-Shape</li><li>Despigmentación</li><li>Eliminación de tatuajes</li><li>Masaje relajante</li><li>Depilación láser</li><li>Sauna infrarrojo</li>
+  </ul>
+  <div class="grid">
+    <article class="service"><img loading="lazy" src="LALUXERIA2.jpeg" alt="Hollywood Peel en La Luxería"><div class="service-copy"><h3>Hollywood Peel</h3><span class="discount">10% OFF con ALIGN</span></div></article>
+    <article class="service"><img loading="lazy" src="LALUXERIA3.jpeg" alt="U-Shape en La Luxería"><div class="service-copy"><h3>U-Shape</h3><span class="discount">10% OFF con ALIGN</span></div></article>
+    <article class="service"><img loading="lazy" src="LALUXERIA4.jpeg" alt="Despigmentación en La Luxería"><div class="service-copy"><h3>Despigmentación</h3><span class="discount">10% OFF con ALIGN</span></div></article>
+    <article class="service"><img loading="lazy" src="LALUXERIA5.jpeg" alt="Eliminación de tatuajes en La Luxería"><div class="service-copy"><h3>Eliminación de tatuajes</h3><span class="discount">10% OFF con ALIGN</span></div></article>
+    <article class="service"><img loading="lazy" src="LALUXERIA6.jpeg" alt="Masaje relajante en La Luxería"><div class="service-copy"><h3>Masaje relajante</h3><span class="discount">10% OFF con ALIGN</span></div></article>
+    <article class="service"><img loading="lazy" src="LALUXERIA7.jpeg" alt="Depilación láser en La Luxería"><div class="service-copy"><h3>Depilación láser</h3><span class="discount">10% OFF con ALIGN</span></div></article>
+    <article class="service"><img loading="lazy" src="LALUXERIA8.jpeg" alt="Sauna infrarrojo en La Luxería"><div class="service-copy"><h3>Sauna infrarrojo</h3><span class="discount">10% OFF con ALIGN</span></div></article>
+  </div>
+  <p class="note">Beneficio exclusivo para Girls Club, Duo Club y Private Circle. Sujeto a disponibilidad y condiciones de servicio de La Luxería.</p>
+</section>
+
+<section class="cta-section"><h2>La Luxería × ALIGN.</h2><a class="button" id="portalLink" href="package-allies.html?plan=girls">Volver a mis aliados</a></section>
+<footer class="footer"><span>© 2026 ALIGN Membership</span><span>Tampico · Madero · Altamira</span></footer>
+<script>
+const params=new URLSearchParams(location.search),plan=params.get('plan')||'girls',fromPortal=params.get('from')==='portal';
+const allowed=new Set(['girls','duo','circle']);
+if(!allowed.has(plan)){location.replace('package-allies.html?plan='+encodeURIComponent(plan))}
+const suffix='?plan='+encodeURIComponent(plan)+(fromPortal?'&from=portal':'');
+const back=document.querySelector('#backLink'),portal=document.querySelector('#portalLink');
+if(fromPortal){back.href='portal.html';back.textContent='← Volver a mi portal';portal.href='portal.html';portal.textContent='Volver a mi portal'}
+else{back.href='package-allies.html'+suffix;portal.href='package-allies.html'+suffix}
+</script>
+</body>
+</html>
