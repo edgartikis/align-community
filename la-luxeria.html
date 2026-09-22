@@ -24,10 +24,17 @@
 .services-list{display:flex;flex-wrap:wrap;gap:10px;margin:0;padding:0;list-style:none}.services-list li{padding:11px 13px;border:1px solid #cfd2d5;background:#fff;font:500 .67rem "DM Mono",monospace;letter-spacing:.06em;text-transform:uppercase}
 .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:28px}.service{border:1px solid var(--line);background:#fff;overflow:hidden}.service img{display:block;width:100%;aspect-ratio:1/1;object-fit:cover}.service-copy{padding:20px}.service h3{margin:0;font-family:"Playfair Display",serif;font-size:1.8rem;font-weight:500}.service p{margin:8px 0 0;color:#666;line-height:1.55}.discount{display:inline-block;margin-top:13px;color:var(--navy);font:600 .67rem "DM Mono",monospace;letter-spacing:.08em;text-transform:uppercase}
 .note{margin-top:24px;padding:18px 20px;background:#f7f7f5;border-left:3px solid var(--navy);color:#64696e;line-height:1.65}
+.packages{background:var(--paper)}
+.package-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:30px}
+.package-card{min-height:330px;padding:28px;border:1px solid rgba(7,24,46,.16);background:#fff;display:flex;flex-direction:column}
+.package-kicker{font:600 .64rem "DM Mono",monospace;letter-spacing:.12em;text-transform:uppercase;color:#7b8086}
+.package-card h3{margin:18px 0 16px;font-family:"Playfair Display",serif;font-size:clamp(2.2rem,3vw,3.4rem);font-weight:500;line-height:.95}
+.package-card p{margin:0;color:#5f646a;line-height:1.72;font-size:1rem}
+.package-highlight{margin-top:auto;padding-top:24px;font:600 .7rem "DM Mono",monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--navy)}
 .cta-section{padding:64px 5vw;background:var(--paper);display:flex;justify-content:space-between;align-items:center;gap:26px}.cta-section h2{font-family:"Playfair Display",serif;font-weight:500;font-size:clamp(2.4rem,4vw,4rem);margin:0}.button{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:13px 18px;border:1px solid var(--navy);background:var(--navy);color:#fff;font:600 .67rem "DM Mono",monospace;letter-spacing:.08em;text-transform:uppercase}
 .footer{padding:28px 5vw;display:flex;justify-content:space-between;gap:15px;border-top:1px solid #eee;color:#777;font:500 .65rem "DM Mono",monospace;letter-spacing:.08em;text-transform:uppercase}
-@media(max-width:900px){.hero,.benefit{grid-template-columns:1fr}.hero{min-height:0}.hero-copy{padding-top:64px;padding-bottom:58px}.grid{grid-template-columns:1fr 1fr}.section-head{display:block}.section-head p{margin-top:14px}}
-@media(max-width:620px){.nav,.section,.hero-copy,.cta-section,.footer{padding-left:6vw;padding-right:6vw}.grid{grid-template-columns:1fr}.hero-visual{padding:32px 6vw}.cta-section,.footer{flex-direction:column;align-items:flex-start}.hero h1{font-size:4rem}}
+@media(max-width:900px){.hero,.benefit{grid-template-columns:1fr}.hero{min-height:0}.hero-copy{padding-top:64px;padding-bottom:58px}.grid,.package-grid{grid-template-columns:1fr 1fr}.section-head{display:block}.section-head p{margin-top:14px}}
+@media(max-width:620px){.nav,.section,.hero-copy,.cta-section,.footer{padding-left:6vw;padding-right:6vw}.grid,.package-grid{grid-template-columns:1fr}.hero-visual{padding:32px 6vw}.cta-section,.footer{flex-direction:column;align-items:flex-start}.hero h1{font-size:4rem}}
 </style>
 </head>
 <body>
@@ -45,6 +52,30 @@
 <section class="section navy" id="beneficio">
   <div class="section-head"><div><p class="eyebrow">Beneficio ALIGN</p><h2>10% OFF.</h2></div><p>El beneficio aplica a los servicios mostrados en esta sección para miembros vigentes de Girls Club, Duo Club y Private Circle.</p></div>
   <div class="benefit"><div class="benefit-big"><strong>10%</strong><span>de descuento</span></div><div class="benefit-copy"><p>Presenta tu membresía ALIGN vigente al solicitar el servicio. El descuento se aplica sobre los servicios listados abajo.</p></div></div>
+</section>
+
+<section class="section packages" id="paquetes">
+  <div class="section-head"><div><p class="eyebrow">Paquetes exclusivos ALIGN</p><h2>Tres formas de aprovechar más.</h2></div><p>Beneficios especiales creados por La Luxería para miembros elegibles de ALIGN.</p></div>
+  <div class="package-grid">
+    <article class="package-card">
+      <span class="package-kicker">Depilación láser</span>
+      <h3>LASER ALIGN</h3>
+      <p>Contrata tu paquete de 8 sesiones de depilación láser y recibe 2 sesiones adicionales <strong>GRATIS</strong>.</p>
+      <span class="package-highlight">8 sesiones + 2 adicionales gratis</span>
+    </article>
+    <article class="package-card">
+      <span class="package-kicker">Facial</span>
+      <h3>GLOW ALIGN</h3>
+      <p>Agenda un facial clásico y recibe <strong>PDRN de salmón</strong> de cortesía.</p>
+      <span class="package-highlight">PDRN de salmón de cortesía</span>
+    </article>
+    <article class="package-card">
+      <span class="package-kicker">Body Contour</span>
+      <h3>BODY ALIGN</h3>
+      <p>Contrata 3 sesiones de Body Contour y recibe 1 sesión Wellness <strong>GRATIS</strong>.</p>
+      <span class="package-highlight">3 Body Contour + 1 Wellness gratis</span>
+    </article>
+  </div>
 </section>
 
 <section class="section" id="servicios">
