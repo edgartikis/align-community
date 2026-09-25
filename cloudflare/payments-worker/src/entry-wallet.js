@@ -121,7 +121,8 @@ async function walletContext(request, env) {
 
   const memberUrl = new URL(request.url);
   memberUrl.searchParams.set("token", token);
-  const member = await downstreamJson(new Request(memberUrl, request), env, "/api/member-card");
+  const memberRequest = new Request(memberUrl.toString(), { headers: request.headers });
+  const member = await downstreamJson(memberRequest, env, "/api/member-card");
   if (!member?.active) {
     const error = new Error("La membresía no está vigente.");
     error.status = 403;
@@ -130,7 +131,8 @@ async function walletContext(request, env) {
 
   const qrUrl = new URL(request.url);
   qrUrl.searchParams.set("token", token);
-  const qr = await downstreamJson(new Request(qrUrl, request), env, "/api/monthly-qr");
+  const qrRequest = new Request(qrUrl.toString(), { headers: request.headers });
+  const qr = await downstreamJson(qrRequest, env, "/api/monthly-qr");
   if (!qr?.validationUrl) {
     const error = new Error("No pudimos generar el QR vigente.");
     error.status = 500;
