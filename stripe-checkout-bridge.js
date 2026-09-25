@@ -71,7 +71,7 @@
         if(!consent)throw new Error('Debes aceptar los Términos y Condiciones y el Aviso de Privacidad para continuar al pago.');
 
         const passwordHash=await sha256(password);
-        const response=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({plan,username,passwordHash,members:draft.members,legalConsent:{accepted:true,termsVersion:'2026-09-25',privacyVersion:'2026-09-25',acceptedAt:new Date().toISOString()}})});
+        const response=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({plan,username,passwordHash,members:draft.members,legalConsent:{accepted:true,termsVersion:'2026-09-25-v2',privacyVersion:'2026-09-25-v2',acceptedAt:new Date().toISOString()}})});
         const text=await response.text();
         let data;try{data=JSON.parse(text)}catch(_){data={error:text}}
         if(!response.ok||!data?.url)throw new Error(data?.error||'No se pudo abrir Stripe Checkout.');
