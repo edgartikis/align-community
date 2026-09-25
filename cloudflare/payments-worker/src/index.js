@@ -140,7 +140,7 @@ async function createCheckout(request, env) {
   const suppliedConsent = body?.legalConsent || {};
   const termsVersion = clean(suppliedConsent.termsVersion, 40);
   const privacyVersion = clean(suppliedConsent.privacyVersion, 40);
-  if (suppliedConsent.accepted !== true || termsVersion !== "2026-09-25" || privacyVersion !== "2026-09-25") {
+  if (suppliedConsent.accepted !== true || termsVersion !== "2026-09-25-v2" || privacyVersion !== "2026-09-25-v2") {
     return json({ error: "Debes aceptar los Términos y Condiciones y el Aviso de Privacidad vigentes para continuar." }, 400, origin);
   }
   const legalConsent = {
