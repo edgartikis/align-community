@@ -89,7 +89,7 @@ function renderActivity(data){
   activityPanel.innerHTML=`<div class="activity-head"><div><p class="activity-kicker">Tu actividad ALIGN</p><h2 class="activity-title">Tus números</h2></div><p class="activity-person">${escapeHtml(data?.member?.name||'')}</p></div><div class="stats"><div class="stat"><span class="stat-label">Visitas</span><span class="stat-value">${Number(activity.visits||0)}</span></div><div class="stat"><span class="stat-label">Gastado</span><span class="stat-value">${money.format(activity.spent||0)}</span></div><div class="stat"><span class="stat-label">Ahorrado</span><span class="stat-value">${money.format(activity.savings||0)}</span></div></div>${favorite?`<div class="favorite"><span class="favorite-label">Tu lugar más frecuente</span><div class="favorite-name">${escapeHtml(favorite.place)}</div><p class="favorite-meta">${Number(favorite.visits||0)} visita${Number(favorite.visits||0)===1?'':'s'} · ${money.format(favorite.savings||0)} ahorrados</p></div>`:''}<h3 class="history-title">Actividad reciente</h3>${visits.length?`<div class="visit-list">${visits.map(visit=>`<div class="visit"><div><div class="visit-place">${escapeHtml(visit.place)}</div><div class="visit-date">${escapeHtml(visitDateLabel(visit.createdAt))}</div>${visit.benefit?`<div class="visit-benefit">${escapeHtml(visit.benefit)}</div>`:''}</div><div class="visit-money"><span class="visit-spent">${money.format(visit.spent||0)}</span><span class="visit-saved">+${money.format(visit.saved||0)} ahorro</span></div></div>`).join('')}</div>`:`<div class="empty">Todavía no hay visitas registradas con esta tarjeta. Tu historial aparecerá aquí después de usar un beneficio.</div>`}`;
 }
 async function loadActivity(memberToken){
-  activityPanel.className='activity loading';activityPanel.textContent='Cargando tu actividad…';walletPanel.hidden=true;walletActions.innerHTML='';walletStatus.textContent='';
+  activityPanel.className='activity loading';activityPanel.textContent='Cargando tu actividad…';
   try{const data=await fetchJson(`${API}/member-activity?token=${encodeURIComponent(memberToken)}`);if(memberToken!==activeToken)return;renderActivity(data)}catch(error){if(memberToken!==activeToken)return;activityPanel.className='activity';activityPanel.innerHTML=`<p class="activity-error">${escapeHtml(error.message)}</p>`}
 }
 async function selectCard(memberToken){
@@ -99,6 +99,7 @@ async function selectCard(memberToken){
   renderSelector();
   app.className='load';app.textContent='Cargando tu tarjeta…';
   activityPanel.className='activity loading';activityPanel.textContent='Cargando tu actividad…';
+  walletPanel.hidden=true;walletActions.innerHTML='';walletStatus.textContent='';
   try{
     const member=await fetchJson(`${API}/member-card?token=${encodeURIComponent(activeToken)}`);
     if(!member.active)throw new Error('La membresía no está vigente.');
