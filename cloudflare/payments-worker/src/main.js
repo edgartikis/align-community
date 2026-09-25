@@ -1,6 +1,6 @@
-import apiWorker from "./entry-member-login.js";
+import apiWorker from "./entry-wallet.js";
 
-const BACKEND_VERSION = "2026-09-14-ally-auth-v2";
+const BACKEND_VERSION = "2026-09-25-member-wallet-v1";
 
 const PRICE_ENV_NAMES = [
   "STRIPE_PRICE_BROTHERHOOD_FOUNDER",
