@@ -68,7 +68,7 @@ Wallet:
 - `APPLE_WALLET_SIGNER_URL` — endpoint HTTPS del firmador de pases de ALIGN.
 - `APPLE_WALLET_SIGNER_SECRET` — **secret** compartido con el firmador.
 
-La tarjeta de Wallet reutiliza el QR mensual vigente de ALIGN; no crea una identidad o QR paralelo. Google se firma en el Worker con RS256. Apple requiere un paquete `.pkpass` firmado con el certificado del Pass Type ID y el certificado intermedio de Apple, por lo que el Worker delega únicamente esa firma/compresión al firmador configurado.
+La tarjeta de Wallet usa un código opaco propio (`/w/...`) que no expone el token del socio y valida la vigencia actual en tiempo real. Cuando el portal del aliado escanea ese código, el Worker lo traduce internamente al QR mensual vigente de ALIGN antes de continuar con la validación existente. Así el pase puede permanecer en Wallet entre renovaciones sin volver a agregarse cada mes. Google se firma en el Worker con RS256. Apple requiere un paquete `.pkpass` firmado con el certificado del Pass Type ID y el certificado intermedio de Apple, por lo que el Worker delega únicamente esa firma/compresión al firmador configurado.
 
 Nunca deben guardarse secretos, certificados ni llaves privadas en GitHub.
 
