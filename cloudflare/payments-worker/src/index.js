@@ -137,6 +137,21 @@ async function createCheckout(request, env) {
   const members = normalizeMembers(body.members, plan.seats);
   const username = clean(body.username, 24).toLowerCase();
   const passwordHash = validPasswordHash(body.passwordHash);
+  const suppliedConsent = body?.legalConsent || {};
+  const termsVersion = clean(suppliedConsent.termsVersion, 40);
+  const privacyVersion = clean(suppliedConsent.privacyVersion, 40);
+  if (suppliedConsent.accepted !== true || termsVersion !== "2026-09-25" || privacyVersion !== "2026-09-25") {
+    return json({ error: "Debes aceptar los Términos y Condiciones y el Aviso de Privacidad vigentes para continuar." }, 400, origin);
+  }
+  const legalConsent = {
+    accepted: true,
+    termsVersion,
+    privacyVersion,
+    acceptedAtClient: clean(suppliedConsent.acceptedAt, 60),
+    acceptedAtServer: new Date().toISOString(),
+    ip: clean(request.headers.get("cf-connecting-ip") || "", 80),
+    userAgent: clean(request.headers.get("user-agent") || "", 240),
+  };
   if (!/^[a-z0-9._-]{4,24}$/i.test(username)) return json({ error: "El usuario debe tener de 4 a 24 caracteres." }, 400, origin);
   if (!passwordHash) return json({ error: "No se recibió una contraseña segura." }, 400, origin);
 
@@ -144,7 +159,7 @@ async function createCheckout(request, env) {
   if (!/^price_/.test(price.priceId)) throw new Error("El Price ID de Stripe no es válido.");
 
   const draftId = randomId();
-  const draft = { version: 3, draftId, plan: planKey, planName: plan.name, seats: plan.seats, stripePriceId: price.priceId, pricingTier: price.tier, founderCountAtCheckout: price.founderCount, username, passwordHash, members, createdAt: new Date().toISOString() };
+  const draft = { version: 4, draftId, plan: planKey, planName: plan.name, seats: plan.seats, stripePriceId: price.priceId, pricingTier: price.tier, founderCountAtCheckout: price.founderCount, username, passwordHash, members, legalConsent, createdAt: new Date().toISOString() };
   await env.PAYMENT_STATE.put(`draft:${draftId}`, JSON.stringify(draft), { expirationTtl: 60 * 60 * 48 });
 
   const base = siteOrigin(env);
@@ -164,6 +179,9 @@ async function createCheckout(request, env) {
     "metadata[align_draft_id]": draftId,
     "metadata[align_plan]": planKey,
     "metadata[align_pricing_tier]": price.tier,
+    "metadata[align_terms_version]": termsVersion,
+    "metadata[align_privacy_version]": privacyVersion,
+    "metadata[align_consent_at]": legalConsent.acceptedAtServer,
     "subscription_data[metadata][align_draft_id]": draftId,
     "subscription_data[metadata][align_plan]": planKey,
     "subscription_data[metadata][align_pricing_tier]": price.tier,
@@ -341,6 +359,7 @@ async function activationRecord(env, session) {
     planKey: draft.plan,
     level: draft.planName,
     username: draft.username,
+    legalConsent: draft.legalConsent || null,
     members,
     dbSynced: false,
     dbSyncError: "pending",
@@ -350,6 +369,7 @@ async function activationRecord(env, session) {
   // Stripe membership first so a reporting-sheet outage can never block access.
   for (const member of members) await env.PAYMENT_STATE.put(`member:${member.token}`, JSON.stringify(member));
   await env.PAYMENT_STATE.put(`group:${groupId}`, JSON.stringify({ groupId, tokens: members.map((m) => m.token) }));
+  if (record.legalConsent) await env.PAYMENT_STATE.put(`legal-consent:${groupId}`, JSON.stringify(record.legalConsent));
   if (session.subscription) await env.PAYMENT_STATE.put(`subscription:${session.subscription}`, groupId);
   await env.PAYMENT_STATE.put(key, JSON.stringify(record), { expirationTtl: 60 * 60 * 24 * 365 });
 
