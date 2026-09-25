@@ -21,7 +21,6 @@ MAX_DIMENSION = 1920
 # Deliberately excluded: homepage, initial/auth/payment flows, member pages,
 # operational dashboards/portals and the Restaurants page (already custom-designed).
 PERSONALITY_PAGES = {
-    'ancla-del-canelo.html',
     'boris-marisqueria.html',
     'buns-and-bros.html',
     'capri-3.html',
