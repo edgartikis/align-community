@@ -68,10 +68,10 @@
         if(!/^[a-z0-9._-]{4,24}$/i.test(username))throw new Error('El usuario debe tener de 4 a 24 caracteres y usar solo letras, números, punto, guion o guion bajo.');
         if(password.length<8||!/[A-Za-z]/.test(password)||!/[0-9]/.test(password))throw new Error('La contraseña debe tener mínimo 8 caracteres, una letra y un número.');
         if(password!==confirmation)throw new Error('Las contraseñas no coinciden.');
-        if(!consent)throw new Error('Marca la casilla del Aviso de Privacidad para continuar.');
+        if(!consent)throw new Error('Debes aceptar los Términos y Condiciones y el Aviso de Privacidad para continuar al pago.');
 
         const passwordHash=await sha256(password);
-        const response=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({plan,username,passwordHash,members:draft.members})});
+        const response=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({plan,username,passwordHash,members:draft.members,legalConsent:{accepted:true,termsVersion:'2026-09-25',privacyVersion:'2026-09-25',acceptedAt:new Date().toISOString()}})});
         const text=await response.text();
         let data;try{data=JSON.parse(text)}catch(_){data={error:text}}
         if(!response.ok||!data?.url)throw new Error(data?.error||'No se pudo abrir Stripe Checkout.');
