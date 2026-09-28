@@ -15,7 +15,7 @@ const ALLIES = Object.freeze({
   "ALI-006": { key: "gingers", name: "Ginger's Coffee House", category: "Coffee" },
   "ALI-007": { key: "rancho", name: "Rancho MX", category: "Ranch & Western" },
   "ALI-008": { key: "horse", name: "Horse Riding", category: "Ranch & Western" },
-  "ALI-009": { key: "charreadas", name: "Charreadas", category: "Ranch & Western" },
+
   "ALI-010": { key: "marea", name: "Marea Baja", category: "Outdoor & Adventure" },
   "ALI-011": { key: "fishing", name: "Vaca Fishing", category: "Outdoor & Adventure" },
   "ALI-012": { key: "velamar", name: "Velamar", category: "Alojamientos" },
