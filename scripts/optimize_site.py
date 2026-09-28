@@ -26,7 +26,7 @@ PERSONALITY_PAGES = {
     'capri-3.html',
     'capri-5.html',
     'cera-mia.html',
-    'charreadas.html',
+
     'cuidado-personal.html',
     'dia-de-pesca.html',
     'gingers.html',
