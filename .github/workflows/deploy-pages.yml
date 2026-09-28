@@ -51,7 +51,7 @@ jobs:
               ('marea-1.jpg', 'marea-baja.webp'),
               ('public/images/events/WhatsApp Image 2026-07-23 at 6.31.30 PM.jpeg', 'boat-party.webp'),
               ('caballo1.png', 'horse-riding.webp'),
-              ('herradura-1.jpg.png', 'charreadas.webp'),
+
           ]
 
           index_path = root / 'index.html'
