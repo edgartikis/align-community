@@ -16,7 +16,7 @@
 </style>
 </head>
 <body>
-<nav class="nav"><a href="./"><img src="assets/align-wordmark.png?v=transparent-5" alt="ALIGN — Belong to Something"></a><a class="back" href="cuidado-personal.html">← Cuidado personal</a></nav>
+<nav class="nav"><a href="./"><img src="assets/align-wordmark.png?v=transparent-5" alt="ALIGN — Belong to Something"></a><a class="back" id="backLink" href="dentistas.html">← Dentistas</a></nav>
 <header class="hero">
 <div class="hero-copy-wrap">
 <p class="eyebrow">ALIGN x Jessica Manzur</p>
@@ -60,5 +60,10 @@
 </div>
 </main>
 <footer class="footer"><span>© 2026 ALIGN Membership</span><span>Tampico · Madero · Altamira</span></footer>
+<script>
+const params=new URLSearchParams(location.search),plan=params.get('plan'),fromPortal=params.get('from')==='portal';
+const suffix=plan?`?plan=${encodeURIComponent(plan)}${fromPortal?'&from=portal':''}`:'';
+const back=document.querySelector('#backLink');if(back)back.href='dentistas.html'+suffix;
+</script>
 </body>
 </html>
