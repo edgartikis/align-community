@@ -28,12 +28,12 @@
 <div class="section-head"><h2>Sentirte bien también es parte de vivir mejor.</h2><p>Aquí reunimos aliados y beneficios de cuidado personal seleccionados para la comunidad ALIGN.</p></div>
 <div class="grid">
 <article class="care-card"><span class="number">01 · NAIL CARE</span><h3>Uñas & manos.</h3><p>Espacio para beneficios de nail salon, manicure, pedicure, gel y servicios relacionados.</p></article>
-<article class="care-card"><span class="number">02 · GROOMING</span><h3>Imagen personal.</h3><p>Barbería, corte, grooming y servicios diseñados para el cuidado de tu imagen.</p></article>
+<article class="care-card"><span class="number">02 · IMAGEN PERSONAL</span><h3>Nuvello: imagen personal.</h3><p>10% de descuento en spa, odonto, injerto capilar y servicios para disfunción eréctil.</p><a class="btn" id="nuvelloLink" href="nuvello.html">Ver beneficio Nuvello</a></article>
 <article class="care-card" id="luxeriaCard"><span class="number">03 · SKIN & LASER</span><h3>La Luxería.</h3><p>Laser Spa aliado ALIGN con 10% de descuento en servicios seleccionados y tres paquetes exclusivos: LASER ALIGN, GLOW ALIGN y BODY ALIGN.</p><a class="btn" id="luxeriaLink" href="la-luxeria.html?plan=girls">Ver beneficios y paquetes</a></article>
-<article class="care-card"><span class="number">04 · SMILE</span><h3>Jessica Manzur.</h3><p>Dentista aliada ALIGN. 15% de descuento en limpieza dental, paquete de limpieza + blanqueamiento y pago inicial de ortodoncia.</p><a class="btn" href="jessica-manzur.html">Ver beneficio dental</a></article>
+<article class="care-card"><span class="number">04 · DENTISTAS</span><h3>Dentistas.</h3><p>Consulta las opciones de Jessica Manzur y Laura Nader dentro de ALIGN.</p><a class="btn" id="dentistsLink" href="dentistas.html">Ver dentistas</a></article>
 </div>
 </main>
-<section class="note"><div class="note-inner"><p class="eyebrow">ALIGN · Cuidado personal</p><h2>Cuidado personal con beneficios reales.</h2><p>La categoría forma parte de todas las membresías. Jessica Manzur está disponible para miembros activos y La Luxería se integra con beneficio exclusivo para Girls Club, Duo Club y Private Circle.</p><a class="btn" id="returnBtn" href="package-allies.html">Regresar a mis aliados</a></div></section>
+<section class="note"><div class="note-inner"><p class="eyebrow">ALIGN · Cuidado personal</p><h2>Cuidado personal con beneficios reales.</h2><p>La categoría forma parte de todas las membresías. Nuvello y la sección de dentistas están disponibles para miembros activos; La Luxería se integra con beneficio exclusivo para Girls Club, Duo Club y Private Circle.</p><a class="btn" id="returnBtn" href="package-allies.html">Regresar a mis aliados</a></div></section>
 <footer class="footer"><span>© 2026 ALIGN Membership</span><span>Tampico · Madero · Altamira</span></footer>
 <script>
 const params=new URLSearchParams(location.search),plan=params.get('plan'),fromPortal=params.get('from')==='portal';
@@ -41,6 +41,10 @@ const eligibleLuxeria=new Set(['girls','duo','circle']);
 const luxeriaCard=document.querySelector('#luxeriaCard'),luxeriaLink=document.querySelector('#luxeriaLink');
 if(plan&&!eligibleLuxeria.has(plan)&&luxeriaCard)luxeriaCard.remove();
 if(luxeriaLink&&plan)luxeriaLink.href=`la-luxeria.html?plan=${encodeURIComponent(plan)}${fromPortal?'&from=portal':''}`;
+const navSuffix=plan?`?plan=${encodeURIComponent(plan)}${fromPortal?'&from=portal':''}`:'';
+const nuvelloLink=document.querySelector('#nuvelloLink'),dentistsLink=document.querySelector('#dentistsLink');
+if(nuvelloLink)nuvelloLink.href='nuvello.html'+navSuffix;
+if(dentistsLink)dentistsLink.href='dentistas.html'+navSuffix;
 if(fromPortal){document.querySelector('#backLink').href='portal.html';document.querySelector('#backLink').textContent='← Volver a mi portal';document.querySelector('#returnBtn').href='portal.html';document.querySelector('#returnBtn').textContent='Regresar a mi portal';}
 else if(plan){const target=`package-allies.html?plan=${encodeURIComponent(plan)}`;document.querySelector('#backLink').href=target;document.querySelector('#returnBtn').href=target;}
 </script>
