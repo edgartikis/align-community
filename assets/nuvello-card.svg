@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="t d">
+<title id="t">Nuvello</title><desc id="d">Tarjeta tipográfica Nuvello para ALIGN.</desc>
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f3eee4"/><stop offset="1" stop-color="#c9baa4"/></linearGradient></defs>
+<rect width="1200" height="800" fill="url(#g)"/><circle cx="980" cy="120" r="280" fill="#10243d" opacity=".08"/><circle cx="180" cy="720" r="330" fill="#10243d" opacity=".06"/>
+<text x="600" y="385" text-anchor="middle" fill="#10243d" font-family="Georgia, serif" font-size="112" letter-spacing="14">NUVELLO</text>
+<text x="600" y="455" text-anchor="middle" fill="#5d6470" font-family="Arial, sans-serif" font-size="24" letter-spacing="8">IMAGEN PERSONAL · ALIGN</text></svg>
