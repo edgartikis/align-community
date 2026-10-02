@@ -1,6 +1,6 @@
 import apiWorker from "./entry-member-login.js";
 
-const BACKEND_VERSION = "2026-10-02-benefit-intents-v1";
+const BACKEND_VERSION = "2026-10-02-rotating-qr-v1";
 
 const PRICE_ENV_NAMES = [
   "STRIPE_PRICE_BROTHERHOOD_FOUNDER",
