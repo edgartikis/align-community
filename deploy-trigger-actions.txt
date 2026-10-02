@@ -1,0 +1,3 @@
+Trigger GitHub Actions Pages deployment.
+Force sync after La Luxería integration · 2026-09-22 11:10 CST.
+Force sync after moving La Luxería into Cuidado personal · 2026-09-22.
