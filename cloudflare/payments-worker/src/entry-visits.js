@@ -1,5 +1,7 @@
 import billingWorker from "./entry.js";
 
+const QR_ROTATION_MS = 2 * 60 * 60 * 1000;
+
 const ALLOWED_ORIGINS = new Set([
   "https://alignmembers.com.mx",
   "https://www.alignmembers.com.mx",
@@ -147,7 +149,15 @@ async function allyFromSession(request, env) {
 }
 
 function cycleKey(period) { return `${period.validFrom}|${period.validUntil}`; }
-async function qrSignature(env, token, period) { return hmacBase64Url(qrSecret(env), `${token}:${cycleKey(period)}`); }
+function qrWindow(now = Date.now()) {
+  const slot = Math.floor(now / QR_ROTATION_MS);
+  return {
+    slot,
+    validFrom: new Date(slot * QR_ROTATION_MS).toISOString(),
+    validUntil: new Date((slot + 1) * QR_ROTATION_MS).toISOString(),
+  };
+}
+async function qrSignature(env, token, period, slot) { return hmacBase64Url(qrSecret(env), `${token}:${cycleKey(period)}:${slot}`); }
 
 function parseQr(raw) {
   let url;
@@ -158,6 +168,7 @@ function parseQr(raw) {
     token: clean(url.searchParams.get("token"), 140),
     validFrom: clean(url.searchParams.get("from"), 60),
     validUntil: clean(url.searchParams.get("until"), 60),
+    slot: Number(url.searchParams.get("slot")),
     sig: clean(url.searchParams.get("sig"), 200),
   };
 }
@@ -171,10 +182,12 @@ async function verifiedMemberFromQr(env, rawQr) {
   const member = JSON.parse(raw);
   const current = periodForMember(member);
   if (supplied.validFrom !== current.validFrom || supplied.validUntil !== current.validUntil) throw new Error("El QR corresponde a una mensualidad anterior.");
-  const expected = await qrSignature(env, supplied.token, current);
+  const currentWindow = qrWindow();
+  if (!Number.isInteger(supplied.slot) || supplied.slot !== currentWindow.slot) throw new Error("El QR venció. Solicita al miembro abrir su tarjeta digital actual.");
+  const expected = await qrSignature(env, supplied.token, current, supplied.slot);
   if (!constantTimeEqual(expected, supplied.sig)) throw new Error("Firma de QR inválida.");
   if (member.status !== "Activa" || !isWithinPeriod(current)) throw new Error("La membresía no está vigente.");
-  return { token: supplied.token, member, period: current };
+  return { token: supplied.token, member, period: current, qrWindow: currentWindow };
 }
 
 function socioIdFor(member) {
