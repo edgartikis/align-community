@@ -1,5 +1,7 @@
 import syncWorker from "./entry-sync.js";
 
+const QR_ROTATION_MS = 2 * 60 * 60 * 1000;
+
 const ALLOWED_ORIGINS = new Set([
   "https://alignmembers.com.mx",
   "https://www.alignmembers.com.mx",
@@ -69,13 +71,22 @@ function qrSecret(env) {
 
 function cycleKey(period) { return `${period.validFrom}|${period.validUntil}`; }
 
-async function shortCode(env, token, period) {
-  const digest = await hmacBase64Url(qrSecret(env), `short:${token}:${cycleKey(period)}`);
+function qrWindow(now = Date.now()) {
+  const slot = Math.floor(now / QR_ROTATION_MS);
+  return {
+    slot,
+    validFrom: new Date(slot * QR_ROTATION_MS).toISOString(),
+    validUntil: new Date((slot + 1) * QR_ROTATION_MS).toISOString(),
+  };
+}
+
+async function shortCode(env, token, period, slot) {
+  const digest = await hmacBase64Url(qrSecret(env), `short:${token}:${cycleKey(period)}:${slot}`);
   return digest.slice(0, 22);
 }
 
-async function legacySignature(env, token, period) {
-  return hmacBase64Url(qrSecret(env), `${token}:${cycleKey(period)}`);
+async function legacySignature(env, token, period, slot) {
+  return hmacBase64Url(qrSecret(env), `${token}:${cycleKey(period)}:${slot}`);
 }
 
 function constantTimeEqual(a, b) {
@@ -90,10 +101,10 @@ function shortPathCode(pathname) {
   return match ? match[1] : "";
 }
 
-function mappingTtl(period) {
-  const until = new Date(period.validUntil).getTime();
-  const seconds = Math.floor((until - Date.now()) / 1000) + 86400;
-  return Math.max(60, Math.min(60 * 60 * 24 * 62, Number.isFinite(seconds) ? seconds : 86400));
+function mappingTtl(window) {
+  const until = new Date(window.validUntil).getTime();
+  const seconds = Math.floor((until - Date.now()) / 1000) + 120;
+  return Math.max(60, Math.min(3 * 60 * 60, Number.isFinite(seconds) ? seconds : 60));
 }
 
 function formatDateEs(iso) {
@@ -136,17 +147,24 @@ async function handleShortQr(request, env) {
     return json({ error: "La membresía no está vigente." }, 403, origin);
   }
 
-  const code = await shortCode(env, token, period);
+  const window = qrWindow();
+  const code = await shortCode(env, token, period, window.slot);
   await env.PAYMENT_STATE.put(`qr-short:${code}`, JSON.stringify({
     token,
     validFrom: period.validFrom,
     validUntil: period.validUntil,
-  }), { expirationTtl: mappingTtl(period) });
+    slot: window.slot,
+    qrValidFrom: window.validFrom,
+    qrValidUntil: window.validUntil,
+  }), { expirationTtl: mappingTtl(window) });
 
   return json({
     validationUrl: `${url.origin}/q/${code}`,
     validFrom: period.validFrom,
     validUntil: period.validUntil,
+    qrValidFrom: window.validFrom,
+    qrValidUntil: window.validUntil,
+    refreshAfterMs: Math.max(1000, new Date(window.validUntil).getTime() - Date.now()),
   }, 200, origin);
 }
 
@@ -159,19 +177,28 @@ async function resolveShortCode(env, code) {
   try { mapping = JSON.parse(raw); } catch (_) { return { ok: false, member: null, period: null, token: "" }; }
   const token = clean(mapping.token, 140);
   const supplied = { validFrom: clean(mapping.validFrom, 60), validUntil: clean(mapping.validUntil, 60) };
+  const slot = Number(mapping.slot);
+  const storedWindow = {
+    validFrom: clean(mapping.qrValidFrom, 60),
+    validUntil: clean(mapping.qrValidUntil, 60),
+  };
   const member = /^[A-Za-z0-9_-]{20,}$/.test(token) ? await memberFromToken(env, token) : null;
-  if (!member) return { ok: false, member: null, period: supplied, token };
+  if (!member) return { ok: false, member: null, period: supplied, token, qrWindow: storedWindow };
 
   const current = periodForMember(member);
-  const expectedCode = await shortCode(env, token, supplied);
+  const currentWindow = qrWindow();
+  const expectedCode = Number.isInteger(slot) ? await shortCode(env, token, supplied, slot) : "";
   const sameCycle = supplied.validFrom === current.validFrom && supplied.validUntil === current.validUntil;
+  const sameSlot = Number.isInteger(slot) && slot === currentWindow.slot;
   const ok = Boolean(
+    expectedCode &&
     constantTimeEqual(expectedCode, code) &&
     sameCycle &&
+    sameSlot &&
     member.status === "Activa" &&
     isWithinPeriod(supplied)
   );
-  return { ok, member, period: supplied, token };
+  return { ok, member, period: supplied, token, qrWindow: storedWindow };
 }
 
 function validationPage(result) {
@@ -182,9 +209,13 @@ function validationPage(result) {
     ? "radial-gradient(circle at top,#245b43,#09130f 65%)"
     : "radial-gradient(circle at top,#653030,#160909 65%)";
   const validity = `${formatDateEs(period.validFrom)} — ${formatDateEs(period.validUntil)}`;
+  const qrUntil = result?.qrWindow?.validUntil ? new Date(result.qrWindow.validUntil) : null;
+  const qrTime = qrUntil && !Number.isNaN(qrUntil.getTime())
+    ? new Intl.DateTimeFormat("es-MX", { hour: "numeric", minute: "2-digit", timeZone: "America/Monterrey" }).format(qrUntil)
+    : "";
   const body = ok
-    ? `<span class="status">Miembro activo</span>${member.photoUrl ? `<img class="photo" src="${escapeHtml(member.photoUrl)}" alt="Foto del socio">` : `<div class="photo fallback">${escapeHtml(String(member.name || "").charAt(0))}</div>`}<h1>${escapeHtml(member.name)}</h1><p class="level">ALIGN ${escapeHtml(member.level)}</p><p class="code">${escapeHtml(member.memberCode)}</p><p class="note">Verifica que la persona coincida con la foto antes de aplicar el beneficio.</p><p class="period">Vigencia ${escapeHtml(validity)}</p>`
-    : `<span class="status">No válido</span><h1>QR no válido o vencido</h1><p class="note">Solicita al miembro abrir su tarjeta digital actual. El QR se renueva únicamente cuando la mensualidad está vigente.</p>`;
+    ? `<span class="status">Miembro activo</span>${member.photoUrl ? `<img class="photo" src="${escapeHtml(member.photoUrl)}" alt="Foto del socio">` : `<div class="photo fallback">${escapeHtml(String(member.name || "").charAt(0))}</div>`}<h1>${escapeHtml(member.name)}</h1><p class="level">ALIGN ${escapeHtml(member.level)}</p><p class="code">${escapeHtml(member.memberCode)}</p><p class="note">Verifica que la persona coincida con la foto antes de aplicar el beneficio.</p><p class="period">QR dinámico válido hasta ${escapeHtml(qrTime)} · Membresía ${escapeHtml(validity)}</p>`
+    : `<span class="status">No válido</span><h1>QR no válido o vencido</h1><p class="note">Solicita al miembro abrir su tarjeta digital actual. El QR de ALIGN cambia automáticamente cada 2 horas.</p>`;
 
   return new Response(
     `<!doctype html><html lang="es-MX"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Validación ALIGN</title><style>*{box-sizing:border-box}body{min-height:100vh;margin:0;display:grid;place-items:center;padding:24px;background:${bg};color:#f5f2ec;font-family:Arial,sans-serif}.card{width:min(100%,460px);padding:32px;border:1px solid rgba(255,255,255,.25);border-radius:24px;background:rgba(5,8,7,.72);text-align:center}.status{display:inline-block;padding:8px 12px;border:1px solid currentColor;border-radius:999px;text-transform:uppercase;letter-spacing:.12em;font-size:12px}h1{margin:22px 0 8px;font:500 42px Georgia,serif}.level{color:#d9c6a5;font-size:22px}.code{font-family:monospace;letter-spacing:.12em}.photo{width:132px;height:132px;margin:24px auto 0;border-radius:50%;object-fit:cover;border:3px solid #d9c6a5;background:#222}.fallback{display:grid;place-items:center;font-size:42px}.note{color:#c7c7c7;line-height:1.55}.period{color:#999;font-family:monospace;font-size:12px}</style></head><body><main class="card">${body}</main></body></html>`,
@@ -206,14 +237,17 @@ async function expandShortQr(env, rawQr) {
 
   const token = clean(mapping.token, 140);
   const period = { validFrom: clean(mapping.validFrom, 60), validUntil: clean(mapping.validUntil, 60) };
-  const expectedCode = await shortCode(env, token, period);
+  const slot = Number(mapping.slot);
+  if (!Number.isInteger(slot) || slot !== qrWindow().slot) return rawQr;
+  const expectedCode = await shortCode(env, token, period, slot);
   if (!constantTimeEqual(expectedCode, code)) return rawQr;
 
-  const sig = await legacySignature(env, token, period);
+  const sig = await legacySignature(env, token, period, slot);
   const legacy = new URL("/api/validate-member", url.origin);
   legacy.searchParams.set("token", token);
   legacy.searchParams.set("from", period.validFrom);
   legacy.searchParams.set("until", period.validUntil);
+  legacy.searchParams.set("slot", String(slot));
   legacy.searchParams.set("sig", sig);
   return legacy.toString();
 }
