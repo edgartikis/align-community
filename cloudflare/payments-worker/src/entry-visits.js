@@ -1,6 +1,6 @@
 import billingWorker from "./entry.js";
 
-const QR_ROTATION_MS = 2 * 60 * 60 * 1000;
+const QR_ROTATION_MS = 15 * 60 * 1000;
 
 const ALLOWED_ORIGINS = new Set([
   "https://alignmembers.com.mx",
