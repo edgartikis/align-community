@@ -31,6 +31,7 @@ const ALLIES = Object.freeze({
   "ALI-024": { key: "veterinaria", name: "Veterinaria", category: "Servicios" },
   "ALI-025": { key: "nuvello", name: "Nuvello", category: "Bienestar & Cuidado" },
   "ALI-026": { key: "dentistajessica", name: "Dentista Jessica Manzur", category: "Salud & Cuidado" },
+  "ALI-027": { key: "luxeria", name: "La Luxería", category: "Bienestar & Cuidado" },
 });
 
 function cors(origin = "") {
@@ -191,6 +192,85 @@ function allyFor(id) {
   return { allyId, ...ally };
 }
 
+function allyByKey(key) {
+  const normalized = clean(key, 60).toLowerCase();
+  for (const [allyId, ally] of Object.entries(ALLIES)) {
+    if (ally.key === normalized) return { allyId, ...ally };
+  }
+  throw new Error("Aliado no reconocido.");
+}
+
+async function activeMemberFromToken(env, tokenValue) {
+  if (!env.PAYMENT_STATE) throw new Error("El sistema de membresías no está disponible.");
+  const token = clean(tokenValue, 140);
+  if (!/^[A-Za-z0-9_-]{20,}$/.test(token)) throw new Error("Inicia sesión en ALIGN para solicitar el beneficio.");
+  const raw = await env.PAYMENT_STATE.get(`member:${token}`);
+  if (!raw) throw new Error("Miembro no encontrado.");
+  const member = JSON.parse(raw);
+  const period = periodForMember(member);
+  if (member.status !== "Activa" || !isWithinPeriod(period)) throw new Error("Tu membresía ALIGN no está vigente.");
+  return { token, member, period };
+}
+
+async function pendingIntentFor(env, memberToken, allyId) {
+  const intentId = await env.PAYMENT_STATE.get(`benefit-intent-latest:${memberToken}:${allyId}`);
+  if (!intentId) return null;
+  const raw = await env.PAYMENT_STATE.get(`benefit-intent:${intentId}`);
+  if (!raw) return null;
+  try {
+    const record = JSON.parse(raw);
+    if (record.status !== "pending_qr_validation" || record.memberToken !== memberToken || record.allyId !== allyId) return null;
+    return {
+      intentId: record.intentId,
+      benefit: record.benefit,
+      createdAt: record.createdAt,
+      status: record.status,
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+async function handleBenefitIntent(request, env) {
+  const origin = request.headers.get("origin") || "";
+  if (!env.PAYMENT_STATE) return json({ ok: false, error: "El sistema de beneficios no está disponible." }, 503, origin);
+  const body = await request.json();
+  const ally = allyByKey(body.allyKey);
+  const verified = await activeMemberFromToken(env, body.memberToken);
+  const benefit = clean(body.benefit, 220);
+  if (!benefit) throw new Error("Selecciona el beneficio que quieres aplicar.");
+
+  const intentId = `BEN-${crypto.randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase()}`;
+  const now = new Date().toISOString();
+  const ttl = 60 * 60 * 48;
+  const record = {
+    intentId,
+    createdAt: now,
+    memberToken: verified.token,
+    socioId: socioIdFor(verified.member),
+    integranteId: clean(verified.member.integranteId, 100),
+    visitorName: clean(verified.member.name, 100),
+    memberCode: clean(verified.member.memberCode, 50),
+    planName: clean(verified.member.level, 60),
+    planKey: clean(verified.member.planKey, 30),
+    allyId: ally.allyId,
+    place: ally.name,
+    benefit,
+    status: "pending_qr_validation",
+  };
+  await env.PAYMENT_STATE.put(`benefit-intent:${intentId}`, JSON.stringify(record), { expirationTtl: ttl });
+  await env.PAYMENT_STATE.put(`benefit-intent-latest:${verified.token}:${ally.allyId}`, intentId, { expirationTtl: ttl });
+
+  return json({
+    ok: true,
+    intentId,
+    place: ally.name,
+    benefit,
+    status: record.status,
+    requiresQrValidation: true,
+  }, 200, origin);
+}
+
 function allyByUsername(username) {
   const normalized = normalizeCredential(username);
   for (const [allyId, ally] of Object.entries(ALLIES)) {
@@ -257,9 +337,11 @@ async function handleAllyScan(request, env) {
   const body = await request.json();
   const verified = await verifiedMemberFromQr(env, body.qr);
   const member = verified.member;
+  const benefitIntent = await pendingIntentFor(env, verified.token, ally.allyId);
   return json({
     ok: true,
     ally: publicAlly(ally),
+    benefitIntent,
     member: {
       name: member.name,
       level: member.level,
@@ -279,6 +361,9 @@ async function handleRegisterVisit(request, env) {
   const body = await request.json();
   const verified = await verifiedMemberFromQr(env, body.qr);
   const member = verified.member;
+  const pendingIntent = await pendingIntentFor(env, verified.token, ally.allyId);
+  const requestedIntentId = clean(body.intentId, 40);
+  const benefitIntent = pendingIntent && (!requestedIntentId || requestedIntentId === pendingIntent.intentId) ? pendingIntent : null;
   const clientVisitId = clean(body.clientVisitId, 100);
   if (clientVisitId) {
     const previousId = await env.PAYMENT_STATE.get(`visit-client:${clientVisitId}`);
@@ -312,6 +397,7 @@ async function handleRegisterVisit(request, env) {
     spent,
     saved,
     benefit: clean(body.benefit, 180),
+    intentId: benefitIntent?.intentId || "",
     dbSynced: false,
   };
 
@@ -323,6 +409,20 @@ async function handleRegisterVisit(request, env) {
   member.visits = Math.max(0, Math.round(Number(member.visits || 0))) + 1;
   member.lastVisit = now;
   await env.PAYMENT_STATE.put(`member:${verified.token}`, JSON.stringify(member));
+
+  if (benefitIntent?.intentId) {
+    const rawIntent = await env.PAYMENT_STATE.get(`benefit-intent:${benefitIntent.intentId}`);
+    if (rawIntent) {
+      try {
+        const storedIntent = JSON.parse(rawIntent);
+        storedIntent.status = "validated_and_used";
+        storedIntent.validatedAt = now;
+        storedIntent.visitId = visitId;
+        await env.PAYMENT_STATE.put(`benefit-intent:${benefitIntent.intentId}`, JSON.stringify(storedIntent), { expirationTtl: 60 * 60 * 24 * 30 });
+      } catch (_) {}
+    }
+    await env.PAYMENT_STATE.delete(`benefit-intent-latest:${verified.token}:${ally.allyId}`);
+  }
 
   const metrics = await allyMetrics(env, ally.allyId);
   metrics.visits = Number(metrics.visits || 0) + 1;
@@ -370,10 +470,11 @@ async function handleMetrics(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (request.method === "OPTIONS" && url.pathname.startsWith("/api/ally/")) {
+    if (request.method === "OPTIONS" && (url.pathname.startsWith("/api/ally/") || url.pathname === "/api/benefit-intent")) {
       return new Response(null, { status: 204, headers: cors(request.headers.get("origin") || "") });
     }
     try {
+      if (url.pathname === "/api/benefit-intent" && request.method === "POST") return await handleBenefitIntent(request, env);
       if (url.pathname === "/api/ally/login" && request.method === "POST") return await handleAllyLogin(request, env);
       if (url.pathname === "/api/ally/session" && request.method === "GET") return await handleAllySession(request, env);
       if (url.pathname === "/api/ally/scan" && request.method === "POST") return await handleAllyScan(request, env);
