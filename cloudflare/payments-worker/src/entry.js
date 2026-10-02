@@ -135,6 +135,8 @@ function constantTimeEqual(a, b) {
   return diff === 0;
 }
 
+const QR_ROTATION_MS = 2 * 60 * 60 * 1000;
+
 function qrSecret(env) {
   return String(env.QR_SIGNING_SECRET || env.STRIPE_SECRET_KEY || "");
 }
@@ -143,8 +145,17 @@ function cycleKey(period) {
   return `${period.validFrom}|${period.validUntil}`;
 }
 
-async function qrSignature(env, token, period) {
-  return hmacBase64Url(qrSecret(env), `${token}:${cycleKey(period)}`);
+function qrWindow(now = Date.now()) {
+  const slot = Math.floor(now / QR_ROTATION_MS);
+  return {
+    slot,
+    validFrom: new Date(slot * QR_ROTATION_MS).toISOString(),
+    validUntil: new Date((slot + 1) * QR_ROTATION_MS).toISOString(),
+  };
+}
+
+async function qrSignature(env, token, period, slot) {
+  return hmacBase64Url(qrSecret(env), `${token}:${cycleKey(period)}:${slot}`);
 }
 
 function isWithinPeriod(period, now = Date.now()) {
@@ -257,16 +268,21 @@ async function handleCycleQr(request, env) {
   if (member.status !== "Activa" || !isWithinPeriod(period)) {
     return json({ error: "La membresía no está vigente." }, 403, origin);
   }
-  const sig = await qrSignature(env, token, period);
+  const window = qrWindow();
+  const sig = await qrSignature(env, token, period, window.slot);
   const validationUrl = new URL("/api/validate-member", url.origin);
   validationUrl.searchParams.set("token", token);
   validationUrl.searchParams.set("from", period.validFrom);
   validationUrl.searchParams.set("until", period.validUntil);
+  validationUrl.searchParams.set("slot", String(window.slot));
   validationUrl.searchParams.set("sig", sig);
   return json({
     validationUrl: validationUrl.toString(),
     validFrom: period.validFrom,
     validUntil: period.validUntil,
+    qrValidFrom: window.validFrom,
+    qrValidUntil: window.validUntil,
+    refreshAfterMs: Math.max(1000, new Date(window.validUntil).getTime() - Date.now()),
   }, 200, origin);
 }
 
@@ -275,13 +291,16 @@ async function handleValidation(request, env) {
   const token = clean(url.searchParams.get("token"), 140);
   const from = clean(url.searchParams.get("from"), 60);
   const until = clean(url.searchParams.get("until"), 60);
+  const slot = Number(url.searchParams.get("slot"));
   const sig = clean(url.searchParams.get("sig"), 200);
   const raw = /^[A-Za-z0-9_-]{20,}$/.test(token) ? await env.PAYMENT_STATE.get(`member:${token}`) : null;
   const member = raw ? JSON.parse(raw) : null;
   const currentPeriod = member ? fallbackPeriod(member) : null;
   const suppliedPeriod = { validFrom: from, validUntil: until };
   const sameCycle = Boolean(currentPeriod && from === currentPeriod.validFrom && until === currentPeriod.validUntil);
-  const expected = sameCycle ? await qrSignature(env, token, suppliedPeriod) : "";
+  const currentWindow = qrWindow();
+  const sameSlot = Number.isInteger(slot) && slot === currentWindow.slot;
+  const expected = sameCycle && sameSlot ? await qrSignature(env, token, suppliedPeriod, slot) : "";
   const validSig = Boolean(expected && constantTimeEqual(expected, sig));
   const ok = Boolean(member && member.status === "Activa" && validSig && isWithinPeriod(suppliedPeriod));
   const bg = ok
@@ -290,7 +309,7 @@ async function handleValidation(request, env) {
   const validity = `${formatDateEs(from)} — ${formatDateEs(until)}`;
   const body = ok
     ? `<span class="status">Miembro activo</span>${member.photoUrl ? `<img class="photo" src="${escapeHtml(member.photoUrl)}" alt="Foto del socio">` : `<div class="photo fallback">${escapeHtml(member.name.charAt(0))}</div>`}<h1>${escapeHtml(member.name)}</h1><p class="level">ALIGN ${escapeHtml(member.level)}</p><p class="code">${escapeHtml(member.memberCode)}</p><p class="note">Verifica que la persona coincida con la foto antes de aplicar el beneficio.</p><p class="period">Vigencia ${escapeHtml(validity)}</p>`
-    : `<span class="status">No válido</span><h1>QR no válido o vencido</h1><p class="note">Solicita al miembro abrir su tarjeta digital actual. El QR se renueva únicamente cuando la mensualidad está vigente.</p>`;
+    : `<span class="status">No válido</span><h1>QR no válido o vencido</h1><p class="note">Solicita al miembro abrir su tarjeta digital actual. El QR cambia automáticamente cada 2 horas.</p>`;
 
   return new Response(
     `<!doctype html><html lang="es-MX"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Validación ALIGN</title><style>*{box-sizing:border-box}body{min-height:100vh;margin:0;display:grid;place-items:center;padding:24px;background:${bg};color:#f5f2ec;font-family:Arial,sans-serif}.card{width:min(100%,460px);padding:32px;border:1px solid rgba(255,255,255,.25);border-radius:24px;background:rgba(5,8,7,.72);text-align:center}.status{display:inline-block;padding:8px 12px;border:1px solid currentColor;border-radius:999px;text-transform:uppercase;letter-spacing:.12em;font-size:12px}h1{margin:22px 0 8px;font:500 42px Georgia,serif}.level{color:#d9c6a5;font-size:22px}.code{font-family:monospace;letter-spacing:.12em}.photo{width:132px;height:132px;margin:24px auto 0;border-radius:50%;object-fit:cover;border:3px solid #d9c6a5;background:#222}.fallback{display:grid;place-items:center;font-size:42px}.note{color:#c7c7c7;line-height:1.55}.period{color:#999;font-family:monospace;font-size:12px}</style></head><body><main class="card">${body}</main></body></html>`,
