@@ -50,5 +50,6 @@
 <script>
 const slides=[...document.querySelectorAll('.hero-slide')],dotsWrap=document.querySelector('.hero-dots'),count=document.querySelector('.hero-count');let current=0,timer;slides.forEach((_,i)=>{const b=document.createElement('button');b.className='hero-dot'+(i===0?' is-active':'');b.setAttribute('aria-label',`Imagen ${i+1}`);b.onclick=()=>go(i);dotsWrap.appendChild(b)});const dots=[...document.querySelectorAll('.hero-dot')];function go(i){slides[current].classList.remove('is-active');dots[current].classList.remove('is-active');current=(i+slides.length)%slides.length;slides[current].classList.add('is-active');dots[current].classList.add('is-active');count.textContent=`${String(current+1).padStart(2,'0')} / ${String(slides.length).padStart(2,'0')}`;restart()}function restart(){clearInterval(timer);timer=setInterval(()=>go(current+1),3200)}document.querySelector('.next').onclick=()=>go(current+1);document.querySelector('.prev').onclick=()=>go(current-1);restart();
 </script>
+<script src="benefit-intent.js?v=20261002"></script>
 </body>
 </html>
