@@ -450,6 +450,7 @@ async function handleRegisterVisit(request, env) {
       spent,
       saved,
       benefit: record.benefit,
+      intentId: record.intentId,
       notes: `Consumo normal ${gross.toFixed(2)} MXN · total pagado ${spent.toFixed(2)} MXN`,
     });
     record.dbSynced = true;
