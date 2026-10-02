@@ -135,7 +135,7 @@ function constantTimeEqual(a, b) {
   return diff === 0;
 }
 
-const QR_ROTATION_MS = 2 * 60 * 60 * 1000;
+const QR_ROTATION_MS = 15 * 60 * 1000;
 
 function qrSecret(env) {
   return String(env.QR_SIGNING_SECRET || env.STRIPE_SECRET_KEY || "");
@@ -309,7 +309,7 @@ async function handleValidation(request, env) {
   const validity = `${formatDateEs(from)} — ${formatDateEs(until)}`;
   const body = ok
     ? `<span class="status">Miembro activo</span>${member.photoUrl ? `<img class="photo" src="${escapeHtml(member.photoUrl)}" alt="Foto del socio">` : `<div class="photo fallback">${escapeHtml(member.name.charAt(0))}</div>`}<h1>${escapeHtml(member.name)}</h1><p class="level">ALIGN ${escapeHtml(member.level)}</p><p class="code">${escapeHtml(member.memberCode)}</p><p class="note">Verifica que la persona coincida con la foto antes de aplicar el beneficio.</p><p class="period">Vigencia ${escapeHtml(validity)}</p>`
-    : `<span class="status">No válido</span><h1>QR no válido o vencido</h1><p class="note">Solicita al miembro abrir su tarjeta digital actual. El QR cambia automáticamente cada 2 horas.</p>`;
+    : `<span class="status">No válido</span><h1>QR no válido o vencido</h1><p class="note">Solicita al miembro abrir su tarjeta digital actual. El QR cambia automáticamente cada 15 minutos.</p>`;
 
   return new Response(
     `<!doctype html><html lang="es-MX"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Validación ALIGN</title><style>*{box-sizing:border-box}body{min-height:100vh;margin:0;display:grid;place-items:center;padding:24px;background:${bg};color:#f5f2ec;font-family:Arial,sans-serif}.card{width:min(100%,460px);padding:32px;border:1px solid rgba(255,255,255,.25);border-radius:24px;background:rgba(5,8,7,.72);text-align:center}.status{display:inline-block;padding:8px 12px;border:1px solid currentColor;border-radius:999px;text-transform:uppercase;letter-spacing:.12em;font-size:12px}h1{margin:22px 0 8px;font:500 42px Georgia,serif}.level{color:#d9c6a5;font-size:22px}.code{font-family:monospace;letter-spacing:.12em}.photo{width:132px;height:132px;margin:24px auto 0;border-radius:50%;object-fit:cover;border:3px solid #d9c6a5;background:#222}.fallback{display:grid;place-items:center;font-size:42px}.note{color:#c7c7c7;line-height:1.55}.period{color:#999;font-family:monospace;font-size:12px}</style></head><body><main class="card">${body}</main></body></html>`,
