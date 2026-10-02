@@ -28,7 +28,7 @@ El Worker actual expone, entre otras, estas rutas:
 - `GET /api/group-cards` — tarjetas de Duo / Private Circle.
 - `GET /api/member-activity` — visitas, gasto, ahorro y lugares frecuentes.
 - `POST /api/upload-profile-photo` — foto del socio.
-- `GET /api/monthly-qr` — QR dinámico vigente; rota automáticamente cada 2 horas.
+- `GET /api/monthly-qr` — QR dinámico vigente; rota automáticamente cada 15 minutos.
 - `GET /api/validate-member` — validación del QR.
 - rutas de visitas/registro utilizadas por `portal-aliados.html`.
 
@@ -39,7 +39,7 @@ El Worker actual expone, entre otras, estas rutas:
 3. `checkout.session.completed`.
 4. Creación de grupo y tarjetas en KV.
 5. Login del titular.
-6. QR dinámico válido, con rotación de 2 horas y vigencia de mensualidad correcta.
+6. QR dinámico válido, con rotación de 15 minutos y vigencia de mensualidad correcta.
 7. Registro de visita por aliado.
 8. `invoice.paid` reactiva/renueva.
 9. `invoice.payment_failed` cambia a pago pendiente.
