@@ -1,0 +1,26 @@
+name: Export Velamar assets
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/export-velamar-assets.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: velamar-flyer-assets
+          path: |
+            MARMARA11-1.jpeg
+            MARMARA8-5.jpeg
+            PH1.jpeg
+            PH3.jpeg
+          if-no-files-found: error
+          retention-days: 1
