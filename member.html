@@ -18,13 +18,17 @@
 <section id="cardSelector" class="selector" hidden></section>
 <section id="app" class="load">Cargando tu tarjeta…</section>
 <p class="hint">El QR es dinámico y cambia automáticamente cada 15 minutos. El aliado debe verificar nombre, membresía, fotografía y vigencia al momento de aplicar el beneficio.</p>
+<div id="walletContainer" hidden style="margin:14px 0;text-align:center"><a id="walletLink" href="#" style="display:inline-block;padding:14px 22px;border-radius:12px;background:#10233e;color:#fff;text-decoration:none;font-weight:600">Agregar a Apple Wallet</a></div>
 <section id="activityPanel" class="activity loading">Cargando tu actividad…</section>
 </main>
 <script>
 const API='https://api.alignmembers.com.mx/api';
 const app=document.querySelector('#app'),selector=document.querySelector('#cardSelector'),activityPanel=document.querySelector('#activityPanel'),params=new URLSearchParams(location.search),rootToken=params.get('token')||sessionStorage.getItem('align_member_token');
 if(rootToken)sessionStorage.setItem('align_member_token',rootToken);
-let activeToken=rootToken,groupCards=[],qrRefreshTimer=0;
+let activeToken=rootToken,groupCards=[],qrRefreshTimer=0,walletReady=false;
+const walletContainer=document.querySelector("#walletContainer"),walletLink=document.querySelector("#walletLink");
+function updateWalletLink(){walletContainer.hidden=!walletReady||!activeToken;if(walletReady&&activeToken)walletLink.href=`${API}/wallet/apple?token=${encodeURIComponent(activeToken)}`;}
+async function checkWalletAvailability(){try{const response=await fetch(`${API}/wallet/status`,{cache:"no-store"});if(!response.ok)return;const data=await response.json();walletReady=data.available===true;updateWalletLink()}catch(_){walletReady=false;updateWalletLink()}}
 const money=new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0});
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c]);
 const dateLabel=iso=>{const date=new Date(iso);return Number.isNaN(date.getTime())?'':new Intl.DateTimeFormat('es-MX',{day:'numeric',month:'short',year:'numeric',timeZone:'America/Monterrey'}).format(date)};
@@ -66,6 +70,7 @@ async function loadActivity(memberToken){
 async function selectCard(memberToken){
   if(!memberToken||!groupCards.some(card=>card.token===memberToken))return;
   activeToken=memberToken;
+  updateWalletLink();
   sessionStorage.setItem('align_selected_member_token',activeToken);
   renderSelector();
   app.className='load';app.textContent='Cargando tu tarjeta…';
@@ -95,6 +100,7 @@ async function loadCard(){
     await selectCard(activeToken);
   }catch(error){showError(error.message);activityPanel.className='activity';activityPanel.innerHTML='<p class="activity-error">Actividad no disponible.</p>'}
 }
+checkWalletAvailability();
 loadCard();
 </script>
 </body>
