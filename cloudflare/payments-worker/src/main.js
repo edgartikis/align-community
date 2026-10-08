@@ -1,4 +1,5 @@
 import apiWorker from "./entry-member-login.js";
+import { walletRoute } from "./apple-wallet.js";
 
 const BACKEND_VERSION = "2026-10-02-rotating-qr-15m-v1";
 
@@ -71,6 +72,8 @@ export default {
     if (url.pathname === "/api/health" && request.method === "GET") {
       return health(request, env);
     }
+    const walletResponse = walletRoute(request);
+    if (walletResponse) return walletResponse;
     return apiWorker.fetch(request, env, ctx);
   },
 };
