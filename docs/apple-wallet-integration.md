@@ -27,3 +27,15 @@ Implementación en `feature/apple-wallet-align` (NO fusionar en `main` todavía)
 - El Worker de producción procesa pagos Stripe LIVE: validar cuidadosamente las rutas antes de publicar.
 - Las claves privadas y el certificado Apple solo se utilizan en servidor y deben tener rotación y copias de seguridad seguras.
 - No mostrar el botón si el endpoint no es capaz de generar y firmar pases verificables.
+
+
+## Cómo habilitar Cloudflare Worker Previews (intervención del propietario)
+En Cloudflare → Workers & Pages → `align-payments` → Settings → Builds → banner **Set up Worker Previews**:
+1. Seleccionar **Set up** y revisar la pantalla antes de confirmar. El cambio al nuevo modelo es **irreversible**.
+2. Cloudflare sustituirá el comando de preview anterior por `npx wrangler preview`; production sigue usando `wrangler deploy`.
+3. Comprobar que la configuración del preview **no usa KV PAYMENT_STATE de producción**. Esta rama deja `[previews]` sin KV a propósito; crear un namespace KV de staging si se requieren pruebas de membresías.
+4. Las cuatro credenciales Apple deben figurar únicamente en **Previews Base**, no en Production. No activar `WALLET_ENABLED` hasta que pasen las pruebas, y no copiar Stripe LIVE a Previews.
+5. Después de la activación, revisar los resultados de la build de `feature/apple-wallet-align` y su URL aislada. Nunca probar operaciones sobre clientes reales.
+
+## Pruebas automáticas
+La rama incluye `.github/workflows/apple-wallet-check.yml` con `node --test` y `wrangler deploy --dry-run` (sin desplegar a Cloudflare). Un resultado verde demuestra que compila, **no** que el .pkpass se firme bien ni que la UI funcione en un iPhone.
