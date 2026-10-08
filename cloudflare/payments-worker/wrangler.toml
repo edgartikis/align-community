@@ -1,6 +1,7 @@
 name = "align-payments"
 main = "src/main.js"
 compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
 
 [[kv_namespaces]]
 binding = "PAYMENT_STATE"
@@ -40,3 +41,6 @@ STRIPE_PRICE_CIRCLE_LIVE = "price_1UHAjxE2qRZRC8p2odXD4Bc5"
 # STRIPE_WEBHOOK_SECRET_LIVE (añadir antes de STRIPE_MODE=live)
 # QR_SIGNING_SECRET (opcional; si falta, usa la clave Stripe del modo activo)
 # ALIGN_DB_URL / ALIGN_DB_SECRET (solo sincronización secundaria de reportes)
+
+# Apple Wallet feature gate stays OFF until signing secrets and live tests exist.
+WALLET_ENABLED = "false"
