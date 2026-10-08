@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { walletRoute, rewriteWalletAllyRequest } from "../src/apple-wallet.js";
+import { walletRoute, rewriteWalletAllyRequest, walletQrUrl } from "../src/apple-wallet.js";
 
 test("Wallet remains unavailable without signing secrets and opt-in", async () => {
   const response = await walletRoute(new Request("https://api.alignmembers.com.mx/api/wallet/status"), {});
@@ -37,4 +37,12 @@ test("Preview KV binding never points to the production namespace", () => {
   assert.ok(preview, "Preview KV binding must be explicit");
   assert.notEqual(prod[1], preview[1], "Never reuse production KV in previews");
   assert.match(toml, /\[previews\.vars\][\s\S]*WALLET_ENABLED\s*=\s*"false"/);
+});
+
+test("Wallet QR uses Preview origin and never redirects testing scans to live API", () => {
+  const url="https://feature-apple-wallet-align-align-payments.alignservice18.workers.dev/api/wallet/apple";
+  const id="11111111111111111111111111111111";
+  assert.equal(walletQrUrl(url,id), "https://feature-apple-wallet-align-align-payments.alignservice18.workers.dev/api/wallet/verify/"+id);
+  assert.equal(walletQrUrl("https://api.alignmembers.com.mx/api/wallet/apple",id),"https://api.alignmembers.com.mx/api/wallet/verify/"+id);
+  assert.throws(()=>walletQrUrl("https://evil.example/api/wallet/apple",id));
 });
