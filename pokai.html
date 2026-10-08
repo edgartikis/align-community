@@ -41,7 +41,7 @@ Promise.all(photoPaths.map(checkPhoto)).then(results=>{
     photo.src=src;photo.alt='Pokai · Galería '+(i+1);photo.loading='lazy';
     gallery.appendChild(photo);
   });
-  gallery.hidden=false;brand.hidden=true;
+  gallery.hidden=false;brand.hidden=false;
   document.getElementById('pokai-hero').classList.add('has-photos');
   if(photos.length<2)return;
   let current=0;
