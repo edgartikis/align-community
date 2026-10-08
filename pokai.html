@@ -17,7 +17,7 @@ for(const id of ['backLink','returnLink'])document.getElementById(id).href='rest
 // El sitio utiliza solo archivos existentes: si todavía no se han subido fotos,
 // mantiene el diseño de marca con el logo original sin mostrar imágenes rotas.
 // Al cargar fotos con estos nombres, el carrusel y la galería se activan solos.
-const photoPaths=['POKAI1.jpg','POKAI2.jpg','POKAI3.jpg','POKAI4.jpg','POKAI5.jpg','POKAI8.jpg'];
+const photoPaths=['POKAI1.jpg','POKAI2.jpg','POKAI3.jpg','POKAI4.jpg','POKAI8.jpg'];
 const checkPhoto=src=>new Promise(resolve=>{
   const image=new Image();
   image.onload=()=>resolve(src);
