@@ -4,7 +4,7 @@
 Implementación en `feature/apple-wallet-align` (NO fusionar en `main` todavía). Código de emisión, verificación y adaptador del escáner listo para evaluación; **todavía no se ha probado una firma Apple real ni un escaneo E2E**.
 
 - El botón en `member.html` está oculto mientras `GET /api/wallet/status` indique `available:false`.
-- `WALLET_ENABLED = "false"` por defecto en `cloudflare/payments-worker/wrangler.toml`.
+- `WALLET_ENABLED = "false"` en Production y `true` únicamente en el entorno Preview (pruebas con datos ficticios).
 - Backend: `cloudflare/payments-worker/src/apple-wallet.js`, aislado de Stripe.
 - Emisión: `GET /api/wallet/apple?token=<token-del-integrante>` exige membresía activa y foto, crea un pase de tipo `storeCard` y lo firma con `passkit-generator`. No devolverá pase si no están configurados los secretos.
 - Verificación: el QR contiene un identificador aleatorio opaco `/api/wallet/verify/<id>`; la ruta revisa `PAYMENT_STATE` en cada escaneo, sin colocar el token privado en el QR.
@@ -34,8 +34,16 @@ En Cloudflare → Workers & Pages → `align-payments` → Settings → Builds �
 1. Seleccionar **Set up** y revisar la pantalla antes de confirmar. El cambio al nuevo modelo es **irreversible**.
 2. Cloudflare sustituirá el comando de preview anterior por `npx wrangler preview`; production sigue usando `wrangler deploy`.
 3. Comprobar que la configuración del preview **no usa KV PAYMENT_STATE de producción**. Esta rama deja `[previews]` sin KV a propósito; crear un namespace KV de staging si se requieren pruebas de membresías.
-4. Las cuatro credenciales Apple deben figurar únicamente en **Previews Base**, no en Production. No activar `WALLET_ENABLED` hasta que pasen las pruebas, y no copiar Stripe LIVE a Previews.
+4. Las cuatro credenciales Apple deben figurar únicamente en **Previews Base**, no en Production. El flag está activo en Preview para probar la firma, pero debe permanecer desactivado en Production; no copiar Stripe LIVE a Previews.
 5. Después de la activación, revisar los resultados de la build de `feature/apple-wallet-align` y su URL aislada. Nunca probar operaciones sobre clientes reales.
 
 ## Pruebas automáticas
 La rama incluye `.github/workflows/apple-wallet-check.yml` con `node --test` y `wrangler deploy --dry-run` (sin desplegar a Cloudflare). Un resultado verde demuestra que compila, **no** que el .pkpass se firme bien ni que la UI funcione en un iPhone.
+
+## Prueba controlada (solo Preview)
+- Cargar un miembro exclusivamente ficticio en `align-wallet-preview-kv`, bajo una clave `member:<token aleatorio de 48 caracteres hex>`; conservar el token en privado.
+- Abrir `GET /api/wallet/status` sobre la URL de Preview. Esperado: `available:true` **solo si** el runtime tiene las cuatro credenciales y la KV independiente.
+- Solicitar `GET /api/wallet/apple?token=<token ficticio>` en esa misma URL. Esperado: `.pkpass` firmado; si falla, inspeccionar logs sin registrar claves, contraseñas ni tokens.
+- El QR del pase debe apuntar al mismo host de Preview; nunca al dominio `api.alignmembers.com.mx` de producción. El flujo de visita de aliados se valida después en entorno aislado.
+- El paquete firmado con un certificado de CI de prueba ya pasa las pruebas automáticas; esa firma **no es equivalente** a haber probado Apple Wallet con el certificado auténtico.
+- Las imágenes actuales proceden del sitio web y aún requieren comprobar la presentación/tamaños oficiales en iOS antes de liberar la función.
