@@ -36,7 +36,10 @@ test("Preview KV binding never points to the production namespace", () => {
   assert.ok(prod, "Production KV binding must be explicit");
   assert.ok(preview, "Preview KV binding must be explicit");
   assert.notEqual(prod[1], preview[1], "Never reuse production KV in previews");
-  assert.match(toml, /\[previews\.vars\][\s\S]*WALLET_ENABLED\s*=\s*"false"/);
+  const productionVars = toml.split("[vars]")[1].split("[previews]")[0];
+  const previewVars = toml.split("[previews.vars]")[1].split("[[previews.kv_namespaces]]")[0];
+  assert.match(productionVars, /WALLET_ENABLED\s*=\s*"false"/);
+  assert.match(previewVars, /WALLET_ENABLED\s*=\s*"true"/);
 });
 
 test("Wallet QR uses Preview origin and never redirects testing scans to live API", () => {
