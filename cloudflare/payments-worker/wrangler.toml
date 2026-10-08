@@ -53,7 +53,8 @@ WALLET_TEAM_ID = "2WG8DN922L"
 [previews]
 [previews.vars]
 SITE_ORIGIN = "https://alignmembers.com.mx"
-WALLET_ENABLED = "false"
+# Enabled for isolated staging tests ONLY: production remains disabled.
+WALLET_ENABLED = "true"
 WALLET_TEAM_ID = "2WG8DN922L"
 
 # Separate KV store for Apple Wallet integration tests. NEVER replace with production ID.
