@@ -31,10 +31,10 @@ test("Unknown Wallet QR never validates as an active membership", async () => {
 
 test("Preview KV binding never points to the production namespace", () => {
   const toml = readFileSync(new URL("../wrangler.toml", import.meta.url), "utf8");
-  const prod = toml.match(/\\[\\[kv_namespaces\\]\\]\\s*binding\\s*=\\s*"PAYMENT_STATE"\\s*id\\s*=\\s*"([0-9a-f]{32})"/);
-  const preview = toml.match(/\\[\\[previews\\.kv_namespaces\\]\\]\\s*binding\\s*=\\s*"PAYMENT_STATE"\\s*id\\s*=\\s*"([0-9a-f]{32})"/);
+  const prod = toml.match(/\[\[kv_namespaces\]\]\s*binding\s*=\s*"PAYMENT_STATE"\s*id\s*=\s*"([0-9a-f]{32})"/);
+  const preview = toml.match(/\[\[previews\.kv_namespaces\]\]\s*binding\s*=\s*"PAYMENT_STATE"\s*id\s*=\s*"([0-9a-f]{32})"/);
   assert.ok(prod, "Production KV binding must be explicit");
   assert.ok(preview, "Preview KV binding must be explicit");
   assert.notEqual(prod[1], preview[1], "Never reuse production KV in previews");
-  assert.match(toml, /\\[previews\\.vars\\][\\s\\S]*WALLET_ENABLED\\s*=\\s*"false"/);
+  assert.match(toml, /\[previews\.vars\][\s\S]*WALLET_ENABLED\s*=\s*"false"/);
 });
