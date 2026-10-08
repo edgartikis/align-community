@@ -212,6 +212,24 @@ function allyByKey(key) {
   throw new Error("Aliado no reconocido.");
 }
 
+// Laura Nader opera Horse Riding y Odonto de Nuvello desde una sola cuenta.
+// La selección siempre se valida en el servidor; otros aliados no pueden cambiar de negocio.
+const LAURA_MANAGED_ALLIES = Object.freeze({ horse: "ALI-008", nuvello: "ALI-025" });
+function operationalAlly(operator, requestedKey) {
+  const key = clean(requestedKey, 60).toLowerCase();
+  if (operator.key === "lauranader") {
+    if (!Object.prototype.hasOwnProperty.call(LAURA_MANAGED_ALLIES, key)) {
+      throw new Error("Selecciona Horse Riding o Nuvello · Odonto para operar.");
+    }
+    return allyFor(LAURA_MANAGED_ALLIES[key]);
+  }
+  if (key && key !== operator.key) throw new Error("Tu cuenta no puede registrar visitas de otro establecimiento.");
+  return operator;
+}
+function operatorMetricsKey(operator, target) {
+  return `ally-operator-metrics:${operator.allyId}:${target.allyId}`;
+}
+
 async function activeMemberFromToken(env, tokenValue) {
   if (!env.PAYMENT_STATE) throw new Error("El sistema de membresías no está disponible.");
   const token = clean(tokenValue, 140);
@@ -336,17 +354,26 @@ async function postDatabase(env, payload) {
   return data;
 }
 
-async function allyMetrics(env, allyId) {
-  const raw = await env.PAYMENT_STATE.get(`ally-metrics:${allyId}`);
+async function metricsByKey(env, key) {
+  const raw = await env.PAYMENT_STATE.get(key);
   if (!raw) return { visits: 0, people: 0, gross: 0, sales: 0, savings: 0, lastVisit: "" };
   try { return { visits: 0, people: 0, gross: 0, sales: 0, savings: 0, lastVisit: "", ...JSON.parse(raw) }; }
   catch (_) { return { visits: 0, people: 0, gross: 0, sales: 0, savings: 0, lastVisit: "" }; }
 }
+async function allyMetrics(env, allyId) {
+  return metricsByKey(env, `ally-metrics:${allyId}`);
+}
+async function dashboardMetrics(env, operator, ally) {
+  return operator.allyId === ally.allyId
+    ? allyMetrics(env, ally.allyId)
+    : metricsByKey(env, operatorMetricsKey(operator, ally));
+}
 
 async function handleAllyScan(request, env) {
   const origin = request.headers.get("origin") || "";
-  const ally = await allyFromSession(request, env);
+  const operator = await allyFromSession(request, env);
   const body = await request.json();
+  const ally = operationalAlly(operator, body.allyKey);
   const verified = await verifiedMemberFromQr(env, body.qr);
   const member = verified.member;
   const benefitIntent = await pendingIntentFor(env, verified.token, ally.allyId);
@@ -369,8 +396,9 @@ async function handleAllyScan(request, env) {
 
 async function handleRegisterVisit(request, env) {
   const origin = request.headers.get("origin") || "";
-  const ally = await allyFromSession(request, env);
+  const operator = await allyFromSession(request, env);
   const body = await request.json();
+  const ally = operationalAlly(operator, body.allyKey);
   const verified = await verifiedMemberFromQr(env, body.qr);
   const member = verified.member;
   const pendingIntent = await pendingIntentFor(env, verified.token, ally.allyId);
@@ -381,7 +409,13 @@ async function handleRegisterVisit(request, env) {
     const previousId = await env.PAYMENT_STATE.get(`visit-client:${clientVisitId}`);
     if (previousId) {
       const previous = await env.PAYMENT_STATE.get(`visit:${previousId}`);
-      if (previous) return json({ ok: true, duplicate: true, visit: JSON.parse(previous), metrics: await allyMetrics(env, ally.allyId) }, 200, origin);
+      if (previous) {
+        const oldVisit = JSON.parse(previous);
+        if (oldVisit.allyId !== ally.allyId || (oldVisit.registeredBy && oldVisit.registeredBy !== operator.allyId)) {
+          throw new Error("El folio de visita pertenece a otro establecimiento.");
+        }
+        return json({ ok: true, duplicate: true, visit: oldVisit, metrics: await dashboardMetrics(env, operator, ally) }, 200, origin);
+      }
     }
   }
 
@@ -404,11 +438,16 @@ async function handleRegisterVisit(request, env) {
     allyId: ally.allyId,
     place: ally.name,
     category: ally.category,
+    registeredBy: operator.allyId,
+    operatorName: operator.name,
+    service: operator.key === "lauranader" && ally.key === "nuvello" ? "Odonto · Laura Nader" : "",
     people,
     gross,
     spent,
     saved,
-    benefit: clean(body.benefit, 180),
+    benefit: operator.key === "lauranader" && ally.key === "nuvello"
+      ? "10% de descuento en Odonto · Laura Nader"
+      : clean(body.benefit, 180),
     intentId: benefitIntent?.intentId || "",
     dbSynced: false,
   };
@@ -444,6 +483,16 @@ async function handleRegisterVisit(request, env) {
   metrics.savings = amount(Number(metrics.savings || 0) + saved, 100000000);
   metrics.lastVisit = now;
   await env.PAYMENT_STATE.put(`ally-metrics:${ally.allyId}`, JSON.stringify(metrics));
+  if (operator.allyId !== ally.allyId) {
+    const ownMetrics = await metricsByKey(env, operatorMetricsKey(operator, ally));
+    ownMetrics.visits = Number(ownMetrics.visits || 0) + 1;
+    ownMetrics.people = Number(ownMetrics.people || 0) + people;
+    ownMetrics.gross = amount(Number(ownMetrics.gross || 0) + gross, 100000000);
+    ownMetrics.sales = amount(Number(ownMetrics.sales || 0) + spent, 100000000);
+    ownMetrics.savings = amount(Number(ownMetrics.savings || 0) + saved, 100000000);
+    ownMetrics.lastVisit = now;
+    await env.PAYMENT_STATE.put(operatorMetricsKey(operator, ally), JSON.stringify(ownMetrics));
+  }
 
   try {
     await postDatabase(env, {
@@ -457,6 +506,9 @@ async function handleRegisterVisit(request, env) {
       allyId: ally.allyId,
       place: ally.name,
       category: ally.category,
+      registeredBy: operator.allyId,
+      operatorName: operator.name,
+      service: record.service,
       people,
       gross,
       spent,
@@ -471,13 +523,14 @@ async function handleRegisterVisit(request, env) {
     console.error("ALIGN visit Google Sheets sync pending", error);
   }
 
-  return json({ ok: true, visit: record, metrics }, 200, origin);
+  return json({ ok: true, visit: record, metrics: await dashboardMetrics(env, operator, ally) }, 200, origin);
 }
 
 async function handleMetrics(request, env) {
   const origin = request.headers.get("origin") || "";
-  const ally = await allyFromSession(request, env);
-  return json({ ok: true, ally: publicAlly(ally), metrics: await allyMetrics(env, ally.allyId) }, 200, origin);
+  const operator = await allyFromSession(request, env);
+  const ally = operationalAlly(operator, new URL(request.url).searchParams.get("allyKey"));
+  return json({ ok: true, ally: publicAlly(ally), metrics: await dashboardMetrics(env, operator, ally) }, 200, origin);
 }
 
 export default {
