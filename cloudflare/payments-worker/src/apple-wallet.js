@@ -2,6 +2,7 @@
 // Enable only after credentials, artwork and ally-scanner end-to-end tests.
 import { PKPass } from "passkit-generator";
 import { Buffer } from "node:buffer";
+import { walletIconB64, walletLogoB64 } from "./wallet-artwork-data.js";
 
 const API_HOST = "api.alignmembers.com.mx";
 const ID = "pass.mx.com.alignmembers.membership";
@@ -57,13 +58,14 @@ async function idForMember(env,token,member) {
   await env.PAYMENT_STATE.put(key,id);
   return id;
 }
-async function imageFromSite(env,path) {
-  const origin=String(env.SITE_ORIGIN || "https://alignmembers.com.mx").replace(/\/$/,"");
-  const response=await fetch(origin+path, {redirect:"error"});
-  if (!response.ok || !(response.headers.get("content-type")||"").includes("image/png")) throw new Error("Wallet PNG asset unavailable");
-  const data=await response.arrayBuffer();
-  if (!data.byteLength || data.byteLength>400000) throw new Error("Wallet image too large");
-  return Buffer.from(data);
+function bundledWalletPng(base64) {
+  const bytes=Buffer.from(base64, "base64");
+  // Fail closed on missing/invalid static images without contacting external services.
+  if (bytes.length===0 || bytes.length>400000 ||
+      bytes.subarray(0,8).toString("hex")!=="89504e470d0a1a0a") {
+    throw new Error("Invalid bundled Wallet PNG");
+  }
+  return bytes;
 }
 export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   onStage("certificate_setup");
@@ -91,12 +93,12 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   pass.backFields.push({key:"verification",label:"VALIDACIÓN",value:"El aliado debe escanear el QR y comprobar fotografía, identidad y vigencia en el sistema ALIGN. Un pase guardado no garantiza membresía activa."});
   // Stable, non-secret, opaque pointer. The verifier reads CURRENT KV state.
   pass.setBarcodes({format:"PKBarcodeFormatQR",message:walletQrUrl(requestUrl,id),messageEncoding:"iso-8859-1",altText:safe(member.memberCode,60)});
-  // Images are obtained from the existing public ALIGN asset host.
-  // Before launch ensure production artwork meets Apple pixel-size requirements.
+  // Public brand assets are bundled at build time; no runtime external requests.
+  // Replace with correctly resized Apple Wallet imagery before production launch.
   onStage("artwork_icon");
-  const icon=await imageFromSite(env,"/assets/align-primary.png");
+  const icon=bundledWalletPng(walletIconB64);
   onStage("artwork_logo");
-  const logo=await imageFromSite(env,"/assets/align-wordmark.png");
+  const logo=bundledWalletPng(walletLogoB64);
   pass.addBuffer("icon.png",icon);
   pass.addBuffer("icon@2x.png",icon);
   pass.addBuffer("logo.png",logo);
