@@ -38,6 +38,7 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
       name: "SOCIO PRUEBA ALIGN", level: "The Brotherhood",
       memberCode: "ALIGN-TEST-0001", status: "Activa",
     };
+    const stages = [];
     const result = await producePass({
       WALLET_SIGNER_CERT_PEM: readFileSync(cert, "utf8"),
       WALLET_SIGNER_KEY_PEM: readFileSync(encryptedKey, "utf8"),
@@ -45,7 +46,8 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
       WALLET_WWDR_PEM: readFileSync(cert, "utf8"),
       WALLET_TEAM_ID: "2WG8DN922L",
       SITE_ORIGIN: "https://alignmembers.com.mx",
-    }, fakeMember, id, origin + "/api/wallet/apple");
+    }, fakeMember, id, origin + "/api/wallet/apple", (stage) => stages.push(stage));
+    assert.deepEqual(stages, ["certificate_setup", "artwork_icon", "artwork_logo", "signature"]);
 
     assert.equal(result.subarray(0, 2).toString(), "PK");
     writeFileSync(pkpass, result);
