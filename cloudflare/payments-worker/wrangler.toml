@@ -45,3 +45,13 @@ STRIPE_PRICE_CIRCLE_LIVE = "price_1UHAjxE2qRZRC8p2odXD4Bc5"
 # Apple Wallet feature gate stays OFF until signing secrets and live tests exist.
 WALLET_ENABLED = "false"
 WALLET_TEAM_ID = "2WG8DN922L"
+
+
+# Previews are separate from production. Do NOT bind production PAYMENT_STATE
+# to the preview: create a dedicated staging KV namespace in Cloudflare first.
+# Keep payment/registration flows disabled until staging Stripe credentials exist.
+[previews]
+[previews.vars]
+SITE_ORIGIN = "https://alignmembers.com.mx"
+WALLET_ENABLED = "false"
+WALLET_TEAM_ID = "2WG8DN922L"
