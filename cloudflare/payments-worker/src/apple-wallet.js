@@ -65,7 +65,7 @@ async function imageFromSite(env,path) {
   if (!data.byteLength || data.byteLength>400000) throw new Error("Wallet image too large");
   return Buffer.from(data);
 }
-async function producePass(env,member,id,requestUrl) {
+export async function producePass(env,member,id,requestUrl) {
   const pass=new PKPass({},{
     wwdr:env.WALLET_WWDR_PEM,
     signerCert:env.WALLET_SIGNER_CERT_PEM,
@@ -144,7 +144,7 @@ export async function rewriteWalletAllyRequest(request,env,apiWorker) {
   const token=await tokenById(env,qr.pathname.split("/").pop());
   const member=token ? await getMember(env,token) : null;
   if (!active(member)) return request;
-  const dynamicUrl="https://"+API_HOST+"/api/monthly-qr?token="+encodeURIComponent(token);
+  const dynamicUrl=new URL("/api/monthly-qr?token="+encodeURIComponent(token),new URL(request.url).origin).toString();
   const dynamicResponse=await apiWorker.fetch(new Request(dynamicUrl),env);
   if (!dynamicResponse.ok) return request;
   const current=await dynamicResponse.json().catch(()=>null);
