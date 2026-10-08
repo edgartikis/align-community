@@ -65,7 +65,8 @@ async function imageFromSite(env,path) {
   if (!data.byteLength || data.byteLength>400000) throw new Error("Wallet image too large");
   return Buffer.from(data);
 }
-export async function producePass(env,member,id,requestUrl) {
+export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
+  onStage("certificate_setup");
   const pass=new PKPass({},{
     wwdr:env.WALLET_WWDR_PEM,
     signerCert:env.WALLET_SIGNER_CERT_PEM,
@@ -92,12 +93,15 @@ export async function producePass(env,member,id,requestUrl) {
   pass.setBarcodes({format:"PKBarcodeFormatQR",message:walletQrUrl(requestUrl,id),messageEncoding:"iso-8859-1",altText:safe(member.memberCode,60)});
   // Images are obtained from the existing public ALIGN asset host.
   // Before launch ensure production artwork meets Apple pixel-size requirements.
+  onStage("artwork_icon");
   const icon=await imageFromSite(env,"/assets/align-primary.png");
+  onStage("artwork_logo");
   const logo=await imageFromSite(env,"/assets/align-wordmark.png");
   pass.addBuffer("icon.png",icon);
   pass.addBuffer("icon@2x.png",icon);
   pass.addBuffer("logo.png",logo);
   pass.addBuffer("logo@2x.png",logo);
+  onStage("signature");
   return pass.getAsBuffer();
 }
 function verificationHtml(member) {
@@ -119,13 +123,17 @@ export async function walletRoute(request,env) {
     const token=url.searchParams.get("token")||"";
     const member=await getMember(env,token);
     if (!active(member) || !member.photoUrl) return json({error:"La tarjeta no está activa o falta fotografía."},403);
+    let stage="kv_mapping";
     try {
       const id=await idForMember(env,token,member);
-      const buffer=await producePass(env,member,id,request.url);
+      const buffer=await producePass(env,member,id,request.url,(next)=>{stage=next;});
       return new Response(buffer,{status:200,headers:{...noCache,"content-type":"application/vnd.apple.pkpass","content-disposition":"attachment; filename=\"ALIGN.pkpass\""}});
     } catch(e) {
-      console.error("Wallet pass generation failed",e?.name || "Error");
-      return json({error:"No pudimos preparar tu tarjeta Wallet."},503);
+      // Never log tokens, PEM contents, raw error messages or passphrases.
+      console.error("ALIGN Wallet issue stage",stage,"exception",e?.name || "Error");
+      // This non-sensitive stage is only returned by this dedicated preview branch.
+      const isPreview=url.hostname==="feature-apple-wallet-align-align-payments.alignservice18.workers.dev";
+      return json({error:"No pudimos preparar tu tarjeta Wallet.", ...(isPreview?{stage}:{})},503);
     }
   }
   return null;
