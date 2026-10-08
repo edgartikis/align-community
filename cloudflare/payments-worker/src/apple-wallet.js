@@ -5,7 +5,14 @@ import { Buffer } from "node:buffer";
 
 const API_HOST = "api.alignmembers.com.mx";
 const ID = "pass.mx.com.alignmembers.membership";
-const b64 = (value) => Buffer.from(String(value || "").replace(/\s/g, ""), "base64");
+export function walletQrUrl(requestUrl, id) {
+  if (!/^[0-9a-f]{32}$/i.test(id)) throw new Error("Invalid wallet pass id");
+  const origin = new URL(requestUrl);
+  if (origin.protocol !== "https:" || (origin.hostname !== API_HOST && !origin.hostname.endsWith(".workers.dev"))) {
+    throw new Error("Invalid Wallet signing origin");
+  }
+  return new URL("/api/wallet/verify/" + id, origin.origin).toString();
+}
 const okToken = (s) => /^[A-Za-z0-9_-]{20,140}$/.test(s);
 const okId = (s) => /^[0-9a-f]{32}$/i.test(s);
 const safe = (s, length=100) => String(s ?? "").replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, length);
@@ -58,7 +65,7 @@ async function imageFromSite(env,path) {
   if (!data.byteLength || data.byteLength>400000) throw new Error("Wallet image too large");
   return Buffer.from(data);
 }
-async function producePass(env,member,id) {
+async function producePass(env,member,id,requestUrl) {
   const pass=new PKPass({},{
     wwdr:env.WALLET_WWDR_PEM,
     signerCert:env.WALLET_SIGNER_CERT_PEM,
@@ -82,7 +89,7 @@ async function producePass(env,member,id) {
   pass.auxiliaryFields.push({key:"code",label:"CÓDIGO",value:safe(member.memberCode,60)});
   pass.backFields.push({key:"verification",label:"VALIDACIÓN",value:"El aliado debe escanear el QR y comprobar fotografía, identidad y vigencia en el sistema ALIGN. Un pase guardado no garantiza membresía activa."});
   // Stable, non-secret, opaque pointer. The verifier reads CURRENT KV state.
-  pass.setBarcodes({format:"PKBarcodeFormatQR",message:"https://"+API_HOST+"/api/wallet/verify/"+id,messageEncoding:"iso-8859-1",altText:safe(member.memberCode,60)});
+  pass.setBarcodes({format:"PKBarcodeFormatQR",message:walletQrUrl(requestUrl,id),messageEncoding:"iso-8859-1",altText:safe(member.memberCode,60)});
   // Images are obtained from the existing public ALIGN asset host.
   // Before launch ensure production artwork meets Apple pixel-size requirements.
   const icon=await imageFromSite(env,"/assets/align-primary.png");
@@ -114,7 +121,7 @@ export async function walletRoute(request,env) {
     if (!active(member) || !member.photoUrl) return json({error:"La tarjeta no está activa o falta fotografía."},403);
     try {
       const id=await idForMember(env,token,member);
-      const buffer=await producePass(env,member,id);
+      const buffer=await producePass(env,member,id,request.url);
       return new Response(buffer,{status:200,headers:{...noCache,"content-type":"application/vnd.apple.pkpass","content-disposition":"attachment; filename=\"ALIGN.pkpass\""}});
     } catch(e) {
       console.error("Wallet pass generation failed",e?.name || "Error");
@@ -133,7 +140,7 @@ export async function rewriteWalletAllyRequest(request,env,apiWorker) {
   if (!body || typeof body.qr!=="string") return request;
   let qr;
   try { qr=new URL(body.qr); } catch { return request; }
-  if (qr.protocol!=="https:" || qr.hostname!==API_HOST || !/^\/api\/wallet\/verify\/[0-9a-f]{32}$/i.test(qr.pathname)) return request;
+  if (qr.protocol!=="https:" || qr.origin!==new URL(request.url).origin || !/^\/api\/wallet\/verify\/[0-9a-f]{32}$/i.test(qr.pathname)) return request;
   const token=await tokenById(env,qr.pathname.split("/").pop());
   const member=token ? await getMember(env,token) : null;
   if (!active(member)) return request;
