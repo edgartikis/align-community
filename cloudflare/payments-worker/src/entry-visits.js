@@ -34,6 +34,9 @@ const ALLIES = Object.freeze({
   "ALI-025": { key: "nuvello", name: "Nuvello", category: "Bienestar & Cuidado" },
   "ALI-026": { key: "dentistajessica", name: "Dentista Jessica Manzur", category: "Salud & Cuidado" },
   "ALI-027": { key: "luxeria", name: "La Luxería", category: "Bienestar & Cuidado" },
+  "ALI-028": { key: "pokai", name: "Pokai Pokes & Bowls", category: "Restaurantes" },
+  "ALI-029": { key: "lauranader", name: "Laura Nader", category: "Salud & Cuidado" },
+  "ALI-030": { key: "pokeburrito", name: "Poke Burrito", category: "Restaurantes" },
 });
 
 function cors(origin = "") {
