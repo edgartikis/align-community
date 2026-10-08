@@ -20,17 +20,8 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     execFileSync("openssl", ["pkey", "-in", key, "-aes256", "-out", encryptedKey,
       "-passout", "pass:test-only-key-passphrase"], { stdio: "ignore" });
 
-    const source = new URL("../../../assets/", import.meta.url);
-    globalThis.fetch = async (input) => {
-      const pathname = new URL(input).pathname;
-      const filename = pathname === "/assets/align-primary.png" ? "align-primary.png"
-        : pathname === "/assets/align-wordmark.png" ? "align-wordmark.png" : null;
-      assert.ok(filename, "Only the expected public brand images may be fetched");
-      return new Response(readFileSync(new URL(filename, source)), {
-        status: 200,
-        headers: { "content-type": "image/png" },
-      });
-    };
+    // The pass must not rely on the public website to serve PNG images.
+    globalThis.fetch = async () => { throw new Error("Unexpected Wallet external fetch"); };
 
     const origin = "https://feature-apple-wallet-align-align-payments.alignservice18.workers.dev";
     const id = "0123456789abcdef0123456789abcdef";
