@@ -44,3 +44,4 @@ STRIPE_PRICE_CIRCLE_LIVE = "price_1UHAjxE2qRZRC8p2odXD4Bc5"
 
 # Apple Wallet feature gate stays OFF until signing secrets and live tests exist.
 WALLET_ENABLED = "false"
+WALLET_TEAM_ID = "2WG8DN922L"
