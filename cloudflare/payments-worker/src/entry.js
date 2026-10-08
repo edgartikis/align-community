@@ -235,9 +235,24 @@ async function handleMemberCard(request, env) {
   const origin = request.headers.get("origin") || "";
   const token = clean(new URL(request.url).searchParams.get("token"), 140);
   if (!/^[A-Za-z0-9_-]{20,}$/.test(token)) return json({ error: "Tarjeta no encontrada." }, 404, origin);
-  const raw = await env.PAYMENT_STATE.get(`member:${token}`);
+  if (!env.PAYMENT_STATE) return json({ error: "Almacenamiento de tarjetas no disponible." }, 503, origin);
+  let raw;
+  try {
+    raw = await env.PAYMENT_STATE.get(`member:${token}`);
+  } catch (error) {
+    console.error("ALIGN card KV read failed", error?.name || "Error");
+    return json({ error: "No pudimos consultar la tarjeta." }, 503, origin);
+  }
   if (!raw) return json({ error: "Tarjeta no encontrada." }, 404, origin);
-  const member = JSON.parse(raw);
+  let member;
+  try {
+    member = JSON.parse(raw);
+  } catch (_) {
+    return json({ error: "El registro de la tarjeta no contiene JSON válido." }, 422, origin);
+  }
+  if (!member || typeof member !== "object" || Array.isArray(member)) {
+    return json({ error: "El registro de la tarjeta no tiene el formato esperado." }, 422, origin);
+  }
   const period = fallbackPeriod(member);
   const active = member.status === "Activa" && isWithinPeriod(period);
   return json({
