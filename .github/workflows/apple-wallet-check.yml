@@ -1,0 +1,33 @@
+name: Apple Wallet branch checks
+
+on:
+  push:
+    branches:
+      - feature/apple-wallet-align
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'cloudflare/payments-worker/**'
+      - 'member.html'
+      - 'package.json'
+      - '.github/workflows/apple-wallet-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-wallet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run isolated wallet tests
+        run: node --test cloudflare/payments-worker/tests/apple-wallet.test.mjs
+      - name: Check Cloudflare Worker bundle (no deployment)
+        run: npx wrangler deploy --config cloudflare/payments-worker/wrangler.toml --dry-run --outdir ./wallet-build
