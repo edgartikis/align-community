@@ -55,3 +55,8 @@ WALLET_TEAM_ID = "2WG8DN922L"
 SITE_ORIGIN = "https://alignmembers.com.mx"
 WALLET_ENABLED = "false"
 WALLET_TEAM_ID = "2WG8DN922L"
+
+# Separate KV store for Apple Wallet integration tests. NEVER replace with production ID.
+[[previews.kv_namespaces]]
+binding = "PAYMENT_STATE"
+id = "4b23fffb26264609b9f18f110baea954"
