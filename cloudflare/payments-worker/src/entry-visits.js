@@ -25,10 +25,7 @@ const ALLIES = Object.freeze({
   "ALI-015": { key: "buns", name: "Buns & Bros", category: "Restaurantes" },
   "ALI-017": { key: "boris", name: "Boris Marisquería", category: "Restaurantes" },
   "ALI-018": { key: "greencabana", name: "Green Cabana", category: "Restaurantes" },
-  "ALI-019": { key: "dentistapaulina", name: "Dentista Paulina", category: "Salud & Cuidado" },
-  "ALI-020": { key: "masajista", name: "Masajista", category: "Salud & Cuidado" },
   "ALI-021": { key: "mrsmoky", name: "Mr Smoky", category: "Restaurantes" },
-  "ALI-022": { key: "xcape", name: "XCAPE", category: "Viajes & Experiencias" },
   "ALI-023": { key: "studiopalmas", name: "Studio Palmas", category: "Bienestar & Cuidado" },
   "ALI-024": { key: "veterinaria", name: "Veterinaria", category: "Servicios" },
   "ALI-025": { key: "nuvello", name: "Nuvello", category: "Bienestar & Cuidado" },
@@ -36,7 +33,6 @@ const ALLIES = Object.freeze({
   "ALI-027": { key: "luxeria", name: "La Luxería", category: "Bienestar & Cuidado" },
   "ALI-028": { key: "pokai", name: "Pokai Pokes & Bowls", category: "Restaurantes" },
   "ALI-029": { key: "lauranader", name: "Laura Nader", category: "Salud & Cuidado" },
-  "ALI-030": { key: "pokeburrito", name: "Poke Burrito", category: "Restaurantes" },
 });
 
 function cors(origin = "") {
