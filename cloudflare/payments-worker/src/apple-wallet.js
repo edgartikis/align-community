@@ -118,6 +118,14 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   // Compatible iOS versions add only the native QR on the front; the existing
   // Generic pass remains the fallback for earlier devices.
   const poster=new PassType("posterGeneric");
+  // iOS 27 Poster Generic supports a single native footer field. It is
+  // centered and keeps the callout legible on Wallet's material bottom strip
+  // (artwork text alone can be hidden/cropped under this native strip).
+  poster.footerFields.push({
+    key:"alignFooterTagline",
+    value:"BELONG TO SOMETHING",
+    textAlignment:"PKTextAlignmentCenter"
+  });
   poster.backFields.push({key:"posterMember",label:"SOCIO",value:safe(member.name,90)});
   poster.backFields.push({key:"posterSavings",label:"AHORRADO",value:formatSavingsMXN(member.savings)});
   poster.backFields.push({key:"posterMembership",label:"MEMBRESÍA",value:safe(member.level,48)});
