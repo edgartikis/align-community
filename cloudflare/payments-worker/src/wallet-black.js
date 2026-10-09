@@ -110,6 +110,42 @@ async function posterWordmark() {
   })();
   return decodedLogo;
 }
+const PERSONAL_GLYPHS={"0":"01110100011001110101110011000101110","1":"00100011000010000100001000010001110","2":"01110100010000100010001000100011111","3":"11110000010000101110000010000111110","4":"00010001100101010010111110001000010","5":"11111100001000011110000010000111110","6":"01110100001000011110100011000101110","7":"11111000010001000100010000100001000","8":"01110100011000101110100011000101110","9":"01110100011000101111000010000101110","A":"01110100011000111111100011000110001","B":"11110100011000111110100011000111110","C":"01111100001000010000100001000001111","D":"11110100011000110001100011000111110","E":"11111100001000011110100001000011111","F":"11111100001000011110100001000010000","G":"01111100001000010111100011000101110","H":"10001100011000111111100011000110001","I":"11111001000010000100001000010011111","J":"00111000100001000010100101001001100","K":"10001100101010011000101001001010001","L":"10000100001000010000100001000011111","M":"10001110111010110101100011000110001","N":"10001110011010110011100011000110001","O":"01110100011000110001100011000101110","P":"11110100011000111110100001000010000","Q":"01110100011000110001101011001001101","R":"11110100011000111110101001001010001","S":"01111100001000001110000010000111110","T":"11111001000010000100001000010000100","U":"10001100011000110001100011000101110","V":"10001100011000110001100010101000100","W":"10001100011000110101101011010101010","X":"10001100010101000100010101000110001","Y":"10001100010101000100001000010000100","Z":"11111000010001000100010001000011111","$":"00100011111010001110001011111000100","-":"00000000000000011111000000000000000",".":"00000000000000000000000000110001100",",":"00000000000000000000001100010001000","/":"00001000010001000100010001000010000",":":"00000011000110000000011000110000000","+":"00000001000010011111001000010000000"," ":"00000000000000000000000000000000000"};
+function walletDisplayText(value) {
+  return String(value ?? "").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"")
+    .toUpperCase().replace(/[^A-Z0-9 $,.:+\\/-]/g," ");
+}
+// Small antialiased silver sans letterforms, rendered into the signed artwork.
+// All member data remains private and stays inside each member's .pkpass.
+function drawMemberText(pixels,w,h,value,x,y,desiredHeight,maxWidth) {
+  const chars=walletDisplayText(value),scale=w/358;
+  if(!chars.trim())return;
+  const glyphWidth=5/7,advance=6/7;
+  let size=Math.min(desiredHeight,maxWidth/(chars.length*advance));
+  size=Math.max(8,Math.min(size,desiredHeight));
+  const unit=size*scale/7;
+  let cursor=x*scale;
+  for(const ch of chars) {
+    const glyph=PERSONAL_GLYPHS[ch]||PERSONAL_GLYPHS[" "];
+    for(let row=0;row<7;row++) for(let col=0;col<5;col++) {
+      if(glyph[row*5+col]!=="1")continue;
+      const x0=cursor+col*unit,y0=y*scale+row*unit;
+      const x1=x0+unit*.95,y1=y0+unit*.95;
+      for(let yy=Math.max(0,Math.floor(y0));yy<Math.min(h,Math.ceil(y1));yy++) {
+        for(let xx=Math.max(0,Math.floor(x0));xx<Math.min(w,Math.ceil(x1));xx++) {
+          const alpha=Math.max(0,Math.min(x1,xx+1)-Math.max(x0,xx))*
+            Math.max(0,Math.min(y1,yy+1)-Math.max(y0,yy))*.94;
+          if(alpha===0)continue;
+          const p=(yy*w+xx)*4;
+          pixels[p]=clamp(pixels[p]*(1-alpha)+217*alpha);
+          pixels[p+1]=clamp(pixels[p+1]*(1-alpha)+221*alpha);
+          pixels[p+2]=clamp(pixels[p+2]*(1-alpha)+227*alpha);
+        }
+      }
+    }
+    cursor+=6*unit;
+  }
+}
 function stampWordmark(pixels,width,height,logo) {
   const scale=width/358;
   const destW=Math.round(302*scale);
@@ -129,8 +165,8 @@ function stampWordmark(pixels,width,height,logo) {
     }
   }
   // Hairline separates the brand from the personalized membership details.
-  const underlineY=Math.round(142*scale),left=Math.round(27*scale);
-  const right=width-left;
+  const underlineY=Math.round(173*scale),left=Math.round(28*scale);
+  const right=Math.round(227*scale);
   for(let y=underlineY;y<underlineY+Math.max(1,Math.round(scale));y++) {
     if(y>=height)break;
     for(let x=left;x<right;x++){
@@ -141,7 +177,7 @@ function stampWordmark(pixels,width,height,logo) {
     }
   }
 }
-function drawBlackPoster(w,h,portrait,logo) {
+function drawBlackPoster(w,h,portrait,logo,member) {
   const pixels=Buffer.alloc(w*h*4);
   const scale=w/358;
   for (let y=0;y<h;y++) {
@@ -176,7 +212,7 @@ function drawBlackPoster(w,h,portrait,logo) {
     const {width:pw,height:ph,data}=portrait;
     if(pw>0&&ph>0&&pw<=1800&&ph<=1800&&data?.length===pw*ph*4) {
       const portraitSide=Math.round(74*scale);
-      const x0=Math.round(256*scale), y0=Math.round(160*scale);
+      const x0=Math.round(256*scale), y0=Math.round(142*scale);
       const frame=Math.max(1,Math.round(2*scale));
       const radius=Math.round(7*scale);
       const crop=Math.min(pw,ph);
@@ -203,21 +239,17 @@ function drawBlackPoster(w,h,portrait,logo) {
     }
   }
   stampWordmark(pixels,w,h,logo);
+  drawMemberText(pixels,w,h,"SOCIO",28,133,9,160);
+  drawMemberText(pixels,w,h,member?.name||"",28,150,14,207);
+  drawMemberText(pixels,w,h,"AHORRADO",28,178,9,170);
+  drawMemberText(pixels,w,h,member?.savings||"",28,190,17,205);
   return pixels;
 }
-let sharedBlack;
-export async function blackWalletArtwork(photo) {
-  if(!photo&&sharedBlack)return sharedBlack;
-  const render=async()=>{
-    const logo=await posterWordmark();
-    return {
-      normal:await encodePng(358,448,drawBlackPoster(358,448,photo,logo)),
-      retina:await encodePng(716,896,drawBlackPoster(716,896,photo,logo))
-    };
+// The member's name/amount/photo change per request, so do not cache passes.
+export async function blackWalletArtwork({photo=null,name="",savings=""}={}) {
+  const logo=await posterWordmark();
+  return {
+    normal:await encodePng(358,448,drawBlackPoster(358,448,photo,logo,{name,savings})),
+    retina:await encodePng(716,896,drawBlackPoster(716,896,photo,logo,{name,savings}))
   };
-  if(!photo) {
-    sharedBlack=render();
-    return sharedBlack;
-  }
-  return render();
 }
