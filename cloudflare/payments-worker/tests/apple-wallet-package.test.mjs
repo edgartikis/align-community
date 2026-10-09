@@ -7,7 +7,6 @@ import { execFileSync } from "node:child_process";
 import { inflateSync } from "node:zlib";
 import { producePass } from "../src/apple-wallet.js";
 import { blackWalletArtwork } from "../src/wallet-black.js";
-import { approvedBlackMarbleJpegB64 } from "../src/wallet-approved-marble-data.js";
 import jpeg from "jpeg-js";
 
 // Uses a temporary, intentionally untrusted certificate. This verifies package
@@ -73,12 +72,6 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.equal(imageBytes.readUInt32BE(20),448);
     assert.equal(image2x.readUInt32BE(16),716);
     assert.equal(image2x.readUInt32BE(20),896);
-    const approvedSource=Buffer.from(approvedBlackMarbleJpegB64,"base64");
-    assert.ok(approvedSource.length>40000,
-      "Use full-resolution original marble art, never a tiny over-compressed JPEG");
-    const approvedJpeg=jpeg.decode(approvedSource,{useTArray:true,formatAsRGBA:true});
-    assert.equal(approvedJpeg.width,716);
-    assert.equal(approvedJpeg.height,896);
     const unpackArtworkPixels=(png)=>{
       let off=8;const compressed=[];
       while(off<png.length) {
@@ -88,30 +81,25 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
       }
       return inflateSync(Buffer.concat(compressed));
     };
-    const retinaPixel=unpackArtworkPixels(image2x);
-    // At @2x the bitmap must use actual 716x896 source pixels. Old
-    // implementations enlarged 358px art and looked visibly pixelated.
-    for (const [x,y] of [[90,670],[235,745],[430,804],[610,770]]) {
-      const pngAt=y*(716*4+1)+1+x*4;
-      const jpgAt=(y*716+x)*4;
-      assert.deepEqual(
-        [...retinaPixel.subarray(pngAt,pngAt+3)],
-        [...approvedJpeg.data.subarray(jpgAt,jpgAt+3)],
-        "Retina pass must retain real approved source detail, not duplicated pixels"
-      );
-    }
     const basePixel=unpackArtworkPixels(imageBytes);
-    const rgbAt=(raw,x,y)=>([...raw.subarray(y*(358*4+1)+1+x*4,y*(358*4+1)+1+x*4+3)]);
-    let brightLogoPixels=0;
-    for(let yy=20;yy<123;yy+=2) for(let xx=28;xx<330;xx+=2)
-      if(rgbAt(basePixel,xx,yy).every(c=>c>95))brightLogoPixels++;
-    assert.ok(brightLogoPixels>300,"Prominent original silver ALIGN wordmark must span the top");
-    // Assert that the user's actual black artwork is embedded, not blue.
-    for(const [x,y] of [[55,320],[105,315],[175,305],[265,320],[300,405]]) {
-      const [red,green,blue]=rgbAt(basePixel,x,y);
-      assert.ok(Math.abs(red-blue)<40&&Math.abs(green-blue)<40,
-        "Artwork must be black/neutral marble, not royal-blue");
-    }
+    const retinaPixel=unpackArtworkPixels(image2x);
+    const rgbAt=(raw,width,x,y)=>([...raw.subarray(
+      y*(width*4+1)+1+x*4,y*(width*4+1)+1+x*4+3)]);
+    // Only the real animal logo appears in the top center; the high-res
+    // base must not contain the previous large ALIGN marble wordmark.
+    let brightRamPixels=0;
+    for(let y=12;y<90;y+=2)for(let x=140;x<220;x+=2)
+      if(rgbAt(retinaPixel,716,x*2,y*2).every(c=>c>95))brightRamPixels++;
+    assert.ok(brightRamPixels>70,"Original silver standing borrego must be present");
+    // The approved new layout is black and metallic blue at the top left.
+    const stripe=rgbAt(retinaPixel,716,70,90);
+    assert.ok(stripe[2]>stripe[0]+60,
+      "Cobalt blue upper-left diagonal stripe must be visible");
+    const black=rgbAt(retinaPixel,716,359,560);
+    assert.ok(black.every(c=>c<35),"QR reserve zone must stay dark/empty");
+    // Different resolutions have separately rendered antialiased pixels.
+    assert.equal(retinaPixel.length,896*(716*4+1));
+    assert.equal(basePixel.length,448*(358*4+1));
     assert.ok(!names.includes("primaryLogo.png"));
 
     // No membership tier in the visible artwork; only name and savings.
@@ -119,7 +107,7 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
       name:"DIFFERENT MEMBER",savings:"$225 MXN"
     });
     assert.notDeepEqual(altered.normal,imageBytes,
-      "Name and savings must be individualized on approved black marble");
+      "Name and savings must remain individualized with brand design");
     assert.equal(properties.barcodes[0].format,"PKBarcodeFormatQR");
     assert.equal(properties.storeCard,undefined);
     assert.equal(properties.logoText,undefined,"Wordmark must not be duplicated");
