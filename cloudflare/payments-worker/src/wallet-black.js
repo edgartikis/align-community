@@ -79,10 +79,13 @@ function premiumBackdrop(w,h) {
   for(let y=0;y<h;y++) {
     const yy=y/scale;
     const progress=smoothstep(340,896,yy);
-    // Apple's Poster Generic material begins near the lower QR region. It
-    // may crop a different fraction of the image on different iPhones.
-    // This broad, feathered match to its solid base prevents a hard boundary.
-    const join=Math.exp(-Math.pow((yy-602)/55,4));
+    // IMPORTANT: iOS draws its OWN bottom material area. In the previous
+    // version a narrow Gaussian matched the footer only near y=602, then
+    // reintroduced the right-side blue gradient below it. That made the
+    // bottom-right appear to be a different card after the QR.
+    // Fade ONCE into the exact native footer RGB and stay there all the way
+    // to the bottom: the join must never reverse after y=568.
+    const join=smoothstep(470,568,yy);
     for(let x=0;x<w;x++) {
       const xx=x/scale;
       const dark=7.5+2.2*(1-yy/896)+1.1*Math.sin(xx*.009+yy*.004);
@@ -103,8 +106,9 @@ function premiumBackdrop(w,h) {
       r+=progress*.5+cobalt*1.4+satin*.20;
       g+=progress*2.5+cobalt*18.5+satin*.24;
       b+=progress*8.0+cobalt*66+satin*.30;
-      // A seamless navy join behind Wallet's own translucent material strip.
-      // Intentionally matches the solid RGB that iOS uses for the footer.
+      // Irreversible match to Wallet's actual solid native footer color.
+      // Beneath the QR, both halves of the pass are identical; the subtle
+      // silver separator and native tagline supply the premium finish.
       r=r*(1-join)+FOOTER_RGB[0]*join;
       g=g*(1-join)+FOOTER_RGB[1]*join;
       b=b*(1-join)+FOOTER_RGB[2]*join;
@@ -209,19 +213,17 @@ function render(w,h,name,savings,assets) {
   drawText(pixels,w,h,font,name,54,344,32,608,"left",[234,236,240],0.35);
   drawText(pixels,w,h,font,"AHORRADO",56,380,18,213,"left",[158,180,207],0.85);
   drawText(pixels,w,h,font,savings,54,418,30,415,"left",[236,238,243],0.15);
-  // Delicate rule just below the anticipated QR safe zone. Subtle enough
-  // not to compete with Apple's barcode or distract from member details.
+  // Option B: one fine silver rule beneath the native QR, with no extra
+  // artwork text to double-print or fight Wallet's native footer field.
+  // The native Poster Generic footer is BELONG TO SOMETHING (centered).
   const scale=w/716;
-  const ruleY=Math.round(799*scale),ruleX0=Math.round(118*scale),ruleX1=Math.round(598*scale);
+  const ruleY=Math.round(784*scale),ruleX0=Math.round(134*scale),ruleX1=Math.round(582*scale);
   for(let x=ruleX0;x<=ruleX1;x++) {
-    const t=(x/scale-118)/480;
-    const alpha=.30*Math.pow(Math.sin(Math.PI*t),1.3);
-    paint(pixels,w,x,ruleY,155,179,211,alpha);
-    if(ruleY+1<h)paint(pixels,w,x,ruleY+1,82,137,206,alpha*.48);
+    const t=(x/scale-134)/448;
+    const alpha=.34*Math.pow(Math.sin(Math.PI*t),1.4);
+    paint(pixels,w,x,ruleY,193,202,218,alpha);
+    if(ruleY+1<h)paint(pixels,w,x,ruleY+1,91,129,184,alpha*.27);
   }
-  // Secondary brand signature inside the artwork. iOS 27's material strip
-  // can hide this layer, so BELONG TO SOMETHING is also a NATIVE footer field.
-  drawText(pixels,w,h,font,"ALIGN MEMBERSHIP",358,865,16,335,"center",[160,182,215],1.4);
   return pixels;
 }
 export async function blackWalletArtwork({name="",savings=""}={}) {
