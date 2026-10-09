@@ -237,7 +237,7 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   pass.types.push(poster);
 
   // Stable, non-secret, opaque pointer. The verifier reads CURRENT KV state.
-  pass.setBarcodes({format:"PKBarcodeFormatQR",message:walletQrUrl(requestUrl,id),messageEncoding:"iso-8859-1",altText:""});
+  pass.setBarcodes({format:"PKBarcodeFormatQR",message:walletQrUrl(requestUrl,id),messageEncoding:"iso-8859-1"});
   // Public brand assets are bundled at build time; no runtime external requests.
   // Replace with correctly resized Apple Wallet imagery before production launch.
   onStage("artwork_icon");
