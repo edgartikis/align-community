@@ -82,7 +82,10 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     };
     const basePixel=unpackArtworkPixels(imageBytes);
     const rgbAt=(raw,x,y)=>([...raw.subarray(y*(358*4+1)+1+x*4,y*(358*4+1)+1+x*4+3)]);
-    assert.ok(rgbAt(basePixel,180,68).some(c=>c>100),"Prominent top ALIGN logo exists");
+    let brightLogoPixels=0;
+    for(let yy=20;yy<123;yy+=2) for(let xx=28;xx<330;xx+=2)
+      if(rgbAt(basePixel,xx,yy).every(c=>c>95))brightLogoPixels++;
+    assert.ok(brightLogoPixels>300,"Prominent original silver ALIGN wordmark must span the top");
     assert.ok(rgbAt(basePixel,90,173).every(c=>c>45),"Silver divider is visible between sections");
     assert.ok(!names.includes("primaryLogo.png"));
 
