@@ -126,25 +126,34 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
             "No sudden color step where Apple Wallet paints its bottom strip");
       }
     }
-    // Metallic navy is a smooth diagonal light sweep, not a solid rectangular
-    // panel: underneath the system overlay it remains richer to the right.
-    const leftFooter=rgbAt(retinaPixel,716,155,851);
-    const centerFooter=rgbAt(retinaPixel,716,358,851);
-    const rightFooter=rgbAt(retinaPixel,716,575,851);
-    assert.ok(leftFooter[2]<centerFooter[2] && centerFooter[2]<rightFooter[2],
-      "Full-width bottom satin must progress smoothly from navy to cobalt");
-    assert.ok(rightFooter[2]-leftFooter[2]>28 && rightFooter[2]<95,
-      "Bottom-right blue glow must be elegant, not neon or flat");
-    const upperRight=rgbAt(retinaPixel,716,630,479);
-    const upperLeft=rgbAt(retinaPixel,716,75,479);
-    assert.ok(upperRight[2]>upperLeft[2]+8,
-      "Right-side diagonal and blue atmosphere continue naturally toward the QR");
-    // Validate that the signed backgroundColor shares the exact join tone.
-    assert.equal(properties.backgroundColor,`rgb(${nativeTint.join(",")})`);
-    const fineRule=rgbAt(retinaPixel,716,200,799);
-    const beforeRule=rgbAt(retinaPixel,716,200,792);
+    // Option B: the lower region is a *single continuous native color*.
+    // A Gaussian fade used to reverse after y=602, restoring cobalt blue
+    // on the right and creating the visible image-cut seam on iPhone.
+    // The artwork must never diverge from the native pass background after
+    // completing its one-way cross-fade to midnight navy.
+    for(const y of [575,602,670,730,820,870]) {
+      for(const x of [30,155,358,575,686]) {
+        const pixel=rgbAt(retinaPixel,716,x,y);
+        assert.deepEqual(pixel,nativeTint,
+          "Wallet's lower background must be uniform, including the right half");
+      }
+    }
+    // Before the fade, preserve the upper black-and-metallic-blue identity.
+    const upperRight=rgbAt(retinaPixel,716,630,450);
+    const upperLeft=rgbAt(retinaPixel,716,75,450);
+    assert.ok(upperRight[2]>upperLeft[2]+6,
+      "Approved black-and-cobalt diagonal remains visible above the join");
+
+    // Option B places a single silver hairline beneath the QR. The
+    // centered BELONG TO SOMETHING text is the single native footer field,
+    // not a second rasterized string that can overlap it.
+    const fineRule=rgbAt(retinaPixel,716,200,784);
+    const beforeRule=rgbAt(retinaPixel,716,200,776);
     assert.ok(fineRule[2]>beforeRule[2]+7,
-      "Preserve the very subtle existing metallic separator");
+      "Silver footer divider must be visible but discreet");
+    assert.deepEqual(rgbAt(retinaPixel,716,358,850),nativeTint,
+      "No extra artwork text must compete with BELONG TO SOMETHING");
+    assert.equal(properties.backgroundColor,`rgb(${nativeTint.join(",")})`);
     const qrUnchanged=rgbAt(retinaPixel,716,359,560);
     assert.deepEqual(qrUnchanged,black,
       "QR clearance and upper artwork must remain untouched");
