@@ -23,4 +23,4 @@
 const plan=new URLSearchParams(location.search).get('plan')||'girls';const valid=['brotherhood','girls','ranch','duo','circle'];const safePlan=valid.includes(plan)?plan:'girls';document.querySelector('#backLink').href=`restaurantes.html?plan=${safePlan}`;document.querySelector('#returnButton').href=`restaurantes.html?plan=${safePlan}`;
 const slides=[...document.querySelectorAll('.hero-slide')],dots=[...document.querySelectorAll('.carousel-dot')];let current=0,timer;function show(i){current=(i+slides.length)%slides.length;slides.forEach((s,n)=>s.classList.toggle('active',n===current));dots.forEach((d,n)=>d.classList.toggle('active',n===current))}function start(){clearInterval(timer);timer=setInterval(()=>show(current+1),3200)}dots.forEach((d,i)=>d.addEventListener('click',()=>{show(i);start()}));start();
 </script>
-</body></html>
+<script src="member-contact-guard.js?v=20261009"></script></body></html>
