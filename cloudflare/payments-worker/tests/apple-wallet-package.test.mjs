@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { producePass } from "../src/apple-wallet.js";
+import jpeg from "jpeg-js";
 
 // Uses a temporary, intentionally untrusted certificate. This verifies package
 // construction and cryptographic signing locally, NOT acceptance by Apple Wallet.
@@ -92,6 +93,32 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.match(filesWithPhoto,/thumbnail@2x.png/);
     const propsWithPhoto=JSON.parse(execFileSync("unzip",["-p",pkpass,"pass.json"],{encoding:"utf8"}));
     assert.match(propsWithPhoto.generic.primaryFields[0].value,/125[.,]50 MXN/);
+
+    // Actual member enrollment sends a private data:image/jpeg;base64 string,
+    // not an HTTPS PNG. Confirm Wallet receives correctly encoded PNGs.
+    const pixels=Buffer.alloc(120*120*4,255);
+    for(let i=0;i<pixels.length;i+=4){ pixels[i]=40;pixels[i+1]=85;pixels[i+2]=170; }
+    const privateJpeg="data:image/jpeg;base64,"+
+      Buffer.from(jpeg.encode({data:pixels,width:120,height:120},78).data).toString("base64");
+    globalThis.fetch=async()=>{throw new Error("Private photo must never be fetched externally");};
+    const privatePass=await producePass({
+      WALLET_SIGNER_CERT_PEM:readFileSync(cert,"utf8"),
+      WALLET_SIGNER_KEY_PEM:readFileSync(encryptedKey,"utf8"),
+      WALLET_SIGNER_KEY_PASSPHRASE:"test-only-key-passphrase",
+      WALLET_WWDR_PEM:readFileSync(cert,"utf8"),
+      WALLET_TEAM_ID:"2WG8DN922L",
+    }, {...fakeMember,photoUrl:privateJpeg,memberCode:"ALIGN-PRIVATE-002",savings:231.75},id,origin+"/api/wallet/apple");
+    writeFileSync(pkpass,privatePass);
+    for(const [name,side] of [["thumbnail.png",90],["thumbnail@2x.png",180]]) {
+      const png=execFileSync("unzip",["-p",pkpass,name]);
+      assert.equal(png.subarray(0,8).toString("hex"),"89504e470d0a1a0a");
+      assert.equal(png.readUInt32BE(16),side);
+      assert.equal(png.readUInt32BE(20),side);
+    }
+    const privatePassFields=JSON.parse(execFileSync("unzip",["-p",pkpass,"pass.json"],{encoding:"utf8"}));
+    assert.equal(privatePassFields.generic.backFields[0].value,"ALIGN-PRIVATE-002");
+    assert.match(privatePassFields.barcodes[0].message,/\/api\/wallet\/verify\//);
+    assert.doesNotMatch(JSON.stringify(privatePassFields),/data:image\/jpeg/);
 
   } finally {
     globalThis.fetch = previousFetch;
