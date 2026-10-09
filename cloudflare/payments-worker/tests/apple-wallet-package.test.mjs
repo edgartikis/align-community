@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { inflateSync } from "node:zlib";
 import { producePass } from "../src/apple-wallet.js";
-import { blackWalletArtwork } from "../src/wallet-black.js";
+import { blackWalletArtwork,walletTextWidth } from "../src/wallet-black.js";
 import jpeg from "jpeg-js";
 
 // Uses a temporary, intentionally untrusted certificate. This verifies package
@@ -65,7 +65,17 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.equal(properties.posterGeneric.backFields[0].value,"SOCIO PRUEBA ALIGN");
     assert.equal(properties.posterGeneric.backFields[1].value,"$0 MXN");
     assert.equal(properties.posterGeneric.backFields[3].value,"ALIGN-TEST-0001");
-    const imageBytes=execFileSync("unzip",["-p",pkpass,"artwork.png"]);
+    // Real proportional Inter advances replace the prior overlapping
+    // monospaced letter cells. Labels must not wrap into the portrait/QR.
+    assert.ok(walletTextWidth("WWWW",30)>walletTextWidth("IIII",30)*2,
+      "Membership lettering must use true proportional glyph advances");
+    assert.ok(walletTextWidth("SOCIO PRUEBA ALIGN",32,0.35)<505,
+      "Preview name must fit entirely before the member portrait");
+    assert.ok(walletTextWidth("MEMBERSHIP",40,1.1)<480,
+      "Main title must fit within its centered header area");
+    assert.ok(walletTextWidth("$0 MXN",30,0.15)<415,
+      "Savings figure must remain clear of the native Wallet QR");
+        const imageBytes=execFileSync("unzip",["-p",pkpass,"artwork.png"]);
     const image2x=execFileSync("unzip",["-p",pkpass,"artwork@2x.png"]);
     assert.equal(imageBytes.subarray(0,8).toString("hex"),"89504e470d0a1a0a");
     assert.equal(imageBytes.readUInt32BE(16),358);
