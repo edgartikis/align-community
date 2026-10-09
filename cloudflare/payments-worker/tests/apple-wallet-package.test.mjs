@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
+import { inflateSync } from "node:zlib";
 import { producePass } from "../src/apple-wallet.js";
 import jpeg from "jpeg-js";
 
@@ -39,12 +40,12 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
       WALLET_TEAM_ID: "2WG8DN922L",
       SITE_ORIGIN: "https://alignmembers.com.mx",
     }, fakeMember, id, origin + "/api/wallet/apple", (stage) => stages.push(stage));
-    assert.deepEqual(stages, ["certificate_setup", "artwork_icon", "artwork_logo", "signature"]);
+    assert.deepEqual(stages, ["certificate_setup", "artwork_icon", "artwork_logo", "artwork_poster", "signature"]);
 
     assert.equal(result.subarray(0, 2).toString(), "PK");
     writeFileSync(pkpass, result);
     const names = execFileSync("unzip", ["-Z", "-1", pkpass], { encoding: "utf8" }).trim().split("\n");
-    for (const file of ["pass.json", "signature", "manifest.json", "icon.png", "icon@2x.png", "logo.png", "logo@2x.png"]) {
+    for (const file of ["pass.json", "signature", "manifest.json", "icon.png", "icon@2x.png", "logo.png", "logo@2x.png", "artwork.png", "artwork@2x.png"]) {
       assert.ok(names.includes(file), "Missing Wallet file: " + file);
     }
     const properties = JSON.parse(execFileSync("unzip", ["-p", pkpass, "pass.json"], { encoding: "utf8" }));
@@ -55,9 +56,34 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.equal(properties.foregroundColor,"rgb(217,221,227)");
     assert.equal(properties.labelColor,"rgb(194,198,207)");
     assert.ok(properties.generic, "Generic style is required for native top-fields / bottom-QR");
-    assert.equal(properties.posterGeneric,undefined,"Poster Generic moved the QR into the middle");
-    assert.ok(!names.includes("artwork.png"),"Generic must not include Poster artwork");
-    assert.ok(!names.includes("artwork@2x.png"));
+    assert.ok(properties.posterGeneric,"Poster Generic is enabled on iOS 27");
+    assert.equal((properties.posterGeneric.primaryFields||[]).length,0,
+      "No duplicate front-facing text; personalized text is part of artwork");
+    assert.equal((properties.posterGeneric.footerFields||[]).length,0,
+      "Avoid a duplicated savings value below the native QR");
+    assert.equal(properties.posterGeneric.backFields[0].value,"SOCIO PRUEBA ALIGN");
+    assert.equal(properties.posterGeneric.backFields[1].value,"$0 MXN");
+    assert.equal(properties.posterGeneric.backFields[3].value,"ALIGN-TEST-0001");
+    const imageBytes=execFileSync("unzip",["-p",pkpass,"artwork.png"]);
+    const image2x=execFileSync("unzip",["-p",pkpass,"artwork@2x.png"]);
+    assert.equal(imageBytes.subarray(0,8).toString("hex"),"89504e470d0a1a0a");
+    assert.equal(imageBytes.readUInt32BE(16),358);
+    assert.equal(imageBytes.readUInt32BE(20),448);
+    assert.equal(image2x.readUInt32BE(16),716);
+    assert.equal(image2x.readUInt32BE(20),896);
+    const pixels=(png)=>{
+      let off=8;const compressed=[];
+      while(off<png.length) {
+        const size=png.readUInt32BE(off),type=png.toString("ascii",off+4,off+8);
+        if(type==="IDAT") compressed.push(png.subarray(off+8,off+8+size));
+        off+=12+size;
+      }
+      return inflateSync(Buffer.concat(compressed));
+    };
+    const basePixel=pixels(imageBytes);
+    const rgbAt=(raw,x,y)=>([...raw.subarray(y*(358*4+1)+1+x*4,y*(358*4+1)+1+x*4+3)]);
+    assert.ok(rgbAt(basePixel,180,68).some(c=>c>100),"Prominent top ALIGN logo exists");
+    assert.ok(rgbAt(basePixel,90,173).every(c=>c>45),"Silver divider is visible between sections");
     assert.ok(!names.includes("primaryLogo.png"));
 
     assert.equal(properties.storeCard,undefined);
@@ -105,6 +131,9 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.match(filesWithPhoto,/thumbnail@2x.png/);
     const propsWithPhoto=JSON.parse(execFileSync("unzip",["-p",pkpass,"pass.json"],{encoding:"utf8"}));
     assert.match(propsWithPhoto.generic.primaryFields[0].value,/125[.,]50 MXN/);
+    assert.equal(propsWithPhoto.posterGeneric.backFields[1].value,propsWithPhoto.generic.primaryFields[0].value);
+    const savingsArtwork=execFileSync("unzip",["-p",pkpass,"artwork.png"]);
+    assert.notDeepEqual(savingsArtwork,imageBytes,"Artwork must personalize savings per member");
 
     // Actual member enrollment sends a private data:image/jpeg;base64 string,
     // not an HTTPS PNG. Confirm Wallet receives correctly encoded PNGs.
@@ -133,7 +162,10 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.equal(privatePassFields.generic.secondaryFields[1].value,"The Brotherhood");
     assert.match(privatePassFields.generic.primaryFields[0].value,/231[.,]75 MXN/);
     assert.equal(privatePassFields.barcodes[0].altText,"ALIGN-PRIVATE-002");
-    assert.equal(privatePassFields.posterGeneric,undefined);
+    assert.equal(privatePassFields.posterGeneric.backFields[0].value,"SOCIO PRUEBA ALIGN");
+    assert.equal(privatePassFields.posterGeneric.backFields[3].value,"ALIGN-PRIVATE-002");
+    assert.notDeepEqual(execFileSync("unzip",["-p",pkpass,"artwork.png"]),savingsArtwork,
+      "Different members must have different private portrait/savings artwork");
 
     assert.doesNotMatch(JSON.stringify(privatePassFields),/data:image\/jpeg/);
 
