@@ -4,7 +4,6 @@ import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
-import { inflateSync } from "node:zlib";
 import { producePass } from "../src/apple-wallet.js";
 import jpeg from "jpeg-js";
 
@@ -40,12 +39,12 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
       WALLET_TEAM_ID: "2WG8DN922L",
       SITE_ORIGIN: "https://alignmembers.com.mx",
     }, fakeMember, id, origin + "/api/wallet/apple", (stage) => stages.push(stage));
-    assert.deepEqual(stages, ["certificate_setup", "artwork_icon", "artwork_logo", "artwork_black", "signature"]);
+    assert.deepEqual(stages, ["certificate_setup", "artwork_icon", "artwork_logo", "signature"]);
 
     assert.equal(result.subarray(0, 2).toString(), "PK");
     writeFileSync(pkpass, result);
     const names = execFileSync("unzip", ["-Z", "-1", pkpass], { encoding: "utf8" }).trim().split("\n");
-    for (const file of ["pass.json", "signature", "manifest.json", "icon.png", "icon@2x.png", "logo.png", "logo@2x.png", "artwork.png", "artwork@2x.png"]) {
+    for (const file of ["pass.json", "signature", "manifest.json", "icon.png", "icon@2x.png", "logo.png", "logo@2x.png"]) {
       assert.ok(names.includes(file), "Missing Wallet file: " + file);
     }
     const properties = JSON.parse(execFileSync("unzip", ["-p", pkpass, "pass.json"], { encoding: "utf8" }));
@@ -55,59 +54,26 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.equal(properties.backgroundColor,"rgb(5,5,5)");
     assert.equal(properties.foregroundColor,"rgb(217,221,227)");
     assert.equal(properties.labelColor,"rgb(194,198,207)");
-    assert.ok(properties.generic, "Pass must be generic to display a member thumbnail");
-    assert.ok(properties.posterGeneric, "iOS 27 poster style provides Black Edition artwork");
-    assert.equal((properties.posterGeneric.headerFields||[]).length,0,"QR altText displays code without cluttering the header");
-    assert.equal(properties.posterGeneric.primaryFields[0].value,"SOCIO PRUEBA ALIGN");
-    assert.equal(properties.posterGeneric.primaryFields[1].value,"The Brotherhood");
-    assert.equal(properties.posterGeneric.primaryFields.length,2);
-    assert.equal(properties.posterGeneric.footerFields[0].label,"AHORRADO");
-    assert.equal(properties.posterGeneric.footerFields[0].value,"$0 MXN");
-    assert.ok(!names.includes("primaryLogo.png"),"No automatic duplicate logo in Poster Generic");
-    for(const [asset,width,height] of [["artwork.png",358,448],["artwork@2x.png",716,896]]) {
-      const bytes=execFileSync("unzip",["-p",pkpass,asset]);
-      assert.equal(bytes.subarray(0,8).toString("hex"),"89504e470d0a1a0a");
-      assert.equal(bytes.readUInt32BE(16),width);
-      assert.equal(bytes.readUInt32BE(20),height);
-      if(asset==="artwork.png") {
-        // Assert the approved option 1 is BLACK, with a silver hairline,
-        // never a recycled royal-blue or marble backdrop.
-        let offset=8;const compressed=[];
-        while(offset+8<bytes.length){
-          const size=bytes.readUInt32BE(offset),name=bytes.toString("ascii",offset+4,offset+8);
-          if(name==="IDAT")compressed.push(bytes.subarray(offset+8,offset+8+size));
-          offset+=size+12;
-        }
-        const raw=inflateSync(Buffer.concat(compressed));
-        const pixel=(x,y)=>{const i=y*(width*4+1)+1+x*4;return [...raw.subarray(i,i+3)];};
-        const backdrop=pixel(175,210);
-        assert.ok(backdrop.every(c=>c<30),"Black Edition must be near-black, not blue");
-        const border=pixel(179,14);
-        assert.ok(border.every(c=>c>95),"Silver hairline should be visible");
-        let visibleLogoPixels=0;
-        for(let y=25;y<126;y+=2){
-          for(let x=31;x<327;x+=2){
-            const channels=pixel(x,y);
-            if(channels.every(c=>c>110))visibleLogoPixels++;
-          }
-        }
-        assert.ok(visibleLogoPixels>500,
-          "Original ALIGN wordmark must be genuinely large and visible across the top artwork");
-        const divider=pixel(160,142);
-        assert.ok(divider.every(c=>c>65),"Premium silver header divider should be visible");
-      }
-    }
+    assert.ok(properties.generic, "Generic style is required for native top-fields / bottom-QR");
+    assert.equal(properties.posterGeneric,undefined,"Poster Generic moved the QR into the middle");
+    assert.ok(!names.includes("artwork.png"),"Generic must not include Poster artwork");
+    assert.ok(!names.includes("artwork@2x.png"));
+    assert.ok(!names.includes("primaryLogo.png"));
 
     assert.equal(properties.storeCard,undefined);
     assert.equal(properties.logoText,undefined,"Wordmark must not be duplicated");
-    assert.equal(properties.generic.primaryFields[0].label,"AHORRADO");
-    assert.match(properties.generic.primaryFields[0].value,/\$0(?:\.00)? MXN/);
-    assert.equal(properties.generic.secondaryFields[0].value,"SOCIO PRUEBA ALIGN");
-    assert.equal(properties.generic.secondaryFields[1].label,"MEMBRESÍA");
-    assert.equal(properties.generic.secondaryFields[1].value,"The Brotherhood");
-    assert.equal((properties.generic.auxiliaryFields||[]).length,0);
+    assert.equal(properties.generic.primaryFields.length,1);
+    assert.equal(properties.generic.primaryFields[0].label,"SOCIO");
+    assert.equal(properties.generic.primaryFields[0].value,"SOCIO PRUEBA ALIGN");
+    assert.equal(properties.generic.secondaryFields.length,1);
+    assert.equal(properties.generic.secondaryFields[0].label,"MEMBRESÍA");
+    assert.equal(properties.generic.secondaryFields[0].value,"The Brotherhood");
+    assert.equal(properties.generic.auxiliaryFields.length,1);
+    assert.equal(properties.generic.auxiliaryFields[0].label,"AHORRADO");
+    assert.equal(properties.generic.auxiliaryFields[0].value,"$0 MXN");
     assert.equal(properties.generic.backFields[0].value,"ALIGN-TEST-0001");
-    assert.equal(properties.posterGeneric.backFields[0].value,"ALIGN-TEST-0001");
+    assert.equal(properties.generic.backFields[1].value,"SOCIO PRUEBA ALIGN");
+    assert.equal(properties.barcodes[0].altText,"ALIGN-TEST-0001");
 
     assert.match(JSON.stringify(properties.barcodes), /feature-apple-wallet-align-align-payments\.alignservice18\.workers\.dev/);
 
@@ -136,7 +102,7 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.match(filesWithPhoto,/thumbnail.png/);
     assert.match(filesWithPhoto,/thumbnail@2x.png/);
     const propsWithPhoto=JSON.parse(execFileSync("unzip",["-p",pkpass,"pass.json"],{encoding:"utf8"}));
-    assert.match(propsWithPhoto.generic.primaryFields[0].value,/125[.,]50 MXN/);
+    assert.match(propsWithPhoto.generic.auxiliaryFields[0].value,/125[.,]50 MXN/);
 
     // Actual member enrollment sends a private data:image/jpeg;base64 string,
     // not an HTTPS PNG. Confirm Wallet receives correctly encoded PNGs.
@@ -162,10 +128,10 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     const privatePassFields=JSON.parse(execFileSync("unzip",["-p",pkpass,"pass.json"],{encoding:"utf8"}));
     assert.equal(privatePassFields.generic.backFields[0].value,"ALIGN-PRIVATE-002");
     assert.match(privatePassFields.barcodes[0].message,/\/api\/wallet\/verify\//);
-    assert.equal(privatePassFields.posterGeneric.primaryFields[1].value,"The Brotherhood");
-    assert.match(privatePassFields.posterGeneric.footerFields[0].value,/231[.,]75 MXN/);
-    assert.match(execFileSync("unzip",["-Z","-1",pkpass],{encoding:"utf8"}),/artwork@2x.png/);
-    assert.equal(privatePassFields.posterGeneric.backFields[0].value,"ALIGN-PRIVATE-002");
+    assert.equal(privatePassFields.generic.secondaryFields[0].value,"The Brotherhood");
+    assert.match(privatePassFields.generic.auxiliaryFields[0].value,/231[.,]75 MXN/);
+    assert.equal(privatePassFields.barcodes[0].altText,"ALIGN-PRIVATE-002");
+    assert.equal(privatePassFields.posterGeneric,undefined);
 
     assert.doesNotMatch(JSON.stringify(privatePassFields),/data:image\/jpeg/);
 
