@@ -1,7 +1,6 @@
 // ALIGN Apple Wallet - isolated prototype. Does not touch checkout/webhooks.
 // Enable only after credentials, artwork and ally-scanner end-to-end tests.
 import { PKPass, PassType } from "passkit-generator";
-import jpeg from "jpeg-js";
 import { Buffer } from "node:buffer";
 import { walletIconB64, walletLogoB64 } from "./wallet-artwork-data.js";
 import { blackWalletArtwork } from "./wallet-black.js";
@@ -69,8 +68,7 @@ function bundledWalletPng(base64) {
   }
   return bytes;
 }
-// Apple Wallet controls card dimensions and typography. Generic passes permit
-// a real member thumbnail; storeCard passes do not support member thumbnails.
+// Apple Wallet controls pass dimensions, the native QR, and field placement.
 const formatSavingsMXN = (value) => {
   const n=Number(value);
   const amount=Number.isFinite(n) && n>0 ? Math.min(n,100000000) : 0;
@@ -78,111 +76,6 @@ const formatSavingsMXN = (value) => {
   return new Intl.NumberFormat("es-MX", {style:"currency",currency:"MXN",
     minimumFractionDigits:whole?0:2,maximumFractionDigits:2}).format(amount)+" MXN";
 };
-const isPlaceholderPhoto = (value) => {
-  try {
-    const u=new URL(value);
-    return ["https://alignmembers.com.mx","https://www.alignmembers.com.mx"].includes(u.origin) &&
-      ["/assets/align-primary.png","/assets/align-wordmark.png"].includes(u.pathname);
-  } catch { return false; }
-};
-const pngSize = (bytes) => {
-  if (bytes.length<24 || bytes.subarray(0,8).toString("hex")!=="89504e470d0a1a0a" ||
-      bytes.toString("ascii",12,16)!=="IHDR") throw new Error("Invalid member photo PNG");
-  const width=bytes.readUInt32BE(16),height=bytes.readUInt32BE(20);
-  if (width<60 || height<90 || width>1600 || height>1600) throw new Error("Invalid member photo dimensions");
-  return {width,height};
-};
-// Member photos from the existing ALIGN capture flow are private inline JPEGs.
-// Convert directly inside the Worker: never publish or fetch a member image URL.
-const JPEG_PREFIX="data:image/jpeg;base64,";
-function pngCrc32(bytes) {
-  let c=0xffffffff;
-  for (let i=0;i<bytes.length;i++) {
-    c^=bytes[i];
-    for (let b=0;b<8;b++) c=(c>>>1)^((c&1)?0xedb88320:0);
-  }
-  return (c^0xffffffff)>>>0;
-}
-function pngChunk(name,data) {
-  const type=Buffer.from(name,"ascii");
-  const output=Buffer.alloc(12+data.length);
-  output.writeUInt32BE(data.length,0);
-  type.copy(output,4);
-  Buffer.from(data).copy(output,8);
-  output.writeUInt32BE(pngCrc32(output.subarray(4,8+data.length)),8+data.length);
-  return output;
-}
-async function encodeWalletThumbnail(source,size) {
-  const {width,height,data}=source;
-  if (!width || !height || width>1800 || height>1800 || data.length!==width*height*4) {
-    throw new Error("Invalid JPEG photo dimensions");
-  }
-  const square=Math.min(width,height);
-  const left=Math.floor((width-square)/2),top=Math.floor((height-square)/2);
-  const scanline=Buffer.alloc(size*(size*4+1));
-  for (let y=0;y<size;y++) {
-    const sourceY=top+Math.min(square-1,Math.floor((y+.5)*square/size));
-    const destRow=y*(size*4+1);
-    scanline[destRow]=0; // PNG filter None
-    for (let x=0;x<size;x++) {
-      const sourceX=left+Math.min(square-1,Math.floor((x+.5)*square/size));
-      const index=(sourceY*width+sourceX)*4;
-      for (let b=0;b<4;b++) scanline[destRow+1+x*4+b]=data[index+b];
-    }
-  }
-  const compressor=new CompressionStream("deflate");
-  const writer=compressor.writable.getWriter();
-  const compressedPromise=new Response(compressor.readable).arrayBuffer();
-  await writer.write(scanline);
-  await writer.close();
-  const compressed=Buffer.from(await compressedPromise);
-  const ihdr=Buffer.alloc(13);
-  ihdr.writeUInt32BE(size,0);
-  ihdr.writeUInt32BE(size,4);
-  ihdr[8]=8;  // bit depth
-  ihdr[9]=6;  // RGBA
-  return Buffer.concat([
-    Buffer.from("89504e470d0a1a0a","hex"),
-    pngChunk("IHDR",ihdr),
-    pngChunk("IDAT",compressed),
-    pngChunk("IEND",Buffer.alloc(0))
-  ]);
-}
-async function inlineMemberPhoto(photoUrl) {
-  if (!photoUrl.startsWith(JPEG_PREFIX) || photoUrl.length>180000 ||
-      !/^[A-Za-z0-9+/]+={0,2}$/.test(photoUrl.slice(JPEG_PREFIX.length))) {
-    throw new Error("Invalid private member JPEG photo");
-  }
-  const jpegBytes=Buffer.from(photoUrl.slice(JPEG_PREFIX.length),"base64");
-  if (jpegBytes.length<100 || jpegBytes.length>120000) throw new Error("Private member photo too large");
-  const decoded=jpeg.decode(jpegBytes,{
-    useTArray:true,formatAsRGBA:true,tolerantDecoding:false,
-    maxResolutionInMP:3,maxMemoryUsageInMB:24
-  });
-  return {
-    normal:await encodeWalletThumbnail(decoded,90),
-    retina:await encodeWalletThumbnail(decoded,180),
-    source:decoded
-  };
-}
-async function trustedMemberThumbnail(photoUrl) {
-  const u=new URL(photoUrl);
-  // Photos must be publicly viewable PNGs on an ALIGN-controlled domain.
-  if (u.protocol!=="https:" || !["alignmembers.com.mx","www.alignmembers.com.mx"].includes(u.hostname) ||
-      u.username || u.password || u.port || !u.pathname.startsWith("/assets/")) {
-    throw new Error("Photo must use an ALIGN-controlled HTTPS asset URL");
-  }
-  const response=await fetch(u.href,{redirect:"error",headers:{"accept":"image/png"}});
-  if (!response.ok || !(response.headers.get("content-type")||"").toLowerCase().includes("image/png")) {
-    throw new Error("Member photo must be a public PNG");
-  }
-  const declaredSize=Number(response.headers.get("content-length")||0);
-  if (declaredSize>400000) throw new Error("Photo is too large");
-  const bytes=Buffer.from(await response.arrayBuffer());
-  if (bytes.length>400000) throw new Error("Photo is too large");
-  pngSize(bytes);
-  return bytes;
-}
 export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   onStage("certificate_setup");
   const pass=new PKPass({},{
@@ -202,10 +95,8 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
     backgroundColor:"rgb(5,5,5)", // Black Edition fallback for iOS 26 and earlier
     labelColor:"rgb(194,198,207)" // soft silver labels
   });
-  // Use one native Generic pass on iOS 27 and older. Wallet fixes the
-  // position of the QR below the fields and supports a native member photo
-  // thumbnail to the right of the primary field. Poster Generic instead
-  // placed the QR in the middle, obscuring the desired hierarchy.
+  // Keep Generic as fallback on older devices, with no member thumbnail.
+  // Poster Generic uses custom artwork and a native QR on supported devices.
   pass.type="generic";
   // Apple controls field placement: primary appears first and prominently,
   // secondary fields follow it, then the native QR at the bottom.
@@ -220,7 +111,7 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   pass.backFields.push({key:"code",label:"CÓDIGO DE SOCIO",value:safe(member.memberCode,60)});
   pass.backFields.push({key:"fullName",label:"NOMBRE COMPLETO",value:safe(member.name,90)});
   pass.backFields.push({key:"validity",label:"VIGENCIA",value:safe(period(member).until,40)});
-  pass.backFields.push({key:"verification",label:"VALIDACIÓN",value:"El aliado debe escanear el QR y comprobar fotografía, identidad y vigencia en el sistema ALIGN. Un pase guardado no garantiza membresía activa."});
+  pass.backFields.push({key:"verification",label:"VALIDACIÓN",value:"El aliado debe escanear el QR y comprobar identidad y vigencia en el sistema ALIGN. Un pase guardado no garantiza membresía activa."});
   pass.backFields.push({key:"issuerContact",label:"CONTACTO",value:"https://alignmembers.com.mx"});
 
   // Poster Generic renders the approved Royal Marble artwork with real member data.
@@ -248,24 +139,10 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   pass.addBuffer("icon@2x.png",icon);
   pass.addBuffer("logo.png",logo);
   pass.addBuffer("logo@2x.png",logo);
-  // Original ALIGN brand is displayed through Wallet's native logo slot.
-  // Real private enrollment photos are converted to native PNG thumbnails.
-  let posterPhoto=null;
-  if (member.photoUrl && !isPlaceholderPhoto(member.photoUrl)) {
-    onStage("member_photo");
-    const photo=member.photoUrl.startsWith("data:")
-      ? await inlineMemberPhoto(member.photoUrl)
-      : await (async()=>{
-          const image=await trustedMemberThumbnail(member.photoUrl);
-          return {normal:image,retina:image};
-        })();
-    posterPhoto=photo.source||null;
-    pass.addBuffer("thumbnail.png",photo.normal);
-    pass.addBuffer("thumbnail@2x.png",photo.retina);
-  }
+  // Photos are deliberately NOT included in the pass or artwork, even if a
+  // legacy member record still contains photoUrl. QR validation remains native.
   onStage("artwork_poster");
   const posterArtwork=await blackWalletArtwork({
-    photo:posterPhoto,
     name:safe(member.name,90),
     savings:formatSavingsMXN(member.savings)
   });
@@ -278,70 +155,16 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
 function verificationHtml(member) {
   const valid=active(member);
   const name=safe(member?.name);
-  const photo=String(member?.photoUrl || "");
-  const photoHtml=/^https:\/\/[^\s"'<>]+$/.test(photo) ? '<img src="'+escapeHtml(photo)+'" alt="Foto del socio" width="120" height="120" style="object-fit:cover;border-radius:20px">' : "";
-  return new Response('<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Validación ALIGN</title><body style="background:#10233e;color:#fff;font:16px system-ui;text-align:center;padding:45px 20px"><main><h1>ALIGN MEMBERSHIP</h1><h2>'+ (valid?"Membresía activa":"Membresía no válida") +'</h2>' +(valid?photoHtml+'<p>'+escapeHtml(name)+'</p><p>'+escapeHtml(member.level)+'</p><p>'+escapeHtml(member.memberCode)+'</p><p>Comprueba fotografía e identidad antes de aplicar el beneficio.</p>':'<p>No aplicar el beneficio.</p>')+'</main></body></html>',{status:valid?200:403,headers:{...noCache,"content-type":"text/html; charset=utf-8","content-security-policy":"default-src 'none'; img-src https:; style-src 'unsafe-inline'"}});
-}
-// Preview-only capture page: sends the same small JPEG as ALIGN's real
-// enrollment flow to the Preview worker and isolated KV (never production).
-function previewMemberPhotoPage() {
-  const html=String.raw`<!doctype html><html lang="es"><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="referrer" content="no-referrer"><title>Foto de prueba · ALIGN Wallet</title>
-<style>body{font:16px system-ui;background:#0e3793;color:#e1e5ec;min-height:100vh;display:grid;place-items:center;margin:0;padding:20px;box-sizing:border-box}
-main{max-width:420px;width:100%;padding:25px;border:1px solid #a7b4c8;border-radius:18px;background:#0c275e}
-h1{font:32px Georgia,serif;margin:0 0 12px}p{line-height:1.5}input,button{font:inherit;width:100%;box-sizing:border-box;margin:10px 0}
-button{background:#dae1eb;color:#071d47;border:0;padding:14px;border-radius:12px;font-weight:600;cursor:pointer}
-button:disabled{opacity:.5}img{height:180px;width:180px;object-fit:cover;border-radius:12px;display:none;margin:10px auto}
-small{display:block;opacity:.8}#status{min-height:2em}</style>
-<main><h1>ALIGN · Foto de prueba</h1>
-<p>Usa la fotografía real del socio de pruebas. Se guarda solamente en el entorno Preview de ALIGN.</p>
-<input id="image" type="file" accept="image/*" aria-label="Seleccionar foto">
-<img id="preview" alt="Foto seleccionada"><button id="save" disabled>Guardar foto en pruebas</button>
-<p id="status" role="status"></p><small>No modifica las membresías ni los pagos de producción.</small></main>
-<canvas id="canvas" width="320" height="320" hidden></canvas>
-<script>
-const token=new URLSearchParams(location.search).get('token')||'';
-const input=document.getElementById('image'),preview=document.getElementById('preview');
-const save=document.getElementById('save'),status=document.getElementById('status');
-let photo='';
-input.addEventListener('change',async()=>{
- try{
-  save.disabled=true;photo='';status.textContent='';
-  const file=input.files?.[0];if(!file)return;
-  if(file.size>8*1024*1024)throw new Error('El archivo original es demasiado grande.');
-  const temp=URL.createObjectURL(file);const picture=new Image();
-  try{
-   await new Promise((resolve,reject)=>{picture.onload=resolve;picture.onerror=reject;picture.src=temp;});
-   const c=document.getElementById('canvas'),ctx=c.getContext('2d');
-   const crop=Math.min(picture.naturalWidth,picture.naturalHeight);
-   if(!crop)throw new Error('Imagen no válida.');
-   const x=(picture.naturalWidth-crop)/2,y=(picture.naturalHeight-crop)/2;
-   ctx.drawImage(picture,x,y,crop,crop,0,0,320,320);
-   let quality=.75;photo=c.toDataURL('image/jpeg',quality);
-   while(photo.length>43000 && quality>.25){quality-=.08;photo=c.toDataURL('image/jpeg',quality);}
-   if(photo.length>44000)throw new Error('La foto no se pudo comprimir. Prueba otra.');
-   preview.src=photo;preview.style.display='block';save.disabled=false;
-  }finally{URL.revokeObjectURL(temp);}
- }catch(error){status.textContent=error.message;}
-});
-save.addEventListener('click',async()=>{
- try{
-  if(!photo || !token)throw new Error('Falta la foto o la clave de prueba.');
-  save.disabled=true;status.textContent='Guardando en Preview…';
-  const response=await fetch('/api/upload-profile-photo',{method:'POST',
-   headers:{'content-type':'application/json'},body:JSON.stringify({token,photo})});
-  const result=await response.json().catch(()=>({}));
-  if(!response.ok)throw new Error(result.error||'No se pudo guardar la foto.');
-  status.textContent='Foto guardada. Abriendo la tarjeta de Apple Wallet…';
-  location.assign('/api/wallet/apple?token='+encodeURIComponent(token));
- }catch(error){status.textContent=error.message;save.disabled=false;}
-});
-</script></html>`;
-  return new Response(html,{status:200,headers:{...noCache,
-    "content-type":"text/html; charset=utf-8",
-    "content-security-policy":"default-src 'none'; img-src data: blob:; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'",
-    "referrer-policy":"no-referrer"}});
+  // Scanning must rely on CURRENT membership validity, never on an embedded
+  // photograph or a saved pass alone. Existing member photos are untouched.
+  const memberInfo=valid
+    ?'<p>'+escapeHtml(name)+'</p><p>'+escapeHtml(member.level)+'</p><p>'+escapeHtml(member.memberCode)+'</p><p>Comprueba nombre, código e identidad antes de aplicar el beneficio.</p>'
+    :'<p>No aplicar el beneficio.</p>';
+  return new Response('<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Validación ALIGN</title><body style="background:#10233e;color:#fff;font:16px system-ui;text-align:center;padding:45px 20px"><main><h1>ALIGN MEMBERSHIP</h1><h2>'+(valid?"Membresía activa":"Membresía no válida")+'</h2>'+memberInfo+'</main></body></html>',{
+    status:valid?200:403,
+    headers:{...noCache,"content-type":"text/html; charset=utf-8",
+      "content-security-policy":"default-src 'none'; style-src 'unsafe-inline'"}
+  });
 }
 export async function walletRoute(request,env) {
   const url=new URL(request.url),path=url.pathname;
@@ -350,7 +173,13 @@ export async function walletRoute(request,env) {
       url.hostname==="feature-apple-wallet-align-align-payments.alignservice18.workers.dev" &&
       supported(env)) {
     const member=await getMember(env,url.searchParams.get("token")||"");
-    return active(member) ? previewMemberPhotoPage() : json({error:"Socio de pruebas no encontrado o inactivo."},403);
+    if (!active(member)) return json({error:"Socio de pruebas no encontrado o inactivo."},403);
+    // Backwards compatible with old private photo-test bookmarks; photo
+    // upload has been retired from Apple Wallet, not from member records.
+    return new Response(null,{status:303,headers:{
+      ...noCache,"location":"/api/wallet/apple?token="+encodeURIComponent(url.searchParams.get("token")||""),
+      "referrer-policy":"no-referrer"
+    }});
   }
   if (request.method==="GET" && /^\/api\/wallet\/verify\/[0-9a-f]{32}$/i.test(path)) {
     if (!env.PAYMENT_STATE) return verificationHtml(null);
@@ -360,7 +189,7 @@ export async function walletRoute(request,env) {
     if (!supported(env)) return json({error:"Apple Wallet aún no está disponible."},503);
     const token=url.searchParams.get("token")||"";
     const member=await getMember(env,token);
-    if (!active(member) || !member.photoUrl) return json({error:"La tarjeta no está activa o falta fotografía."},403);
+    if (!active(member)) return json({error:"La tarjeta no está activa."},403);
     let stage="kv_mapping";
     try {
       const id=await idForMember(env,token,member);
