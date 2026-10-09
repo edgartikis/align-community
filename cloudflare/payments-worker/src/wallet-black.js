@@ -97,7 +97,7 @@ function premiumBackdrop(w,h) {
         const satin=.5+.5*Math.cos((xx-358)*.011+yy*.006);
         const rr=8+3*satin+2*panel;
         const gg=12+8*satin+5*panel;
-        const bb=23+14*satin+10*panel;
+        const bb=27+16*satin+10*panel;
         r=r*(1-smooth)+rr*smooth;
         g=g*(1-smooth)+gg*smooth;
         b=b*(1-smooth)+bb*smooth;
