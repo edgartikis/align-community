@@ -67,6 +67,47 @@ function bundledWalletPng(base64) {
   }
   return bytes;
 }
+// Apple Wallet controls card dimensions and typography. Generic passes permit
+// a real member thumbnail; storeCard passes do not support member thumbnails.
+const formatSavingsMXN = (value) => {
+  const n=Number(value);
+  const amount=Number.isFinite(n) && n>0 ? Math.min(n,100000000) : 0;
+  const whole=Math.round(amount*100)%100===0;
+  return new Intl.NumberFormat("es-MX", {style:"currency",currency:"MXN",
+    minimumFractionDigits:whole?0:2,maximumFractionDigits:2}).format(amount)+" MXN";
+};
+const isPlaceholderPhoto = (value) => {
+  try {
+    const u=new URL(value);
+    return ["https://alignmembers.com.mx","https://www.alignmembers.com.mx"].includes(u.origin) &&
+      ["/assets/align-primary.png","/assets/align-wordmark.png"].includes(u.pathname);
+  } catch { return false; }
+};
+const pngSize = (bytes) => {
+  if (bytes.length<24 || bytes.subarray(0,8).toString("hex")!=="89504e470d0a1a0a" ||
+      bytes.toString("ascii",12,16)!=="IHDR") throw new Error("Invalid member photo PNG");
+  const width=bytes.readUInt32BE(16),height=bytes.readUInt32BE(20);
+  if (width<60 || height<90 || width>1600 || height>1600) throw new Error("Invalid member photo dimensions");
+  return {width,height};
+};
+async function trustedMemberThumbnail(photoUrl) {
+  const u=new URL(photoUrl);
+  // Photos must be publicly viewable PNGs on an ALIGN-controlled domain.
+  if (u.protocol!=="https:" || !["alignmembers.com.mx","www.alignmembers.com.mx"].includes(u.hostname) ||
+      u.username || u.password || u.port || !u.pathname.startsWith("/assets/")) {
+    throw new Error("Photo must use an ALIGN-controlled HTTPS asset URL");
+  }
+  const response=await fetch(u.href,{redirect:"error",headers:{"accept":"image/png"}});
+  if (!response.ok || !(response.headers.get("content-type")||"").toLowerCase().includes("image/png")) {
+    throw new Error("Member photo must be a public PNG");
+  }
+  const declaredSize=Number(response.headers.get("content-length")||0);
+  if (declaredSize>400000) throw new Error("Photo is too large");
+  const bytes=Buffer.from(await response.arrayBuffer());
+  if (bytes.length>400000) throw new Error("Photo is too large");
+  pngSize(bytes);
+  return bytes;
+}
 export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   onStage("certificate_setup");
   const pass=new PKPass({},{
@@ -81,15 +122,20 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
     serialNumber:id,
     organizationName:"ALIGN Membership",
     description:"Membresía ALIGN",
-    logoText:"ALIGN",
-    foregroundColor:"rgb(255,255,255)",
-    backgroundColor:"rgb(16,35,62)",
-    labelColor:"rgb(217,198,165)"
+    // ALIGN's wordmark image already contains the brand name.
+    foregroundColor:"rgb(218,224,234)",
+    backgroundColor:"rgb(14,55,147)", // ALIGN royal blue
+    labelColor:"rgb(189,200,217)" // soft silver
   });
-  pass.type="storeCard";
-  pass.primaryFields.push({key:"name",label:"SOCIO",value:safe(member.name)});
-  pass.secondaryFields.push({key:"plan",label:"MEMBRESÍA",value:safe(member.level,60)});
-  pass.auxiliaryFields.push({key:"code",label:"CÓDIGO",value:safe(member.memberCode,60)});
+  pass.type="generic";
+  // The amount is short, so it won't dominate or truncate the member name.
+  pass.primaryFields.push({key:"savings",label:"AHORRADO",value:formatSavingsMXN(member.savings)});
+  pass.secondaryFields.push({key:"name",label:"SOCIO",value:safe(member.name,70)});
+  pass.auxiliaryFields.push({key:"plan",label:"MEMBRESÍA",value:safe(member.level,48)});
+  // A long code would compete with photo and name on small screens; the QR
+  // alt text displays it below the barcode and details always show it.
+  pass.backFields.push({key:"code",label:"CÓDIGO DE SOCIO",value:safe(member.memberCode,60)});
+  pass.backFields.push({key:"validity",label:"VIGENCIA",value:safe(period(member).until,40)});
   pass.backFields.push({key:"verification",label:"VALIDACIÓN",value:"El aliado debe escanear el QR y comprobar fotografía, identidad y vigencia en el sistema ALIGN. Un pase guardado no garantiza membresía activa."});
   // Stable, non-secret, opaque pointer. The verifier reads CURRENT KV state.
   pass.setBarcodes({format:"PKBarcodeFormatQR",message:walletQrUrl(requestUrl,id),messageEncoding:"iso-8859-1",altText:safe(member.memberCode,60)});
@@ -103,6 +149,12 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   pass.addBuffer("icon@2x.png",icon);
   pass.addBuffer("logo.png",logo);
   pass.addBuffer("logo@2x.png",logo);
+  if (member.photoUrl && !isPlaceholderPhoto(member.photoUrl)) {
+    onStage("member_photo");
+    const thumbnail=await trustedMemberThumbnail(member.photoUrl);
+    pass.addBuffer("thumbnail.png",thumbnail);
+    pass.addBuffer("thumbnail@2x.png",thumbnail);
+  }
   onStage("signature");
   return pass.getAsBuffer();
 }
