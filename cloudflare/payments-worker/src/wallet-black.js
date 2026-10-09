@@ -87,20 +87,50 @@ function premiumBackdrop(w,h) {
         const rim2=203*(1-yy/214);
         if(yy<214&&Math.abs(xx-rim2)<1.15){r=125;g=206;b=255;}
       }
-      if(yy>594&&Math.abs(xx-(716-(yy-594)*.82))<1.25){r=13;g=79;b=160;}
-      // Deep sapphire satin fade at the bottom, instead of the previous
-      // abruptly dark, empty-looking zone. Do not brighten the QR area.
-      // Wallet may cover the lower art with its native material/footer strip.
-      if(yy>698) {
-        const t=Math.min(1,Math.max(0,(yy-698)/198));
+      // Continuous Black & Metallic Blue finish: the lower panel keeps the
+      // same dark satin material as the top instead of turning flat navy.
+      // Everything begins below the native QR's occupied area.
+      if(yy>662) {
+        const t=Math.min(1,Math.max(0,(yy-662)/234));
         const smooth=t*t*(3-2*t);
-        const sweep=.5+.5*Math.cos((xx-358)*.0063+yy*.0035);
-        const rr=7.5+2*sweep;
-        const gg=18+8*sweep;
-        const bb=39+16*sweep;
+        const panel=Math.max(0,Math.min(1,(xx-(575-(yy-662)*.47))/42));
+        const satin=.5+.5*Math.cos((xx-358)*.011+yy*.006);
+        const rr=8+3*satin+2*panel;
+        const gg=12+8*satin+5*panel;
+        const bb=23+14*satin+10*panel;
         r=r*(1-smooth)+rr*smooth;
         g=g*(1-smooth)+gg*smooth;
         b=b*(1-smooth)+bb*smooth;
+      }
+      // A mirrored cobalt ribbon in the bottom-right reprises the blue
+      // metallic corner of the header. Softly emerges below the QR area.
+      if(yy>731) {
+        const t=Math.min(1,(yy-731)/165);
+        const satinEase=t*t*(3-2*t);
+        const left=716-208*satinEase;
+        const right=716-130*satinEase;
+        if(xx>=left && xx<=right && right-left>2) {
+          const shine=(xx-left)/(right-left);
+          const blue=[5+13*shine,35+65*shine,91+111*shine];
+          const blend=Math.min(1,t*4);
+          r=r*(1-blend)+blue[0]*blend;
+          g=g*(1-blend)+blue[1]*blend;
+          b=b*(1-blend)+blue[2]*blend;
+        }
+        // Narrow silver-blue glints match the top corner's hairlines.
+        const edgeL=716-178*satinEase;
+        const edgeR=716-203*satinEase;
+        const glow=Math.min(1,t*5);
+        if(Math.abs(xx-edgeL)<2.1) {
+          r=85*glow+r*(1-glow);
+          g=169*glow+g*(1-glow);
+          b=237*glow+b*(1-glow);
+        }
+        if(Math.abs(xx-edgeR)<.95) {
+          r=161*glow+r*(1-glow);
+          g=209*glow+g*(1-glow);
+          b=249*glow+b*(1-glow);
+        }
       }
       const k=(y*w+x)*4;
       pix[k]=clamp(r);pix[k+1]=clamp(g);pix[k+2]=clamp(b);pix[k+3]=255;
