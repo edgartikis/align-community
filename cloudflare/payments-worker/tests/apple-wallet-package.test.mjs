@@ -59,8 +59,12 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.ok(properties.posterGeneric,"Poster Generic is enabled on iOS 27");
     assert.equal((properties.posterGeneric.primaryFields||[]).length,0,
       "No duplicate front-facing text; personalized text is part of artwork");
-    assert.equal((properties.posterGeneric.footerFields||[]).length,0,
-      "Avoid a duplicated savings value below the native QR");
+    assert.equal((properties.posterGeneric.footerFields||[]).length,1,
+      "Poster Generic must have exactly one branded native footer");
+    assert.equal(properties.posterGeneric.footerFields[0].value,"BELONG TO SOMETHING");
+    assert.equal(properties.posterGeneric.footerFields[0].textAlignment,"PKTextAlignmentCenter");
+    assert.ok(!(properties.posterGeneric.footerFields||[]).some(f=>f.value==="$0 MXN"),
+      "Savings is personalized artwork, never repeated in the footer");
     assert.equal(properties.posterGeneric.backFields[0].value,"SOCIO PRUEBA ALIGN");
     assert.equal(properties.posterGeneric.backFields[1].value,"$0 MXN");
     assert.equal(properties.posterGeneric.backFields[3].value,"ALIGN-TEST-0001");
@@ -106,6 +110,16 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
       "Cobalt blue upper-left diagonal stripe must be visible");
     const black=rgbAt(retinaPixel,716,359,560);
     assert.ok(black.every(c=>c<35),"QR reserve zone must stay dark/empty");
+    // Lower background has a smooth black-to-navy transition, not an abrupt
+    // dead space. A thin silver-blue separator sits below the QR region.
+    const upperBand=rgbAt(retinaPixel,716,358,708);
+    const lowerBand=rgbAt(retinaPixel,716,358,891);
+    assert.ok(lowerBand[2]>upperBand[2]+20 && lowerBand[2]>lowerBand[0]+25,
+      "Footer background must have a visible but dark sapphire gradient");
+    const fineRule=rgbAt(retinaPixel,716,200,799);
+    const beforeRule=rgbAt(retinaPixel,716,200,792);
+    assert.ok(fineRule[2]>beforeRule[2]+7,
+      "Subtle metallic separator should cross the lower artwork safely");
     // Different resolutions have separately rendered antialiased pixels.
     assert.equal(retinaPixel.length,896*(716*4+1));
     assert.equal(basePixel.length,448*(358*4+1));
