@@ -39,22 +39,34 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
       WALLET_TEAM_ID: "2WG8DN922L",
       SITE_ORIGIN: "https://alignmembers.com.mx",
     }, fakeMember, id, origin + "/api/wallet/apple", (stage) => stages.push(stage));
-    assert.deepEqual(stages, ["certificate_setup", "artwork_icon", "artwork_logo", "signature"]);
+    assert.deepEqual(stages, ["certificate_setup", "artwork_icon", "artwork_logo", "artwork_marble", "signature"]);
 
     assert.equal(result.subarray(0, 2).toString(), "PK");
     writeFileSync(pkpass, result);
     const names = execFileSync("unzip", ["-Z", "-1", pkpass], { encoding: "utf8" }).trim().split("\n");
-    for (const file of ["pass.json", "signature", "manifest.json", "icon.png", "icon@2x.png", "logo.png", "logo@2x.png"]) {
+    for (const file of ["pass.json", "signature", "manifest.json", "icon.png", "icon@2x.png", "logo.png", "logo@2x.png", "primaryLogo.png", "primaryLogo@2x.png", "artwork.png", "artwork@2x.png"]) {
       assert.ok(names.includes(file), "Missing Wallet file: " + file);
     }
     const properties = JSON.parse(execFileSync("unzip", ["-p", pkpass, "pass.json"], { encoding: "utf8" }));
     assert.equal(properties.passTypeIdentifier, "pass.mx.com.alignmembers.membership");
     assert.equal(properties.teamIdentifier, "2WG8DN922L");
     assert.equal(properties.serialNumber, id);
-    assert.equal(properties.backgroundColor,"rgb(14,55,147)");
-    assert.equal(properties.foregroundColor,"rgb(218,224,234)");
-    assert.equal(properties.labelColor,"rgb(189,200,217)");
+    assert.equal(properties.backgroundColor,"rgb(15,76,222)");
+    assert.equal(properties.foregroundColor,"rgb(217,221,227)");
+    assert.equal(properties.labelColor,"rgb(217,221,227)");
     assert.ok(properties.generic, "Pass must be generic to display a member thumbnail");
+    assert.ok(properties.posterGeneric, "iOS 27 poster style is required for full marble background");
+    assert.equal(properties.posterGeneric.headerFields[0].value,"ALIGN-TEST-0001");
+    assert.equal(properties.posterGeneric.primaryFields[0].value,"SOCIO PRUEBA ALIGN");
+    assert.equal(properties.posterGeneric.primaryFields[1].value,"The Brotherhood");
+    assert.match(properties.posterGeneric.primaryFields[2].value,/\\$0(?:\\.00)? MXN/);
+    for(const [asset,width,height] of [["artwork.png",358,448],["artwork@2x.png",716,896]]) {
+      const bytes=execFileSync("unzip",["-p",pkpass,asset]);
+      assert.equal(bytes.subarray(0,8).toString("hex"),"89504e470d0a1a0a");
+      assert.equal(bytes.readUInt32BE(16),width);
+      assert.equal(bytes.readUInt32BE(20),height);
+    }
+
     assert.equal(properties.storeCard,undefined);
     assert.equal(properties.logoText,undefined,"Wordmark must not be duplicated");
     assert.equal(properties.generic.primaryFields[0].label,"AHORRADO");
@@ -118,6 +130,10 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     const privatePassFields=JSON.parse(execFileSync("unzip",["-p",pkpass,"pass.json"],{encoding:"utf8"}));
     assert.equal(privatePassFields.generic.backFields[0].value,"ALIGN-PRIVATE-002");
     assert.match(privatePassFields.barcodes[0].message,/\/api\/wallet\/verify\//);
+    assert.equal(privatePassFields.posterGeneric.primaryFields[1].value,"The Brotherhood");
+    assert.match(privatePassFields.posterGeneric.primaryFields[2].value,/231[.,]75 MXN/);
+    assert.match(execFileSync("unzip",["-Z","-1",pkpass],{encoding:"utf8"}),/artwork@2x.png/);
+
     assert.doesNotMatch(JSON.stringify(privatePassFields),/data:image\/jpeg/);
 
   } finally {
