@@ -65,17 +65,50 @@ function paint(out,w,x,y,r,g,b,alpha=1) {
   out[k+1]=clamp(out[k+1]*(1-alpha)+g*alpha);
   out[k+2]=clamp(out[k+2]*(1-alpha)+b*alpha);
 }
+// Color shared with the native pass footer in apple-wallet.js.
+// Poster Generic places a system-controlled material band over this artwork.
+// Blend into that color before the band so there is no visible horizontal cut.
+export const ALIGN_NATIVE_FOOTER_COLOR = "rgb(5,10,25)";
+const FOOTER_RGB = [5,10,25];
+const smoothstep = (a,b,v) => {
+  const t=Math.max(0,Math.min(1,(v-a)/(b-a)));
+  return t*t*(3-2*t);
+};
 function premiumBackdrop(w,h) {
   const pix=Buffer.alloc(w*h*4),scale=w/716;
   for(let y=0;y<h;y++) {
     const yy=y/scale;
+    const progress=smoothstep(340,896,yy);
+    // Apple's Poster Generic material begins near the lower QR region. It
+    // may crop a different fraction of the image on different iPhones.
+    // This broad, feathered match to its solid base prevents a hard boundary.
+    const join=Math.exp(-Math.pow((yy-602)/55,4));
     for(let x=0;x<w;x++) {
       const xx=x/scale;
       const dark=7.5+2.2*(1-yy/896)+1.1*Math.sin(xx*.009+yy*.004);
       let r=dark,g=dark+1.5,b=dark+3;
-      // Very subtle black-on-black diagonal satin panel.
-      if(yy<602 && xx>853-yy*.63){r+=6;g+=7;b+=10;}
-      // Metallic cobalt diagonal accent in upper left.
+      // Retain the original upper-right diagonal, but taper it smoothly.
+      // Previously it was abruptly disabled at y=602 (a visible seam).
+      const angleFade=1-smoothstep(320,596,yy);
+      if(xx>853-yy*.63) {
+        const panel=angleFade*(.8+.2*smoothstep(450,716,xx));
+        r+=6*panel;g+=7*panel;b+=10*panel;
+      }
+      // Continuous midnight-blue satin glow, shaped like the approved image B:
+      // near-black on the left, gradually richer on the right and bottom.
+      // No hard rectangular fill, no flat band, no neon-blue corner.
+      const side=smoothstep(.06,.98,xx/716);
+      const cobalt=Math.pow(side,1.55)*progress;
+      const satin=Math.sin(xx*.011+yy*.008)*.9;
+      r+=progress*.5+cobalt*1.4+satin*.20;
+      g+=progress*2.5+cobalt*18.5+satin*.24;
+      b+=progress*8.0+cobalt*66+satin*.30;
+      // A seamless navy join behind Wallet's own translucent material strip.
+      // Intentionally matches the solid RGB that iOS uses for the footer.
+      r=r*(1-join)+FOOTER_RGB[0]*join;
+      g=g*(1-join)+FOOTER_RGB[1]*join;
+      b=b*(1-join)+FOOTER_RGB[2]*join;
+      // Metallic cobalt diagonal accent: unchanged from approved header.
       if(yy<=216) {
         const factor=1-yy/216,left=130*factor,right=208*factor;
         if(xx>=left&&xx<=right) {
@@ -86,18 +119,6 @@ function premiumBackdrop(w,h) {
         if(yy<189&&Math.abs(xx-rim)<3.4){r=57;g=172;b=250;}
         const rim2=203*(1-yy/214);
         if(yy<214&&Math.abs(xx-rim2)<1.15){r=125;g=206;b=255;}
-      }
-      // Exact dark navy-black tone from the approved lower-left reference:
-      // extend it continuously across the FULL bottom width. The earlier
-      // cobalt ribbon and brighter right half were rejected.
-      // Upper logo, texts and Apple-provided QR are unaffected.
-      if(yy>602) {
-        const t=Math.min(1,(yy-602)/294);
-        const smooth=t*t*(3-2*t);
-        const subtleSatin=Math.sin(xx*.014+yy*.007)*.85;
-        r=8.0*(1-smooth)+5.0*smooth+subtleSatin*.36;
-        g=9.5*(1-smooth)+10.3*smooth+subtleSatin*.40;
-        b=12.0*(1-smooth)+25.0*smooth+subtleSatin*.54;
       }
       const k=(y*w+x)*4;
       pix[k]=clamp(r);pix[k+1]=clamp(g);pix[k+2]=clamp(b);pix[k+3]=255;
