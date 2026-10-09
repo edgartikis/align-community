@@ -3,7 +3,7 @@
 import { PKPass, PassType } from "passkit-generator";
 import { Buffer } from "node:buffer";
 import { walletIconB64, walletLogoB64 } from "./wallet-artwork-data.js";
-import { blackWalletArtwork } from "./wallet-black.js";
+import { blackWalletArtwork, ALIGN_NATIVE_FOOTER_COLOR } from "./wallet-black.js";
 
 const API_HOST = "api.alignmembers.com.mx";
 const ID = "pass.mx.com.alignmembers.membership";
@@ -92,7 +92,7 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
     description:"Membresía ALIGN",
     // ALIGN's wordmark image already contains the brand name.
     foregroundColor:"rgb(217,221,227)", // bright satin silver
-    backgroundColor:"rgb(5,10,25)", // Approved uniform midnight-navy: also tints native Poster footer
+    backgroundColor:ALIGN_NATIVE_FOOTER_COLOR, // Identical to the seamless Poster artwork join and native material
     labelColor:"rgb(194,198,207)" // soft silver labels
   });
   // Keep Generic as fallback on older devices, with no member thumbnail.
@@ -114,9 +114,10 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   pass.backFields.push({key:"verification",label:"VALIDACIÓN",value:"El aliado debe escanear el QR y comprobar identidad y vigencia en el sistema ALIGN. Un pase guardado no garantiza membresía activa."});
   pass.backFields.push({key:"issuerContact",label:"CONTACTO",value:"https://alignmembers.com.mx"});
 
-  // Poster Generic renders the approved Royal Marble artwork with real member data.
-  // Compatible iOS versions add only the native QR on the front; the existing
-  // Generic pass remains the fallback for earlier devices.
+  // Poster Generic renders ALIGN Black & Metallic Blue artwork with member data.
+  // A native material strip covers the lower edge; the artwork is designed to
+  // meet its shared midnight-navy color without a visible horizontal cut.
+  // Generic remains the fallback for earlier iOS releases.
   const poster=new PassType("posterGeneric");
   // iOS 27 Poster Generic supports a single native footer field. It is
   // centered and keeps the callout legible on Wallet's material bottom strip
