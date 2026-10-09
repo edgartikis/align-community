@@ -115,7 +115,7 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.equal((properties.generic.auxiliaryFields||[]).length,0);
     assert.equal(properties.generic.backFields[0].value,"ALIGN-TEST-0001");
     assert.equal(properties.generic.backFields[1].value,"SOCIO PRUEBA ALIGN");
-    assert.equal(properties.barcodes[0].altText,"");
+    assert.equal(properties.barcodes[0].altText,undefined);
 
     assert.match(JSON.stringify(properties.barcodes), /feature-apple-wallet-align-align-payments\.alignservice18\.workers\.dev/);
 
@@ -175,7 +175,7 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.match(privatePassFields.barcodes[0].message,/\/api\/wallet\/verify\//);
     assert.equal(privatePassFields.generic.secondaryFields[0].value,"SOCIO PRUEBA ALIGN");
     assert.match(privatePassFields.generic.primaryFields[0].value,/231[.,]75 MXN/);
-    assert.equal(privatePassFields.barcodes[0].altText,"");
+    assert.equal(privatePassFields.barcodes[0].altText,undefined);
     assert.equal(privatePassFields.posterGeneric.backFields[0].value,"SOCIO PRUEBA ALIGN");
     assert.equal(privatePassFields.posterGeneric.backFields[3].value,"ALIGN-PRIVATE-002");
     assert.notDeepEqual(execFileSync("unzip",["-p",pkpass,"artwork.png"]),savingsArtwork,
