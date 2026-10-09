@@ -108,12 +108,25 @@ function paintSerif(target,w,h,atlas,value,x,y,size,maxWidth) {
 function render(w,h,photo,name,savings,atlas) {
   const original=approvedImage(),scale=w/358;
   const pixels=Buffer.alloc(w*h*4);
-  // Resize the SAME supplied image; keep its wordmark and marble unmodified.
-  for(let y=0;y<h;y++)for(let x=0;x<w;x++) {
-    const sx=Math.min(357,Math.floor(x/scale)),sy=Math.min(447,Math.floor(y/scale));
-    const from=(sy*358+sx)*4,to=(y*w+x)*4;
-    pixels[to]=original.data[from];pixels[to+1]=original.data[from+1];
-    pixels[to+2]=original.data[from+2];pixels[to+3]=255;
+  // Bilinear interpolation instead of duplicating each JPEG pixel into a
+  // 2x2 block. This removes the obvious stair-stepping in Retina artwork.
+  // Coordinates are pixel-centered to avoid shifting ALIGN's lettering.
+  for(let y=0;y<h;y++){
+    const sourceY=Math.max(0,Math.min(447,(y+.5)/scale-.5));
+    const y0=Math.floor(sourceY),y1=Math.min(447,y0+1),dy=sourceY-y0;
+    for(let x=0;x<w;x++){
+      const sourceX=Math.max(0,Math.min(357,(x+.5)/scale-.5));
+      const x0=Math.floor(sourceX),x1=Math.min(357,x0+1),dx=sourceX-x0;
+      const i00=(y0*358+x0)*4,i10=(y0*358+x1)*4;
+      const i01=(y1*358+x0)*4,i11=(y1*358+x1)*4;
+      const target=(y*w+x)*4;
+      for(let c=0;c<3;c++){
+        const top=original.data[i00+c]*(1-dx)+original.data[i10+c]*dx;
+        const bottom=original.data[i01+c]*(1-dx)+original.data[i11+c]*dx;
+        pixels[target+c]=Math.round(top*(1-dy)+bottom*dy);
+      }
+      pixels[target+3]=255;
+    }
   }
   stampPortrait(pixels,w,h,photo,scale);
   // QR begins below this upper block on the supported Poster display.
