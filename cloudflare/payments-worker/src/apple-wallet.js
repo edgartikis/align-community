@@ -206,17 +206,18 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   // thumbnail to the right of the primary field. Poster Generic instead
   // placed the QR in the middle, obscuring the desired hierarchy.
   pass.type="generic";
-  // Fidelity to ALIGN Black Edition option 1 takes priority over the previous
-  // oversized money field. The order is member -> plan -> savings -> QR.
-  // Wallet controls font sizing; a long member name can wrap or truncate.
+  // Apple controls field placement: primary appears first and prominently,
+  // secondary fields follow it, then the native QR at the bottom.
+  // Black Edition: prominent savings + quieter member details, not an
+  // oversized, two-line member name.
   pass.primaryFields.push({
+    key:"savings",label:"AHORRADO",value:formatSavingsMXN(member.savings)
+  });
+  pass.secondaryFields.push({
     key:"name",label:"SOCIO",value:safe(member.name,70)
   });
   pass.secondaryFields.push({
     key:"plan",label:"MEMBRESÍA",value:safe(member.level,48)
-  });
-  pass.auxiliaryFields.push({
-    key:"savings",label:"AHORRADO",value:formatSavingsMXN(member.savings)
   });
   pass.backFields.push({key:"code",label:"CÓDIGO DE SOCIO",value:safe(member.memberCode,60)});
   pass.backFields.push({key:"fullName",label:"NOMBRE COMPLETO",value:safe(member.name,90)});
