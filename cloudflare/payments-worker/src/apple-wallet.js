@@ -219,7 +219,9 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   const poster=new PassType("posterGeneric");
   poster.primaryFields.push({key:"posterName",label:"SOCIO",value:safe(member.name,48)});
   poster.primaryFields.push({key:"posterPlan",label:"MEMBRESÍA",value:safe(member.level,35)});
-  poster.primaryFields.push({key:"posterSavings",label:"AHORRADO",value:formatSavingsMXN(member.savings)});
+  // Wallet places footer fields below the member detail area, before the QR.
+  // This creates a separate savings block instead of three same-level fields.
+  poster.footerFields.push({key:"posterSavings",label:"AHORRADO",value:formatSavingsMXN(member.savings)});
   poster.backFields.push({key:"posterMemberCode",label:"CÓDIGO DE SOCIO",value:safe(member.memberCode,48)});
   poster.backFields.push({key:"posterVerification",label:"VERIFICACIÓN",value:"Presenta tu QR para validar identidad y membresía vigente. El pase por sí solo no prueba vigencia."});
   poster.backFields.push({key:"posterContact",label:"CONTACTO",value:"https://alignmembers.com.mx"});
@@ -237,8 +239,9 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   pass.addBuffer("icon@2x.png",icon);
   pass.addBuffer("logo.png",logo);
   pass.addBuffer("logo@2x.png",logo);
-  pass.addBuffer("primaryLogo.png",logo);
-  pass.addBuffer("primaryLogo@2x.png",logo);
+  // For Poster Generic, the brand wordmark is integrated into artwork.png
+  // at the top center, avoiding a second logo at the top-left.
+  // Generic retains its native logo.png for pre-iOS-27 compatibility.
   let posterPhoto=null;
   if (member.photoUrl && !isPlaceholderPhoto(member.photoUrl)) {
     onStage("member_photo");
