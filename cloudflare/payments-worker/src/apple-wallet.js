@@ -245,9 +245,76 @@ function verificationHtml(member) {
   const photoHtml=/^https:\/\/[^\s"'<>]+$/.test(photo) ? '<img src="'+escapeHtml(photo)+'" alt="Foto del socio" width="120" height="120" style="object-fit:cover;border-radius:20px">' : "";
   return new Response('<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Validación ALIGN</title><body style="background:#10233e;color:#fff;font:16px system-ui;text-align:center;padding:45px 20px"><main><h1>ALIGN MEMBERSHIP</h1><h2>'+ (valid?"Membresía activa":"Membresía no válida") +'</h2>' +(valid?photoHtml+'<p>'+escapeHtml(name)+'</p><p>'+escapeHtml(member.level)+'</p><p>'+escapeHtml(member.memberCode)+'</p><p>Comprueba fotografía e identidad antes de aplicar el beneficio.</p>':'<p>No aplicar el beneficio.</p>')+'</main></body></html>',{status:valid?200:403,headers:{...noCache,"content-type":"text/html; charset=utf-8","content-security-policy":"default-src 'none'; img-src https:; style-src 'unsafe-inline'"}});
 }
+// Preview-only capture page: sends the same small JPEG as ALIGN's real
+// enrollment flow to the Preview worker and isolated KV (never production).
+function previewMemberPhotoPage() {
+  const html=String.raw`<!doctype html><html lang="es"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>Foto de prueba · ALIGN Wallet</title>
+<style>body{font:16px system-ui;background:#0e3793;color:#e1e5ec;min-height:100vh;display:grid;place-items:center;margin:0;padding:20px;box-sizing:border-box}
+main{max-width:420px;width:100%;padding:25px;border:1px solid #a7b4c8;border-radius:18px;background:#0c275e}
+h1{font:32px Georgia,serif;margin:0 0 12px}p{line-height:1.5}input,button{font:inherit;width:100%;box-sizing:border-box;margin:10px 0}
+button{background:#dae1eb;color:#071d47;border:0;padding:14px;border-radius:12px;font-weight:600;cursor:pointer}
+button:disabled{opacity:.5}img{height:180px;width:180px;object-fit:cover;border-radius:12px;display:none;margin:10px auto}
+small{display:block;opacity:.8}#status{min-height:2em}</style>
+<main><h1>ALIGN · Foto de prueba</h1>
+<p>Usa la fotografía real del socio de pruebas. Se guarda solamente en el entorno Preview de ALIGN.</p>
+<input id="image" type="file" accept="image/*" aria-label="Seleccionar foto">
+<img id="preview" alt="Foto seleccionada"><button id="save" disabled>Guardar foto en pruebas</button>
+<p id="status" role="status"></p><small>No modifica las membresías ni los pagos de producción.</small></main>
+<canvas id="canvas" width="320" height="320" hidden></canvas>
+<script>
+const token=new URLSearchParams(location.search).get('token')||'';
+const input=document.getElementById('image'),preview=document.getElementById('preview');
+const save=document.getElementById('save'),status=document.getElementById('status');
+let photo='';
+input.addEventListener('change',async()=>{
+ try{
+  save.disabled=true;photo='';status.textContent='';
+  const file=input.files?.[0];if(!file)return;
+  if(file.size>8*1024*1024)throw new Error('El archivo original es demasiado grande.');
+  const temp=URL.createObjectURL(file);const picture=new Image();
+  try{
+   await new Promise((resolve,reject)=>{picture.onload=resolve;picture.onerror=reject;picture.src=temp;});
+   const c=document.getElementById('canvas'),ctx=c.getContext('2d');
+   const crop=Math.min(picture.naturalWidth,picture.naturalHeight);
+   if(!crop)throw new Error('Imagen no válida.');
+   const x=(picture.naturalWidth-crop)/2,y=(picture.naturalHeight-crop)/2;
+   ctx.drawImage(picture,x,y,crop,crop,0,0,320,320);
+   let quality=.75;photo=c.toDataURL('image/jpeg',quality);
+   while(photo.length>43000 && quality>.25){quality-=.08;photo=c.toDataURL('image/jpeg',quality);}
+   if(photo.length>44000)throw new Error('La foto no se pudo comprimir. Prueba otra.');
+   preview.src=photo;preview.style.display='block';save.disabled=false;
+  }finally{URL.revokeObjectURL(temp);}
+ }catch(error){status.textContent=error.message;}
+});
+save.addEventListener('click',async()=>{
+ try{
+  if(!photo || !token)throw new Error('Falta la foto o la clave de prueba.');
+  save.disabled=true;status.textContent='Guardando en Preview…';
+  const response=await fetch('/api/upload-profile-photo',{method:'POST',
+   headers:{'content-type':'application/json'},body:JSON.stringify({token,photo})});
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(result.error||'No se pudo guardar la foto.');
+  status.textContent='Foto guardada. Abriendo la tarjeta de Apple Wallet…';
+  location.assign('/api/wallet/apple?token='+encodeURIComponent(token));
+ }catch(error){status.textContent=error.message;save.disabled=false;}
+});
+</script></html>`;
+  return new Response(html,{status:200,headers:{...noCache,
+    "content-type":"text/html; charset=utf-8",
+    "content-security-policy":"default-src 'none'; img-src data: blob:; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'",
+    "referrer-policy":"no-referrer"}});
+}
 export async function walletRoute(request,env) {
   const url=new URL(request.url),path=url.pathname;
   if (request.method==="GET" && path==="/api/wallet/status") return json({ok:true,available:supported(env),provider:"apple"});
+  if (request.method==="GET" && path==="/api/wallet/photo-test" &&
+      url.hostname==="feature-apple-wallet-align-align-payments.alignservice18.workers.dev" &&
+      supported(env)) {
+    const member=await getMember(env,url.searchParams.get("token")||"");
+    return active(member) ? previewMemberPhotoPage() : json({error:"Socio de pruebas no encontrado o inactivo."},403);
+  }
   if (request.method==="GET" && /^\/api\/wallet\/verify\/[0-9a-f]{32}$/i.test(path)) {
     if (!env.PAYMENT_STATE) return verificationHtml(null);
     return verificationHtml(await memberById(env,path.split("/").pop()));
