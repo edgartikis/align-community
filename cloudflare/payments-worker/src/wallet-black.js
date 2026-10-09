@@ -1,5 +1,6 @@
-// ALIGN Black Edition — native Poster Generic background for iOS 27+.
-// Poster layout and barcode remain Wallet-native; this only draws pass artwork.
+// ALIGN Royal Marble Edition — Poster Generic artwork for compatible iOS.
+// Fixed branded marble background + member-specific image text/photo.
+// The signed QR and its code are ALWAYS Wallet-native; never paint a QR here.
 // All member photos remain in-memory and are packed into the signed .pkpass.
 import { Buffer } from "node:buffer";
 import { walletLogoB64 } from "./wallet-artwork-data.js";
@@ -118,11 +119,15 @@ function walletDisplayText(value) {
 // Small antialiased silver sans letterforms, rendered into the signed artwork.
 // All member data remains private and stays inside each member's .pkpass.
 function drawMemberText(pixels,w,h,value,x,y,desiredHeight,maxWidth) {
-  const chars=walletDisplayText(value),scale=w/358;
-  if(!chars.trim())return;
-  const glyphWidth=5/7,advance=6/7;
-  let size=Math.min(desiredHeight,maxWidth/(chars.length*advance));
-  size=Math.max(8,Math.min(size,desiredHeight));
+  let chars=walletDisplayText(value).replace(/\s+/g," ").trim();
+  const scale=w/358;
+  if(!chars)return;
+  const advance=6/7,minimumSize=7.5;
+  const maxChars=Math.max(3,Math.floor(maxWidth/(minimumSize*advance)));
+  // A longer name is readable in full on the pass reverse; ellipsize on
+  // artwork rather than allowing it to overlap the private portrait.
+  if(chars.length>maxChars)chars=chars.slice(0,maxChars-1).trimEnd()+".";
+  const size=Math.max(minimumSize,Math.min(desiredHeight,maxWidth/(chars.length*advance)));
   const unit=size*scale/7;
   let cursor=x*scale;
   for(const ch of chars) {
@@ -165,8 +170,8 @@ function stampWordmark(pixels,width,height,logo) {
     }
   }
   // Hairline separates the brand from the personalized membership details.
-  const underlineY=Math.round(173*scale),left=Math.round(28*scale);
-  const right=Math.round(227*scale);
+  const underlineY=Math.round(128*scale),left=Math.round(28*scale);
+  const right=Math.round(330*scale);
   for(let y=underlineY;y<underlineY+Math.max(1,Math.round(scale));y++) {
     if(y>=height)break;
     for(let x=left;x<right;x++){
@@ -177,34 +182,61 @@ function stampWordmark(pixels,width,height,logo) {
     }
   }
 }
-function drawBlackPoster(w,h,portrait,logo,member) {
+// Deterministic marble: deep navy and royal-cobalt clouds with thin, soft
+// white veins. The center remains dark so member text and the native QR
+// remain legible. No network image dependencies or additional fonts.
+function drawMarblePoster(w,h,portrait,logo,member) {
   const pixels=Buffer.alloc(w*h*4);
   const scale=w/358;
   for (let y=0;y<h;y++) {
     const yn=y/h;
+    const qrZone=Math.max(0,Math.min(1,(yn-.52)*5));
     for(let x=0;x<w;x++) {
       const xn=x/w;
-      // Near-black satin: dimensional but never a marble, stars, or visual clutter.
-      const nearEdge=Math.min(xn,1-xn,yn,1-yn);
-      const sheen=5*Math.exp(-Math.pow((xn-.64)*2.8,2)-Math.pow((yn-.18)*2.4,2));
-      const mid=2*Math.exp(-Math.pow((xn-.48)*2.1,2)-Math.pow((yn-.49)*2.0,2));
-      const edgeShade=Math.min(2.5,nearEdge*7);
-      const black=clamp(5+sheen+mid+edgeShade);
+      const swirl=.074*Math.sin(yn*11.7+xn*5.4)+
+        .027*Math.sin(yn*25.1-xn*11.3);
+      const course=xn*.94-yn*.65+swirl;
+      const cloud=.5+.5*Math.sin(course*8.6+1.3*Math.sin(yn*4.1));
+      const haze=.5+.5*Math.sin(xn*8.8+yn*7.5+
+        .7*Math.sin(xn*13.8-yn*6.7));
+      // Blue marble has broad waves and a few elegant white veins.
+      const blue=.2+cloud*.49+haze*.31;
+      const inset=Math.min(xn,1-xn,yn,1-yn);
+      const depth=.75+.25*Math.min(1,inset*7);
+      const veinPath=course*11.8+.27*Math.sin(yn*13.4+xn*4.9);
+      const thin=Math.exp(-Math.pow(Math.sin(veinPath)/.048,2));
+      const faint=Math.exp(-Math.pow(Math.sin(veinPath+1.4)/.11,2));
+      const vein=thin*.39+faint*.10;
+      // Restrained texture near the identity, stronger toward card edges.
+      const edge=Math.min(1,Math.abs(xn-.5)*1.55+.18);
+      const fade=1-qrZone*.3;
+      const white=(vein*(.32+.68*edge)*fade);
+      const darkCenter=1-.16*Math.exp(-Math.pow((xn-.49)/.37,2));
       const p=(y*w+x)*4;
-      // Fine satin-silver rounded outline like ALIGN's approved Black Edition.
-      // Keep it faint so native Wallet text and the QR remain fully legible.
-      const margin=14*scale,radius=20*scale;
-      const halfW=w/2-margin,halfH=h/2-margin;
-      const px=Math.abs(x-w/2)-(halfW-radius);
-      const py=Math.abs(y-h/2)-(halfH-radius);
-      const signedDistance=Math.hypot(Math.max(px,0),Math.max(py,0))+
-        Math.min(Math.max(px,py),0)-radius;
-      const outline=Math.max(0,1-Math.abs(signedDistance)/(1.0*scale));
-      const silver=outline*.55;
-      pixels[p]=clamp(black*(1-silver)+217*silver);
-      pixels[p+1]=clamp(black*(1-silver)+221*silver);
-      pixels[p+2]=clamp((black+1)*(1-silver)+227*silver);
+      let red=(8+19*blue)*depth*darkCenter;
+      let green=(25+62*blue)*depth*darkCenter;
+      let blueChannel=(71+143*blue)*depth*darkCenter;
+      // Marble vein appears silver-white rather than a bright neon streak.
+      pixels[p]=clamp(red*(1-white)+239*white);
+      pixels[p+1]=clamp(green*(1-white)+244*white);
+      pixels[p+2]=clamp(blueChannel*(1-white)+251*white);
       pixels[p+3]=255;
+    }
+  }
+  // Restrained silver outline; both native code and artwork remain legible.
+  const radius=18*scale,margin=12*scale;
+  for(let y=0;y<h;y++){
+    const ty=Math.abs(y-h/2)-(h/2-margin-radius);
+    for(let x=0;x<w;x++){
+      const tx=Math.abs(x-w/2)-(w/2-margin-radius);
+      const d=Math.hypot(Math.max(tx,0),Math.max(ty,0))+
+        Math.min(Math.max(tx,ty),0)-radius;
+      const tint=Math.max(0,1-Math.abs(d)/(1.2*scale))*.50;
+      if(tint<=0)continue;
+      const p=(y*w+x)*4;
+      pixels[p]=clamp(pixels[p]*(1-tint)+216*tint);
+      pixels[p+1]=clamp(pixels[p+1]*(1-tint)+224*tint);
+      pixels[p+2]=clamp(pixels[p+2]*(1-tint)+235*tint);
     }
   }
   // A restrained silver border around the photograph; no decorative stars.
@@ -212,7 +244,7 @@ function drawBlackPoster(w,h,portrait,logo,member) {
     const {width:pw,height:ph,data}=portrait;
     if(pw>0&&ph>0&&pw<=1800&&ph<=1800&&data?.length===pw*ph*4) {
       const portraitSide=Math.round(74*scale);
-      const x0=Math.round(256*scale), y0=Math.round(142*scale);
+      const x0=Math.round(256*scale), y0=Math.round(144*scale);
       const frame=Math.max(1,Math.round(2*scale));
       const radius=Math.round(7*scale);
       const crop=Math.min(pw,ph);
@@ -239,17 +271,24 @@ function drawBlackPoster(w,h,portrait,logo,member) {
     }
   }
   stampWordmark(pixels,w,h,logo);
-  drawMemberText(pixels,w,h,"SOCIO",28,133,9,160);
-  drawMemberText(pixels,w,h,member?.name||"",28,150,14,207);
-  drawMemberText(pixels,w,h,"AHORRADO",28,178,9,170);
-  drawMemberText(pixels,w,h,member?.savings||"",28,190,17,205);
+  // Artwork personalized at signing time, not fields that iOS may relocate.
+  // Text and portrait sit in the upper third; the lower half stays free for
+  // Apple's native, scannable QR and member-code altText.
+  drawMemberText(pixels,w,h,"SOCIO",28,142,9,211);
+  drawMemberText(pixels,w,h,member?.name||"",28,155,14.5,214);
+  drawMemberText(pixels,w,h,"MEMBRESIA",28,179,9,211);
+  drawMemberText(pixels,w,h,member?.membership||"",28,191,12.5,214);
+  drawMemberText(pixels,w,h,"AHORRADO",28,218,9,211);
+  drawMemberText(pixels,w,h,member?.savings||"",28,231,17,222);
   return pixels;
 }
-// The member's name/amount/photo change per request, so do not cache passes.
-export async function blackWalletArtwork({photo=null,name="",savings=""}={}) {
+// Member name, tier, savings and portrait are in each individually signed pass.
+// The same branded royal-marble design is recreated with deterministic math.
+export async function blackWalletArtwork({photo=null,name="",membership="",savings=""}={}) {
   const logo=await posterWordmark();
+  const member={name,membership,savings};
   return {
-    normal:await encodePng(358,448,drawBlackPoster(358,448,photo,logo,{name,savings})),
-    retina:await encodePng(716,896,drawBlackPoster(716,896,photo,logo,{name,savings}))
+    normal:await encodePng(358,448,drawMarblePoster(358,448,photo,logo,member)),
+    retina:await encodePng(716,896,drawMarblePoster(716,896,photo,logo,member))
   };
 }
