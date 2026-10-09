@@ -50,10 +50,47 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.equal(properties.passTypeIdentifier, "pass.mx.com.alignmembers.membership");
     assert.equal(properties.teamIdentifier, "2WG8DN922L");
     assert.equal(properties.serialNumber, id);
+    assert.equal(properties.backgroundColor,"rgb(14,55,147)");
+    assert.equal(properties.foregroundColor,"rgb(218,224,234)");
+    assert.equal(properties.labelColor,"rgb(189,200,217)");
+    assert.ok(properties.generic, "Pass must be generic to display a member thumbnail");
+    assert.equal(properties.storeCard,undefined);
+    assert.equal(properties.logoText,undefined,"Wordmark must not be duplicated");
+    assert.equal(properties.generic.primaryFields[0].label,"AHORRADO");
+    assert.match(properties.generic.primaryFields[0].value,/\$0(?:\.00)? MXN/);
+    assert.equal(properties.generic.secondaryFields[0].value,"SOCIO PRUEBA ALIGN");
+    assert.equal(properties.generic.auxiliaryFields[0].value,"The Brotherhood");
+    assert.equal(properties.generic.backFields[0].value,"ALIGN-TEST-0001");
+
     assert.match(JSON.stringify(properties.barcodes), /feature-apple-wallet-align-align-payments\.alignservice18\.workers\.dev/);
 
     const signature = execFileSync("unzip", ["-p", pkpass, "signature"]);
     assert.ok(signature.length > 200, "Pass signature is missing");
+    // When the member has an actual PNG photo from the ALIGN asset origin,
+    // embed it as the native Apple Wallet thumbnail rather than a rendered mockup.
+    const memberPhotoUrl="https://alignmembers.com.mx/assets/socios/test-member.png";
+    const localPng=readFileSync(new URL("../../../assets/align-primary.png",import.meta.url));
+    let photoRequests=0;
+    globalThis.fetch=async (url) => {
+      photoRequests++;
+      assert.equal(url,memberPhotoUrl);
+      return new Response(localPng,{status:200,headers:{"content-type":"image/png"}});
+    };
+    const withPhoto=await producePass({
+      WALLET_SIGNER_CERT_PEM:readFileSync(cert,"utf8"),
+      WALLET_SIGNER_KEY_PEM:readFileSync(encryptedKey,"utf8"),
+      WALLET_SIGNER_KEY_PASSPHRASE:"test-only-key-passphrase",
+      WALLET_WWDR_PEM:readFileSync(cert,"utf8"),
+      WALLET_TEAM_ID:"2WG8DN922L",
+    }, {...fakeMember,photoUrl:memberPhotoUrl,savings:125.50},id,origin+"/api/wallet/apple");
+    assert.equal(photoRequests,1);
+    writeFileSync(pkpass,withPhoto);
+    const filesWithPhoto=execFileSync("unzip",["-Z","-1",pkpass],{encoding:"utf8"});
+    assert.match(filesWithPhoto,/thumbnail.png/);
+    assert.match(filesWithPhoto,/thumbnail@2x.png/);
+    const propsWithPhoto=JSON.parse(execFileSync("unzip",["-p",pkpass,"pass.json"],{encoding:"utf8"}));
+    assert.match(propsWithPhoto.generic.primaryFields[0].value,/125[.,]50 MXN/);
+
   } finally {
     globalThis.fetch = previousFetch;
     rmSync(dir, { recursive: true, force: true });
