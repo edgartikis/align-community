@@ -149,7 +149,7 @@ async function encodeWalletThumbnail(source,size) {
 }
 async function inlineMemberPhoto(photoUrl) {
   if (!photoUrl.startsWith(JPEG_PREFIX) || photoUrl.length>180000 ||
-      !/^data:image\\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(photoUrl)) {
+      !/^[A-Za-z0-9+/]+={0,2}$/.test(photoUrl.slice(JPEG_PREFIX.length))) {
     throw new Error("Invalid private member JPEG photo");
   }
   const jpegBytes=Buffer.from(photoUrl.slice(JPEG_PREFIX.length),"base64");
