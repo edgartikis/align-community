@@ -1,262 +1,131 @@
-// ALIGN approved Black Marble — real Poster Generic artwork for compatible iOS.
-// Fixed branded marble background + member-specific image text/photo.
-// The signed QR and its code are ALWAYS Wallet-native; never paint a QR here.
-// All member photos remain in-memory and are packed into the signed .pkpass.
-import { Buffer } from "node:buffer";
+// ALIGN Black Marble — image approved by the member, NOT a procedural imitation.
+// Poster artwork has only the member name, savings and private photo.
+// Wallet paints the real signed QR separately. This artwork must NEVER draw a QR.
 import jpeg from "jpeg-js";
+import { Buffer } from "node:buffer";
 import { approvedBlackMarbleJpegB64 } from "./wallet-approved-marble-data.js";
+import { memberSerifGlyphsB64,memberSerifAlphabet,memberSerifWidth,memberSerifHeight } from "./wallet-serif-glyphs.js";
 
 function crc32(bytes) {
   let c=0xffffffff;
-  for (let i=0;i<bytes.length;i++) {
+  for(let i=0;i<bytes.length;i++){
     c^=bytes[i];
-    for(let b=0;b<8;b++) c=(c>>>1)^((c&1)?0xedb88320:0);
+    for(let j=0;j<8;j++)c=(c>>>1)^((c&1)?0xedb88320:0);
   }
-  return (c^0xffffffff)>>>0;
+  return(c^0xffffffff)>>>0;
 }
 function chunk(tag,data) {
-  const type=Buffer.from(tag,"ascii"),out=Buffer.alloc(12+data.length);
+  const name=Buffer.from(tag,"ascii"),out=Buffer.alloc(data.length+12);
   out.writeUInt32BE(data.length,0);
-  type.copy(out,4);
-  data.copy(out,8);
+  name.copy(out,4);
+  Buffer.from(data).copy(out,8);
   out.writeUInt32BE(crc32(out.subarray(4,8+data.length)),8+data.length);
   return out;
 }
 async function encodePng(w,h,rgba) {
-  const scanlines=Buffer.alloc(h*(w*4+1));
+  const scan=Buffer.alloc(h*(1+4*w));
   for(let y=0;y<h;y++) {
-    const at=y*(w*4+1);
-    scanlines[at]=0;
-    rgba.copy(scanlines,at+1,y*w*4,(y+1)*w*4);
+    const row=y*(1+4*w);
+    rgba.copy(scan,row+1,y*w*4,(y+1)*w*4);
   }
-  const deflate=new CompressionStream("deflate");
-  const writer=deflate.writable.getWriter();
-  const result=new Response(deflate.readable).arrayBuffer();
-  await writer.write(scanlines);
-  await writer.close();
-  const compressed=Buffer.from(await result);
+  const stream=new CompressionStream("deflate");
+  const writer=stream.writable.getWriter(),pending=new Response(stream.readable).arrayBuffer();
+  await writer.write(scan);await writer.close();
   const info=Buffer.alloc(13);
-  info.writeUInt32BE(w,0);
-  info.writeUInt32BE(h,4);
-  info[8]=8;
-  info[9]=6;
+  info.writeUInt32BE(w,0);info.writeUInt32BE(h,4);info[8]=8;info[9]=6;
   return Buffer.concat([Buffer.from("89504e470d0a1a0a","hex"),
-    chunk("IHDR",info),chunk("IDAT",compressed),chunk("IEND",Buffer.alloc(0))]);
+    chunk("IHDR",info),chunk("IDAT",Buffer.from(await pending)),chunk("IEND",Buffer.alloc(0))]);
 }
-const clamp=(n)=>Math.max(0,Math.min(255,Math.round(n)));
-// Read the original silver ALIGN logo, including BELONG TO SOMETHING.
-// The repository asset is an 8-bit indexed PNG with a transparent palette.
-// We composite it into the Poster background at a much larger size than
-// Apple's small automatic primaryLogo slot (which otherwise duplicates it).
-let decodedLogo;
-async function posterWordmark() {
-  if (decodedLogo) return decodedLogo;
-  decodedLogo=(async()=>{
-    const png=Buffer.from(walletLogoB64,"base64");
-    if(png.subarray(0,8).toString("hex")!=="89504e470d0a1a0a")throw new Error("Invalid ALIGN wordmark");
-    let offset=8,width=0,height=0,depth=0,colorType=0,palette=null,opacity=null;
-    const idats=[];
-    while(offset+12<=png.length) {
-      const size=png.readUInt32BE(offset),kind=png.toString("ascii",offset+4,offset+8);
-      if(offset+size+12>png.length)throw new Error("Invalid wordmark PNG chunk");
-      const bytes=png.subarray(offset+8,offset+8+size);
-      if(kind==="IHDR"){
-        width=bytes.readUInt32BE(0);height=bytes.readUInt32BE(4);
-        depth=bytes[8];colorType=bytes[9];
-      }
-      if(kind==="PLTE")palette=bytes;
-      if(kind==="tRNS")opacity=bytes;
-      if(kind==="IDAT")idats.push(bytes);
-      offset+=size+12;
-      if(kind==="IEND")break;
-    }
-    if(depth!==8||colorType!==3||!palette||width<100||height<30||
-       width>1600||height>600||idats.length===0)throw new Error("Unsupported ALIGN logo PNG");
-    const stream=new DecompressionStream("deflate");
-    const writer=stream.writable.getWriter();
-    const inflated=new Response(stream.readable).arrayBuffer();
-    await writer.write(Buffer.concat(idats));await writer.close();
-    const src=Buffer.from(await inflated);
-    const lines=Buffer.alloc(width*height),bpp=1;
-    let pos=0;
-    const paeth=(a,b,c)=>{
-      const p=a+b-c,pa=Math.abs(p-a),pb=Math.abs(p-b),pc=Math.abs(p-c);
-      return pa<=pb&&pa<=pc?a:pb<=pc?b:c;
-    };
-    for(let y=0;y<height;y++) {
-      if(pos+1+width>src.length)throw new Error("Truncated ALIGN logo");
-      const filter=src[pos++],row=y*width;
-      if(filter>4)throw new Error("Invalid PNG filter");
-      for(let x=0;x<width;x++) {
-        const raw=src[pos++],left=x>=bpp?lines[row+x-bpp]:0;
-        const up=y>0?lines[row-width+x]:0;
-        const diagonal=y>0&&x>=bpp?lines[row-width+x-bpp]:0;
-        const predictor=filter===0?0:filter===1?left:filter===2?up:
-          filter===3?Math.floor((left+up)/2):paeth(left,up,diagonal);
-        lines[row+x]=(raw+predictor)&255;
-      }
-    }
-    const rgba=Buffer.alloc(width*height*4);
-    for(let i=0;i<lines.length;i++){
-      const idx=lines[i],p=idx*3,out=i*4;
-      if(p+2>=palette.length)throw new Error("Invalid ALIGN palette index");
-      const shade=(palette[p]+palette[p+1]+palette[p+2])/3;
-      // Re-map the original silver lettering for contrast on deep black.
-      const silver=clamp(154+shade*.38);
-      rgba[out]=silver;
-      rgba[out+1]=clamp(silver+1);
-      rgba[out+2]=clamp(silver+3);
-      rgba[out+3]=idx<(opacity?.length||0)?opacity[idx]:255;
-    }
-    return {width,height,data:rgba};
-  })();
-  return decodedLogo;
-}
-const PERSONAL_GLYPHS={"0":"01110100011001110101110011000101110","1":"00100011000010000100001000010001110","2":"01110100010000100010001000100011111","3":"11110000010000101110000010000111110","4":"00010001100101010010111110001000010","5":"11111100001000011110000010000111110","6":"01110100001000011110100011000101110","7":"11111000010001000100010000100001000","8":"01110100011000101110100011000101110","9":"01110100011000101111000010000101110","A":"01110100011000111111100011000110001","B":"11110100011000111110100011000111110","C":"01111100001000010000100001000001111","D":"11110100011000110001100011000111110","E":"11111100001000011110100001000011111","F":"11111100001000011110100001000010000","G":"01111100001000010111100011000101110","H":"10001100011000111111100011000110001","I":"11111001000010000100001000010011111","J":"00111000100001000010100101001001100","K":"10001100101010011000101001001010001","L":"10000100001000010000100001000011111","M":"10001110111010110101100011000110001","N":"10001110011010110011100011000110001","O":"01110100011000110001100011000101110","P":"11110100011000111110100001000010000","Q":"01110100011000110001101011001001101","R":"11110100011000111110101001001010001","S":"01111100001000001110000010000111110","T":"11111001000010000100001000010000100","U":"10001100011000110001100011000101110","V":"10001100011000110001100010101000100","W":"10001100011000110101101011010101010","X":"10001100010101000100010101000110001","Y":"10001100010101000100001000010000100","Z":"11111000010001000100010001000011111","$":"00100011111010001110001011111000100","-":"00000000000000011111000000000000000",".":"00000000000000000000000000110001100",",":"00000000000000000000001100010001000","/":"00001000010001000100010001000010000",":":"00000011000110000000011000110000000","+":"00000001000010011111001000010000000"," ":"00000000000000000000000000000000000"};
-function walletDisplayText(value) {
-  return String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-    .toUpperCase().replace(/[^A-Z0-9 $,.:+/-]/g," ");
-}
-// Small antialiased silver sans letterforms, rendered into the signed artwork.
-// All member data remains private and stays inside each member's .pkpass.
-// Fine high-contrast serif alphabet rasterized from a licensed local font
-// into an in-repository bitmap atlas (16x20, 40 glyphs, 1 bit/pixel).
-// This avoids the old blocky 5x7 pixel typography on the iPhone.
-const SERIF_CHARS="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$.,-";
-const SERIF_BITS=Buffer.from("AAAAAAYABgAHAAMACwABgAGAH4AQwADAIOBw4AAAAAAAAAAAAAAAAAAAAAA/ABmAGYAZgBmAHwAZgBjAGMAYwBmAPwAAAAAAAAAAAAAAAAAAAAAAD4AZwDDAMAAwADAAMAAwADAAMMAYwA+AAAAAAAAAAAAAAAAAAAAAAD+AGcAYwBjgGGAYYBhgGGAY4BjAGcA/AAAAAAAAAAAAAAAAAAAAAAA/gBiAGAAYABgAHwAYABgAGAAYQBjAP8AAAAAAAAAAAAAAAAAAAAAAP4AYgBgAGAAYABgAGAAYABgAGAAYADwAAAAAAAAAAAAAAAAAAAAAAA+AGMAwwDAAMAAwADHgMMAwwDDAGMAPwAAAAAAAAAAAAAAAAAAAAAA88BhgGGAYYBhgGOAY4BhgGGAYYBhgPPAAAAAAAAAAAAAAAAAAAAAAPAAYABgAGAAYABgAGAAYABgAGAAYADwAAAAAAAAAAAAAAAAAAAAAADwAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAwACAAAAAAAAAAAAAAADzAGIAZABkAGgAeAB8AG4AZgBnAOOA8YAAAAAAAAAAAAAAAAAAAAAA8ABgAGAAYABgAGAAYABgAGAAYQDjAP8AAAAAAAAAAAAAAAAAAAAAAOBwYGBw4DDgOGBZYFlgXGBMYA5gRmDk8AAAAAAAAAAAAAAAAAAAAADhgHEAMAA5AFkATQBOAEYARwADAEMA4QAAAAAAAAAAAAAAAAAAAAAAPgBjAMOAwYDBgMGAwYDBgMGAwwBjAD4AAAAAAAAAAAAAAAAAAAAAAPwAZgBmAGcAZgBmAG4AeABgAGAA4ADwAAAAAAAAAAAAAAAAAAAAAAA+AGMAw4DBgMGAwYDBgMGAwYDDAGMAPgAcAAwADgACAAAAAAAAAAAA/ABmAGYAZgBmAGYAfABsAG4AZgDnAPMAAAAAAAAAAAAAAAAAAAAAAHgAzADMAMAA4AB4ADwADACOAYwAzAB4AAAAAAAAAAAAAAAAAAAAAAH/ATkAOQA4ADgAOAA4ADgAOAA4ADgAOAAAAAAAAAAAAAAAAAAAAAAAAADjgOEA4QDhAOEA4QDhAOEA4QBhAHIAPAAAAAAAAAAAAAAAAAAAAAAB4wDAAOIAYgBiAHQANAA0ADgAGAAYABgAAAAAAAAAAAAAAAAAAAAAAOMYwwDjEGMQZZB1gDWAMcA4wDjAGMAQQAAAAAAAAAAAAAAAAAAAAADnAGIAdAA0ADgAGAAYACwALABGAMcAxwAAAAAAAAAAAAAAAAAAAAAA4wBiAGIAMAA0ADgAGAAYABgAGAAYADwAAAAAAAAAAAAAAAAAAAAAAP4AjgAMABgAGAA4ADAAcABgAOIAwgD+AAAAAAAAAAAAAAAAAAAAAAB4AMwAzADOAc4BxgHGAM4AzADMAGwAOAAAAAAAAAAAAAAAAAAAAAAAMADwAPAAMAAwADAAMAAwADAAMAA4AHgAAAAAAAAAAAAAAAAAAAAAAPgAzADMAAwADAAYADAAIABAAIQB/AD8AAAAAAAAAAAAAAAAAAAAAAD4AMwAzAAMABwAOAAMAA4AjgCMAMwAeAAAAAAAAAAAAAAAAAAAAAAAAAAcABwAPABcAFwAnAAYAf4B/gAYABwAHAAAAAAAAAAAAAAAAAAAAAAA/AD8AIAAAAD4AIwADAAMAAwAzADcAHAAAAAAAAAAAAAAAAAAAAAAAHwAbADEAMAA3ADMAM4AzgDOAMwAbAA4AAAAAAAAAAAAAAAAAAAAAAD+APwABAAMAAwACAAYABgAEAAwADAAIAAAAAAAAAAAAAAAAAAAAAAAfADMAMwAzADsAHgA3ADOAcYAxgDMAHgAAAAAAAAAAAAAAAAAAAAAAHgAzADMAMwAzgDOAH4ADAAMAIwA2ABwAAAAAAAAAAAAAAAAAAAAAAAwAHwAzADMAOAAcAA8ABwAjADMAOwAMAAAAAAAAAAAAAAAAAAAAAAAwADAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAwABAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==","base64");
-const glyphWidths=Array.from(SERIF_CHARS,(_,i)=>{
-  let max=0,min=16;
-  for(let y=0;y<20;y++)for(let x=0;x<16;x++){
-    const at=i*320+y*16+x;
-    if((SERIF_BITS[at>>3]>>(7-(at&7)))&1){min=Math.min(min,x);max=Math.max(max,x)}
-  }
-  return min>max?{min:0,width:5}:{min,width:max-min+1};
-});
-function isSerifPixel(index,x,y){
-  if(index<0||x<0||x>=16||y<0||y>=20)return 0;
-  const at=index*320+y*16+x;
-  return (SERIF_BITS[at>>3]>>(7-(at&7)))&1;
-}
-function drawMemberText(pixels,w,h,value,x,y,desiredHeight,maxWidth){
-  const str=walletDisplayText(value).replace(/\s+/g," ").trim();
-  if(!str)return;
-  const chars=[...str];
-  const estimated=chars.reduce((a,ch)=>a+(ch===" "?6:(glyphWidths[SERIF_CHARS.indexOf(ch)]?.width||7)+3),0);
-  // Use proportional serif letterforms, not the old monospaced bitmap glyphs.
-  const baseScale=Math.min(desiredHeight/15,maxWidth/estimated);
-  const scale=baseScale*w/358;
-  let pen=x*w/358,top=y*w/358;
-  const white=[226,229,235];
-  for(const char of chars){
-    if(char===" "){pen+=6*scale;continue;}
-    const index=SERIF_CHARS.indexOf(char);
-    if(index<0){pen+=7*scale;continue;}
-    const metrics=glyphWidths[index],gw=metrics.width;
-    const destW=Math.ceil(gw*scale),destH=Math.ceil(20*scale);
-    for(let yy=0;yy<destH;yy++)for(let xx=0;xx<destW;xx++){
-      const gx=metrics.min+(xx+.5)/scale-.5,gy=(yy+.5)/scale-.5;
-      const bx=Math.floor(gx),by=Math.floor(gy),fx=gx-bx,fy=gy-by;
-      const a=(isSerifPixel(index,bx,by)*(1-fx)*(1-fy)+
-        isSerifPixel(index,bx+1,by)*fx*(1-fy)+
-        isSerifPixel(index,bx,by+1)*(1-fx)*fy+
-        isSerifPixel(index,bx+1,by+1)*fx*fy)*.93;
-      if(a<=0)continue;
-      const px=Math.floor(pen+xx),py=Math.floor(top+yy);
-      if(px<0||py<0||px>=w||py>=h)continue;
-      const p=(py*w+px)*4;
-      for(let i=0;i<3;i++)pixels[p+i]=clamp(pixels[p+i]*(1-a)+white[i]*a);
-    }
-    pen+=(gw+3)*scale;
-  }
-}
-function stampWordmark(pixels,width,height,logo) {
-  const scale=width/358;
-  const destW=Math.round(302*scale);
-  const destH=Math.round(destW*logo.height/logo.width);
-  const startX=Math.round((width-destW)/2),startY=Math.round(19*scale);
-  for(let y=0;y<destH;y++) {
-    const sy=Math.min(logo.height-1,Math.floor((y+.5)*logo.height/destH));
-    for(let x=0;x<destW;x++) {
-      const sx=Math.min(logo.width-1,Math.floor((x+.5)*logo.width/destW));
-      const si=(sy*logo.width+sx)*4,alpha=logo.data[si+3]/255;
-      if(alpha===0)continue;
-      const dx=startX+x,dy=startY+y;
-      if(dx<0||dy<0||dx>=width||dy>=height)continue;
-      const di=(dy*width+dx)*4;
-      for(let channel=0;channel<3;channel++)
-        pixels[di+channel]=clamp(pixels[di+channel]*(1-alpha)+logo.data[si+channel]*alpha);
-    }
-  }
-  // Hairline separates the brand from the personalized membership details.
-  const underlineY=Math.round(128*scale),left=Math.round(28*scale);
-  const right=Math.round(330*scale);
-  for(let y=underlineY;y<underlineY+Math.max(1,Math.round(scale));y++) {
-    if(y>=height)break;
-    for(let x=left;x<right;x++){
-      const i=(y*width+x)*4;
-      pixels[i]=clamp(pixels[i]*.55+217*.45);
-      pixels[i+1]=clamp(pixels[i+1]*.55+221*.45);
-      pixels[i+2]=clamp(pixels[i+2]*.55+227*.45);
-    }
-  }
-}
-// Deterministic marble: deep navy and royal-cobalt clouds with thin, soft
-// white veins. The center remains dark so member text and the native QR
-// remain legible. No network image dependencies or additional fonts.
-// ALIGN's exact user-approved marble image already contains the original
-// centered chrome logo and tagline. Do NOT draw or replace that branding.
-// Each .pkpass gets its own member name, savings and private photo.
-let approvedBackground=null;
-function getApprovedBackground(){
-  if(!approvedBackground){
+const clamp=(v)=>Math.max(0,Math.min(255,Math.round(v)));
+let baseImage,serifMask;
+function approvedImage() {
+  if(!baseImage) {
     const bytes=Buffer.from(approvedBlackMarbleJpegB64,"base64");
-    approvedBackground=jpeg.decode(bytes,{useTArray:true,formatAsRGBA:true,
-      tolerantDecoding:false,maxResolutionInMP:1,maxMemoryUsageInMB:12});
-    if(approvedBackground.width!==358||approvedBackground.height!==448)
-      throw new Error("Approved Wallet background has invalid dimensions");
+    const image=jpeg.decode(bytes,{useTArray:true,formatAsRGBA:true,
+      tolerantDecoding:false,maxResolutionInMP:3,maxMemoryUsageInMB:24});
+    if(image.width!==358||image.height!==448)throw new Error("Invalid approved ALIGN image");
+    baseImage=image;
   }
-  return approvedBackground;
+  return baseImage;
 }
-function drawBlackPoster(w,h,portrait,member) {
-  const original=getApprovedBackground();
-  const pixels=Buffer.alloc(w*h*4);
-  const scale=w/358;
-  // Copy the actual uploaded image, not procedural blue/black marble.
-  for(let y=0;y<h;y++){
-    const sy=Math.min(447,Math.floor(y/scale));
-    for(let x=0;x<w;x++){
-      const sx=Math.min(357,Math.floor(x/scale));
-      const i=(y*w+x)*4,j=(sy*358+sx)*4;
-      pixels[i]=original.data[j];
-      pixels[i+1]=original.data[j+1];
-      pixels[i+2]=original.data[j+2];
-      pixels[i+3]=255;
-    }
+async function serifGlyphs() {
+  if(!serifMask)serifMask=(async()=>{
+    const packed=Buffer.from(memberSerifGlyphsB64,"base64");
+    const unzip=new DecompressionStream("deflate");
+    const writer=unzip.writable.getWriter(),pending=new Response(unzip.readable).arrayBuffer();
+    await writer.write(packed);await writer.close();
+    const pixels=Buffer.from(await pending);
+    if(pixels.length!==memberSerifAlphabet.length*memberSerifWidth*memberSerifHeight)
+      throw new Error("Invalid ALIGN serif glyph atlas");
+    return pixels;
+  })();
+  return serifMask;
+}
+function stampPortrait(target,w,h,portrait,scale) {
+  if(!portrait)return;
+  const {width:pw,height:ph,data}=portrait;
+  if(!pw||!ph||pw>1800||ph>1800||data?.length!==pw*ph*4)return;
+  const side=Math.round(65*scale);
+  const x0=Math.round(263*scale),y0=Math.round(137*scale);
+  const crop=Math.min(pw,ph),sx0=Math.floor((pw-crop)/2),sy0=Math.floor((ph-crop)/2);
+  for(let y=0;y<side;y++)for(let x=0;x<side;x++){
+    const dx=x0+x,dy=y0+y;if(dx>=w||dy>=h)continue;
+    const px=sx0+Math.min(crop-1,Math.floor((x+.5)*crop/side));
+    const py=sy0+Math.min(crop-1,Math.floor((y+.5)*crop/side));
+    const source=(py*pw+px)*4,at=(dy*w+dx)*4;
+    for(let c=0;c<3;c++)target[at+c]=data[source+c];
   }
-  if(portrait){
-    const {width:pw,height:ph,data}=portrait;
-    if(pw>0&&ph>0&&pw<=1800&&ph<=1800&&data?.length===pw*ph*4){
-      const side=Math.round(68*scale),x0=Math.round(261*scale),y0=Math.round(145*scale);
-      const crop=Math.min(pw,ph),ox=Math.floor((pw-crop)/2),oy=Math.floor((ph-crop)/2);
-      // The user requested no frames around the member's photo.
-      for(let y=0;y<side;y++)for(let x=0;x<side;x++){
-        const xx=x0+x,yy=y0+y,srcX=ox+Math.min(crop-1,Math.floor(x*crop/side)),
-          srcY=oy+Math.min(crop-1,Math.floor(y*crop/side));
-        const p=(yy*w+xx)*4,q=(srcY*pw+srcX)*4;
-        pixels[p]=data[q];pixels[p+1]=data[q+1];pixels[p+2]=data[q+2];
+}
+function paintSerif(target,w,h,atlas,value,x,y,size,maxWidth) {
+  let chars=String(value??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .toUpperCase().replace(/[^A-Z0-9$.,\-/ :]/g," ").trim();
+  if(!chars)return;
+  const scaling=w/358;
+  const advance=12.5;
+  const fontScale=Math.min(size/18,maxWidth/(chars.length*advance));
+  const glyphW=Math.max(1,Math.round(memberSerifWidth*fontScale*scaling));
+  const glyphH=Math.max(1,Math.round(memberSerifHeight*fontScale*scaling));
+  const step=advance*fontScale*scaling;
+  for(let i=0;i<chars.length;i++) {
+    const idx=memberSerifAlphabet.indexOf(chars[i]);
+    if(idx<0)continue;
+    const x0=Math.round(x*scaling+i*step),y0=Math.round(y*scaling);
+    for(let gy=0;gy<glyphH;gy++) {
+      const sy=Math.min(memberSerifHeight-1,Math.floor((gy+.5)*memberSerifHeight/glyphH));
+      const dy=y0+gy;if(dy<0||dy>=h)continue;
+      for(let gx=0;gx<glyphW;gx++) {
+        const sx=Math.min(memberSerifWidth-1,Math.floor((gx+.5)*memberSerifWidth/glyphW));
+        const dx=x0+gx;if(dx<0||dx>=w)continue;
+        const a=atlas[idx*memberSerifWidth*memberSerifHeight+sy*memberSerifWidth+sx]/255;
+        if(a===0)continue;
+        const offset=(dy*w+dx)*4;
+        for(let c=0;c<3;c++)target[offset+c]=clamp(
+          target[offset+c]*(1-a)+(c===0?225:c===1?227:232)*a);
       }
     }
   }
-  // Keep every overlay ABOVE the real iPhone's native QR region, which starts
-  // around artwork y=216. Never paint membership, a duplicate logo or a QR.
-  drawMemberText(pixels,w,h,member?.name||"",28,149,13,218);
-  drawMemberText(pixels,w,h,member?.savings||"",28,183,16,225);
+}
+function render(w,h,photo,name,savings,atlas) {
+  const original=approvedImage(),scale=w/358;
+  const pixels=Buffer.alloc(w*h*4);
+  // Resize the SAME supplied image; keep its wordmark and marble unmodified.
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++) {
+    const sx=Math.min(357,Math.floor(x/scale)),sy=Math.min(447,Math.floor(y/scale));
+    const from=(sy*358+sx)*4,to=(y*w+x)*4;
+    pixels[to]=original.data[from];pixels[to+1]=original.data[from+1];
+    pixels[to+2]=original.data[from+2];pixels[to+3]=255;
+  }
+  stampPortrait(pixels,w,h,photo,scale);
+  // QR begins below this upper block on the supported Poster display.
+  // No membership, code, extra logo, labels or white photo frame.
+  paintSerif(pixels,w,h,atlas,name,26,151,17,213);
+  paintSerif(pixels,w,h,atlas,savings,26,181,19,210);
   return pixels;
 }
 export async function blackWalletArtwork({photo=null,name="",savings=""}={}) {
-  const member={name,savings};
+  const atlas=await serifGlyphs();
   return {
-    normal:await encodePng(358,448,drawBlackPoster(358,448,photo,member)),
-    retina:await encodePng(716,896,drawBlackPoster(716,896,photo,member))
+    normal:await encodePng(358,448,render(358,448,photo,name,savings,atlas)),
+    retina:await encodePng(716,896,render(716,896,photo,name,savings,atlas))
   };
 }
