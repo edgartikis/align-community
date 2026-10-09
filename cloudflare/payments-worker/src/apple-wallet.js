@@ -226,8 +226,8 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   pass.backFields.push({key:"verification",label:"VALIDACIÓN",value:"El aliado debe escanear el QR y comprobar fotografía, identidad y vigencia en el sistema ALIGN. Un pase guardado no garantiza membresía activa."});
   pass.backFields.push({key:"issuerContact",label:"CONTACTO",value:"https://alignmembers.com.mx"});
 
-  // Poster Generic renders the approved Black Edition hierarchy in artwork.
-  // iOS 27+ uses this with only the QR native on the front; the existing
+  // Poster Generic renders the approved Royal Marble artwork with real member data.
+  // Compatible iOS versions add only the native QR on the front; the existing
   // Generic pass remains the fallback for earlier devices.
   const poster=new PassType("posterGeneric");
   poster.backFields.push({key:"posterMember",label:"SOCIO",value:safe(member.name,90)});
@@ -270,6 +270,7 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   const posterArtwork=await blackWalletArtwork({
     photo:posterPhoto,
     name:safe(member.name,90),
+    membership:safe(member.level,48),
     savings:formatSavingsMXN(member.savings)
   });
   pass.addBuffer("artwork.png",posterArtwork.normal);
