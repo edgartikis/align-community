@@ -59,7 +59,7 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.equal(properties.posterGeneric.headerFields[0].value,"ALIGN-TEST-0001");
     assert.equal(properties.posterGeneric.primaryFields[0].value,"SOCIO PRUEBA ALIGN");
     assert.equal(properties.posterGeneric.primaryFields[1].value,"The Brotherhood");
-    assert.match(properties.posterGeneric.primaryFields[2].value,/\\$0(?:\\.00)? MXN/);
+    assert.equal(properties.posterGeneric.primaryFields[2].value,"$0 MXN");
     for(const [asset,width,height] of [["artwork.png",358,448],["artwork@2x.png",716,896]]) {
       const bytes=execFileSync("unzip",["-p",pkpass,asset]);
       assert.equal(bytes.subarray(0,8).toString("hex"),"89504e470d0a1a0a");
