@@ -1,5 +1,5 @@
 // ALIGN Premium Black Edition: actual ram emblem + metallic-blue corner.
-// Poster image includes only branded art, member name, savings and private photo.
+// Poster image includes only branded art, member name and savings.
 // QR is supplied natively by Wallet and must never be painted or obscured.
 import { Buffer } from "node:buffer";
 import { ramB64,ramWidth,ramHeight } from "./wallet-borrego-asset.js";
@@ -164,25 +164,7 @@ function drawText(out,w,h,font,value,x,baseline,size,maxWidth,align="left",color
     cursor+=advance*fontScale+letterSpace;
   }
 }
-function stampPortrait(out,w,h,portrait) {
-  if(!portrait)return;
-  const {width:pw,height:ph,data}=portrait;
-  if(!pw||!ph||pw>1800||ph>1800||data?.length!==pw*ph*4)return;
-  const scale=w/716,side=Math.round(82*scale);
-  const x0=Math.round(580*scale),y0=Math.round(313*scale);
-  const crop=Math.min(pw,ph),ox=Math.floor((pw-crop)/2),oy=Math.floor((ph-crop)/2);
-  for(let py=0;py<side;py++)for(let px=0;px<side;px++) {
-    const xx=x0+px,yy=y0+py;if(xx>=w||yy>=h)continue;
-    const round=5*scale;
-    const dx=px-Math.max(round,Math.min(side-round,px)),dy=py-Math.max(round,Math.min(side-round,py));
-    if(Math.hypot(dx,dy)>round)continue;
-    const sx=ox+Math.min(crop-1,Math.floor((px+.5)*crop/side));
-    const sy=oy+Math.min(crop-1,Math.floor((py+.5)*crop/side));
-    const from=(sy*pw+sx)*4,to=(yy*w+xx)*4;
-    for(let channel=0;channel<3;channel++)out[to+channel]=data[from+channel];
-  }
-}
-function render(w,h,photo,name,savings,assets) {
+function render(w,h,name,savings,assets) {
   const pixels=premiumBackdrop(w,h),font=assets.font;
   paintOfficialRam(pixels,w,h,assets.ram);
   // Static upper branding that imitates the approved physical-card hierarchy.
@@ -191,20 +173,19 @@ function render(w,h,photo,name,savings,assets) {
   for(let y=Math.round(286*w/716);y<Math.round(289*w/716);y++)
     for(let x=Math.round(327*w/716);x<Math.round(390*w/716);x++)
       paint(pixels,w,x,y,29,160,246);
-  // Only user-specific name, savings and portrait precede the reserved QR area.
-  drawText(pixels,w,h,font,name,54,344,32,505,"left",[234,236,240],0.35);
+  // Only the member name and saved amount precede the reserved native-QR area.
+  drawText(pixels,w,h,font,name,54,344,32,608,"left",[234,236,240],0.35);
   drawText(pixels,w,h,font,"AHORRADO",56,380,18,213,"left",[158,180,207],0.85);
   drawText(pixels,w,h,font,savings,54,418,30,415,"left",[236,238,243],0.15);
-  stampPortrait(pixels,w,h,photo);
   // Bottom branding stays below the native QR. No duplicate member ID.
   drawText(pixels,w,h,font,"BELONG TO SOMETHING",45,827,18,445,"left",[191,201,215],0.8);
   drawText(pixels,w,h,font,"ALIGN",657,842,27,180,"right",[226,233,244],1.0);
   return pixels;
 }
-export async function blackWalletArtwork({photo=null,name="",savings=""}={}) {
+export async function blackWalletArtwork({name="",savings=""}={}) {
   const assets=await loadAssets();
   return {
-    normal:await encodePng(358,448,render(358,448,photo,name,savings,assets)),
-    retina:await encodePng(716,896,render(716,896,photo,name,savings,assets))
+    normal:await encodePng(358,448,render(358,448,name,savings,assets)),
+    retina:await encodePng(716,896,render(716,896,name,savings,assets))
   };
 }
