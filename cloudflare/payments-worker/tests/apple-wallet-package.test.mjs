@@ -62,15 +62,17 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
 
     assert.equal(properties.storeCard,undefined);
     assert.equal(properties.logoText,undefined,"Wordmark must not be duplicated");
+    // The iPhone Generic display emphasizes the primary savings field.
+    // Names and tiers stay in smaller secondary text, with the QR below.
     assert.equal(properties.generic.primaryFields.length,1);
-    assert.equal(properties.generic.primaryFields[0].label,"SOCIO");
-    assert.equal(properties.generic.primaryFields[0].value,"SOCIO PRUEBA ALIGN");
-    assert.equal(properties.generic.secondaryFields.length,1);
-    assert.equal(properties.generic.secondaryFields[0].label,"MEMBRESÍA");
-    assert.equal(properties.generic.secondaryFields[0].value,"The Brotherhood");
-    assert.equal(properties.generic.auxiliaryFields.length,1);
-    assert.equal(properties.generic.auxiliaryFields[0].label,"AHORRADO");
-    assert.equal(properties.generic.auxiliaryFields[0].value,"$0 MXN");
+    assert.equal(properties.generic.primaryFields[0].label,"AHORRADO");
+    assert.equal(properties.generic.primaryFields[0].value,"$0 MXN");
+    assert.equal(properties.generic.secondaryFields.length,2);
+    assert.equal(properties.generic.secondaryFields[0].label,"SOCIO");
+    assert.equal(properties.generic.secondaryFields[0].value,"SOCIO PRUEBA ALIGN");
+    assert.equal(properties.generic.secondaryFields[1].label,"MEMBRESÍA");
+    assert.equal(properties.generic.secondaryFields[1].value,"The Brotherhood");
+    assert.equal((properties.generic.auxiliaryFields||[]).length,0);
     assert.equal(properties.generic.backFields[0].value,"ALIGN-TEST-0001");
     assert.equal(properties.generic.backFields[1].value,"SOCIO PRUEBA ALIGN");
     assert.equal(properties.barcodes[0].altText,"ALIGN-TEST-0001");
@@ -102,7 +104,7 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.match(filesWithPhoto,/thumbnail.png/);
     assert.match(filesWithPhoto,/thumbnail@2x.png/);
     const propsWithPhoto=JSON.parse(execFileSync("unzip",["-p",pkpass,"pass.json"],{encoding:"utf8"}));
-    assert.match(propsWithPhoto.generic.auxiliaryFields[0].value,/125[.,]50 MXN/);
+    assert.match(propsWithPhoto.generic.primaryFields[0].value,/125[.,]50 MXN/);
 
     // Actual member enrollment sends a private data:image/jpeg;base64 string,
     // not an HTTPS PNG. Confirm Wallet receives correctly encoded PNGs.
@@ -128,8 +130,8 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     const privatePassFields=JSON.parse(execFileSync("unzip",["-p",pkpass,"pass.json"],{encoding:"utf8"}));
     assert.equal(privatePassFields.generic.backFields[0].value,"ALIGN-PRIVATE-002");
     assert.match(privatePassFields.barcodes[0].message,/\/api\/wallet\/verify\//);
-    assert.equal(privatePassFields.generic.secondaryFields[0].value,"The Brotherhood");
-    assert.match(privatePassFields.generic.auxiliaryFields[0].value,/231[.,]75 MXN/);
+    assert.equal(privatePassFields.generic.secondaryFields[1].value,"The Brotherhood");
+    assert.match(privatePassFields.generic.primaryFields[0].value,/231[.,]75 MXN/);
     assert.equal(privatePassFields.barcodes[0].altText,"ALIGN-PRIVATE-002");
     assert.equal(privatePassFields.posterGeneric,undefined);
 
