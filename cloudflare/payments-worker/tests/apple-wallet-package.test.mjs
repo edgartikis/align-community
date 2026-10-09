@@ -110,27 +110,28 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
       "Cobalt blue upper-left diagonal stripe must be visible");
     const black=rgbAt(retinaPixel,716,359,560);
     assert.ok(black.every(c=>c<35),"QR reserve zone must stay dark/empty");
-    // Lower background has a smooth black-to-navy transition, not an abrupt
-    // dead space. A thin silver-blue separator sits below the QR region.
+    // The user's exact reference is near-black with VERY subtle navy.
+    // It must cover the entire bottom, with no bright right-side gradient,
+    // lower cobalt ribbon or abrupt color split between the two halves.
     const upperBand=rgbAt(retinaPixel,716,358,708);
     const lowerBand=rgbAt(retinaPixel,716,358,891);
-    assert.ok(lowerBand[2]>upperBand[2]+20 && lowerBand[2]>lowerBand[0]+25,
-      "Footer background must have a visible but dark sapphire gradient");
+    assert.ok(lowerBand[2]>upperBand[2]+5 && lowerBand[2]<35,
+      "Bottom must transition gently from black into subtle dark navy");
+    assert.ok(lowerBand[2]>=lowerBand[0]+12,
+      "Footer retains a hint of dark blue, not a flat black block");
+    const leftFooter=rgbAt(retinaPixel,716,155,855);
+    const rightFooter=rgbAt(retinaPixel,716,575,855);
+    for(let c=0;c<3;c++)assert.ok(Math.abs(leftFooter[c]-rightFooter[c])<=3,
+      "Left and right halves must share the same subdued dark gradient");
+    assert.ok(Math.max(...rightFooter)<35,
+      "Never reintroduce a bright cobalt ribbon in the lower-right corner");
     const fineRule=rgbAt(retinaPixel,716,200,799);
     const beforeRule=rgbAt(retinaPixel,716,200,792);
     assert.ok(fineRule[2]>beforeRule[2]+7,
-      "Subtle metallic separator should cross the lower artwork safely");
-    // The iPhone bottom section must visually continue the same metallic-blue
-    // geometry as the approved upper corner, while QR reserve stays dark.
-    const lowerRibbon=rgbAt(retinaPixel,716,575,856);
-    const bottomSatin=rgbAt(retinaPixel,716,470,856);
-    assert.ok(lowerRibbon[2]>bottomSatin[2]+35,
-      "Mirrored lower-right metallic cobalt stripe must stand out over satin");
-    assert.ok(lowerRibbon[2]>lowerRibbon[0]+60,
-      "Lower accent must retain ALIGN's metallic-blue color");
+      "Preserve the very subtle existing metallic separator");
     const qrUnchanged=rgbAt(retinaPixel,716,359,560);
     assert.deepEqual(qrUnchanged,black,
-      "The native-QR clearance region must remain untouched");
+      "QR clearance and upper artwork must remain untouched");
     // Different resolutions have separately rendered antialiased pixels.
     assert.equal(retinaPixel.length,896*(716*4+1));
     assert.equal(basePixel.length,448*(358*4+1));
