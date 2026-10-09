@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { inflateSync } from "node:zlib";
 import { producePass } from "../src/apple-wallet.js";
+import { blackWalletArtwork } from "../src/wallet-black.js";
 import jpeg from "jpeg-js";
 
 // Uses a temporary, intentionally untrusted certificate. This verifies package
@@ -86,9 +87,28 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     for(let yy=20;yy<123;yy+=2) for(let xx=28;xx<330;xx+=2)
       if(rgbAt(basePixel,xx,yy).every(c=>c>95))brightLogoPixels++;
     assert.ok(brightLogoPixels>300,"Prominent original silver ALIGN wordmark must span the top");
-    assert.ok(rgbAt(basePixel,90,173).every(c=>c>45),"Silver divider is visible between sections");
+    assert.ok(rgbAt(basePixel,90,128).every(c=>c>75),
+      "Thin silver divider separates centered ALIGN logo from member identity");
+    // Marble must be genuinely royal-blue / navy, not the previous black
+    // edition with only blue-tinted fields. Sample several background areas.
+    const samples=[[55,320],[105,315],[175,305],[265,320],[300,405]];
+    let royalBlueSamples=0;
+    for(const [x,y] of samples) {
+      const [red,green,blue]=rgbAt(basePixel,x,y);
+      if(blue>green+25 && green>red+9 && blue>65) royalBlueSamples++;
+    }
+    assert.ok(royalBlueSamples>=4,
+      "Poster artwork should show substantial blue royal-marble background");
     assert.ok(!names.includes("primaryLogo.png"));
 
+    // Different membership tiers must change the PERSONALIZED artwork, not
+    // merely a field on the reverse. Keep the native QR completely separate.
+    const otherTier=await blackWalletArtwork({
+      name:"SOCIO PRUEBA ALIGN",membership:"Girls Club",savings:"$0 MXN"
+    });
+    assert.notDeepEqual(otherTier.normal,imageBytes,
+      "Poster image must contain each member's membership tier");
+    assert.equal(properties.barcodes[0].format,"PKBarcodeFormatQR");
     assert.equal(properties.storeCard,undefined);
     assert.equal(properties.logoText,undefined,"Wordmark must not be duplicated");
     // The iPhone Generic display emphasizes the primary savings field.
