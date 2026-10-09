@@ -45,7 +45,7 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.equal(result.subarray(0, 2).toString(), "PK");
     writeFileSync(pkpass, result);
     const names = execFileSync("unzip", ["-Z", "-1", pkpass], { encoding: "utf8" }).trim().split("\n");
-    for (const file of ["pass.json", "signature", "manifest.json", "icon.png", "icon@2x.png", "logo.png", "logo@2x.png", "primaryLogo.png", "primaryLogo@2x.png", "artwork.png", "artwork@2x.png"]) {
+    for (const file of ["pass.json", "signature", "manifest.json", "icon.png", "icon@2x.png", "logo.png", "logo@2x.png", "artwork.png", "artwork@2x.png"]) {
       assert.ok(names.includes(file), "Missing Wallet file: " + file);
     }
     const properties = JSON.parse(execFileSync("unzip", ["-p", pkpass, "pass.json"], { encoding: "utf8" }));
@@ -60,7 +60,10 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.equal((properties.posterGeneric.headerFields||[]).length,0,"QR altText displays code without cluttering the header");
     assert.equal(properties.posterGeneric.primaryFields[0].value,"SOCIO PRUEBA ALIGN");
     assert.equal(properties.posterGeneric.primaryFields[1].value,"The Brotherhood");
-    assert.equal(properties.posterGeneric.primaryFields[2].value,"$0 MXN");
+    assert.equal(properties.posterGeneric.primaryFields.length,2);
+    assert.equal(properties.posterGeneric.footerFields[0].label,"AHORRADO");
+    assert.equal(properties.posterGeneric.footerFields[0].value,"$0 MXN");
+    assert.ok(!names.includes("primaryLogo.png"),"No automatic duplicate logo in Poster Generic");
     for(const [asset,width,height] of [["artwork.png",358,448],["artwork@2x.png",716,896]]) {
       const bytes=execFileSync("unzip",["-p",pkpass,asset]);
       assert.equal(bytes.subarray(0,8).toString("hex"),"89504e470d0a1a0a");
@@ -81,6 +84,17 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
         assert.ok(backdrop.every(c=>c<30),"Black Edition must be near-black, not blue");
         const border=pixel(179,14);
         assert.ok(border.every(c=>c>95),"Silver hairline should be visible");
+        let visibleLogoPixels=0;
+        for(let y=25;y<126;y+=2){
+          for(let x=31;x<327;x+=2){
+            const channels=pixel(x,y);
+            if(channels.every(c=>c>110))visibleLogoPixels++;
+          }
+        }
+        assert.ok(visibleLogoPixels>500,
+          "Original ALIGN wordmark must be genuinely large and visible across the top artwork");
+        const divider=pixel(160,142);
+        assert.ok(divider.every(c=>c>65),"Premium silver header divider should be visible");
       }
     }
 
@@ -149,7 +163,7 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.equal(privatePassFields.generic.backFields[0].value,"ALIGN-PRIVATE-002");
     assert.match(privatePassFields.barcodes[0].message,/\/api\/wallet\/verify\//);
     assert.equal(privatePassFields.posterGeneric.primaryFields[1].value,"The Brotherhood");
-    assert.match(privatePassFields.posterGeneric.primaryFields[2].value,/231[.,]75 MXN/);
+    assert.match(privatePassFields.posterGeneric.footerFields[0].value,/231[.,]75 MXN/);
     assert.match(execFileSync("unzip",["-Z","-1",pkpass],{encoding:"utf8"}),/artwork@2x.png/);
     assert.equal(privatePassFields.posterGeneric.backFields[0].value,"ALIGN-PRIVATE-002");
 
