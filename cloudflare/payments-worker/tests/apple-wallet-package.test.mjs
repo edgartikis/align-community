@@ -111,30 +111,36 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
       "Cobalt blue upper-left diagonal stripe must be visible");
     const black=rgbAt(retinaPixel,716,359,560);
     assert.ok(black.every(c=>c<35),"QR reserve zone must stay dark/empty");
-    // The user's exact reference is near-black with VERY subtle navy.
-    // It must cover the entire bottom, with no bright right-side gradient,
-    // lower cobalt ribbon or abrupt color split between the two halves.
-    const upperBand=rgbAt(retinaPixel,716,358,708);
-    const lowerBand=rgbAt(retinaPixel,716,358,891);
-    assert.ok(lowerBand[2]>upperBand[2]+5 && lowerBand[2]<35,
-      "Bottom must transition gently from black into subtle dark navy");
-    assert.ok(lowerBand[2]>=lowerBand[0]+12,
-      "Footer retains a hint of dark blue, not a flat black block");
-    const leftFooter=rgbAt(retinaPixel,716,155,855);
-    const rightFooter=rgbAt(retinaPixel,716,575,855);
-    for(let c=0;c<3;c++)assert.ok(Math.abs(leftFooter[c]-rightFooter[c])<=3,
-      "Left and right halves must share the same subdued dark gradient");
-    assert.ok(Math.max(...rightFooter)<35,
-      "Never reintroduce a bright cobalt ribbon in the lower-right corner");
-    // Even when Poster Generic draws the footer with a native material,
-    // its base tone must blend into the bottom artwork without a split band.
+    // No more horizontal boundary between image and iOS Poster material:
+    // the image is feathered to the SAME RGB specified in pass.json.
     const nativeTint=[5,10,25];
     for (const x of [80,185,358,530,635]) {
-      const p=rgbAt(retinaPixel,716,x,891);
+      const nearJoin=rgbAt(retinaPixel,716,x,602);
       for(let channel=0;channel<3;channel++)
-        assert.ok(Math.abs(p[channel]-nativeTint[channel])<=3,
-          "Entire bottom edge should blend into Apple's native navy footer");
+        assert.ok(Math.abs(nearJoin[channel]-nativeTint[channel])<=1,
+          "Artwork behind native footer must be pixel-matched across its width");
+      for (const y of [591,599,608,615]) {
+        const pixel=rgbAt(retinaPixel,716,x,y);
+        for(let c=0;c<3;c++)
+          assert.ok(Math.abs(pixel[c]-nearJoin[c])<=3,
+            "No sudden color step where Apple Wallet paints its bottom strip");
+      }
     }
+    // Metallic navy is a smooth diagonal light sweep, not a solid rectangular
+    // panel: underneath the system overlay it remains richer to the right.
+    const leftFooter=rgbAt(retinaPixel,716,155,851);
+    const centerFooter=rgbAt(retinaPixel,716,358,851);
+    const rightFooter=rgbAt(retinaPixel,716,575,851);
+    assert.ok(leftFooter[2]<centerFooter[2] && centerFooter[2]<rightFooter[2],
+      "Full-width bottom satin must progress smoothly from navy to cobalt");
+    assert.ok(rightFooter[2]-leftFooter[2]>28 && rightFooter[2]<95,
+      "Bottom-right blue glow must be elegant, not neon or flat");
+    const upperRight=rgbAt(retinaPixel,716,630,479);
+    const upperLeft=rgbAt(retinaPixel,716,75,479);
+    assert.ok(upperRight[2]>upperLeft[2]+8,
+      "Right-side diagonal and blue atmosphere continue naturally toward the QR");
+    // Validate that the signed backgroundColor shares the exact join tone.
+    assert.equal(properties.backgroundColor,`rgb(${nativeTint.join(",")})`);
     const fineRule=rgbAt(retinaPixel,716,200,799);
     const beforeRule=rgbAt(retinaPixel,716,200,792);
     assert.ok(fineRule[2]>beforeRule[2]+7,
