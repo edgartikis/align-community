@@ -217,9 +217,6 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   pass.secondaryFields.push({
     key:"name",label:"SOCIO",value:safe(member.name,70)
   });
-  pass.secondaryFields.push({
-    key:"plan",label:"MEMBRESÍA",value:safe(member.level,48)
-  });
   pass.backFields.push({key:"code",label:"CÓDIGO DE SOCIO",value:safe(member.memberCode,60)});
   pass.backFields.push({key:"fullName",label:"NOMBRE COMPLETO",value:safe(member.name,90)});
   pass.backFields.push({key:"validity",label:"VIGENCIA",value:safe(period(member).until,40)});
@@ -240,7 +237,7 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   pass.types.push(poster);
 
   // Stable, non-secret, opaque pointer. The verifier reads CURRENT KV state.
-  pass.setBarcodes({format:"PKBarcodeFormatQR",message:walletQrUrl(requestUrl,id),messageEncoding:"iso-8859-1",altText:safe(member.memberCode,60)});
+  pass.setBarcodes({format:"PKBarcodeFormatQR",message:walletQrUrl(requestUrl,id),messageEncoding:"iso-8859-1",altText:""});
   // Public brand assets are bundled at build time; no runtime external requests.
   // Replace with correctly resized Apple Wallet imagery before production launch.
   onStage("artwork_icon");
@@ -270,7 +267,6 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   const posterArtwork=await blackWalletArtwork({
     photo:posterPhoto,
     name:safe(member.name,90),
-    membership:safe(member.level,48),
     savings:formatSavingsMXN(member.savings)
   });
   pass.addBuffer("artwork.png",posterArtwork.normal);
