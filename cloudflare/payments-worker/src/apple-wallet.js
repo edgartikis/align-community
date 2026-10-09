@@ -1,6 +1,7 @@
 // ALIGN Apple Wallet - isolated prototype. Does not touch checkout/webhooks.
 // Enable only after credentials, artwork and ally-scanner end-to-end tests.
 import { PKPass } from "passkit-generator";
+import jpeg from "jpeg-js";
 import { Buffer } from "node:buffer";
 import { walletIconB64, walletLogoB64 } from "./wallet-artwork-data.js";
 
@@ -90,6 +91,78 @@ const pngSize = (bytes) => {
   if (width<60 || height<90 || width>1600 || height>1600) throw new Error("Invalid member photo dimensions");
   return {width,height};
 };
+// Member photos from the existing ALIGN capture flow are private inline JPEGs.
+// Convert directly inside the Worker: never publish or fetch a member image URL.
+const JPEG_PREFIX="data:image/jpeg;base64,";
+function pngCrc32(bytes) {
+  let c=0xffffffff;
+  for (let i=0;i<bytes.length;i++) {
+    c^=bytes[i];
+    for (let b=0;b<8;b++) c=(c>>>1)^((c&1)?0xedb88320:0);
+  }
+  return (c^0xffffffff)>>>0;
+}
+function pngChunk(name,data) {
+  const type=Buffer.from(name,"ascii");
+  const output=Buffer.alloc(12+data.length);
+  output.writeUInt32BE(data.length,0);
+  type.copy(output,4);
+  Buffer.from(data).copy(output,8);
+  output.writeUInt32BE(pngCrc32(output.subarray(4,8+data.length)),8+data.length);
+  return output;
+}
+async function encodeWalletThumbnail(source,size) {
+  const {width,height,data}=source;
+  if (!width || !height || width>1800 || height>1800 || data.length!==width*height*4) {
+    throw new Error("Invalid JPEG photo dimensions");
+  }
+  const square=Math.min(width,height);
+  const left=Math.floor((width-square)/2),top=Math.floor((height-square)/2);
+  const scanline=Buffer.alloc(size*(size*4+1));
+  for (let y=0;y<size;y++) {
+    const sourceY=top+Math.min(square-1,Math.floor((y+.5)*square/size));
+    const destRow=y*(size*4+1);
+    scanline[destRow]=0; // PNG filter None
+    for (let x=0;x<size;x++) {
+      const sourceX=left+Math.min(square-1,Math.floor((x+.5)*square/size));
+      const index=(sourceY*width+sourceX)*4;
+      for (let b=0;b<4;b++) scanline[destRow+1+x*4+b]=data[index+b];
+    }
+  }
+  const compressor=new CompressionStream("deflate");
+  const writer=compressor.writable.getWriter();
+  const compressedPromise=new Response(compressor.readable).arrayBuffer();
+  await writer.write(scanline);
+  await writer.close();
+  const compressed=Buffer.from(await compressedPromise);
+  const ihdr=Buffer.alloc(13);
+  ihdr.writeUInt32BE(size,0);
+  ihdr.writeUInt32BE(size,4);
+  ihdr[8]=8;  // bit depth
+  ihdr[9]=6;  // RGBA
+  return Buffer.concat([
+    Buffer.from("89504e470d0a1a0a","hex"),
+    pngChunk("IHDR",ihdr),
+    pngChunk("IDAT",compressed),
+    pngChunk("IEND",Buffer.alloc(0))
+  ]);
+}
+async function inlineMemberPhoto(photoUrl) {
+  if (!photoUrl.startsWith(JPEG_PREFIX) || photoUrl.length>180000 ||
+      !/^data:image\\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(photoUrl)) {
+    throw new Error("Invalid private member JPEG photo");
+  }
+  const jpegBytes=Buffer.from(photoUrl.slice(JPEG_PREFIX.length),"base64");
+  if (jpegBytes.length<100 || jpegBytes.length>120000) throw new Error("Private member photo too large");
+  const decoded=jpeg.decode(jpegBytes,{
+    useTArray:true,formatAsRGBA:true,tolerantDecoding:false,
+    maxResolutionInMP:3,maxMemoryUsageInMB:24
+  });
+  return {
+    normal:await encodeWalletThumbnail(decoded,90),
+    retina:await encodeWalletThumbnail(decoded,180)
+  };
+}
 async function trustedMemberThumbnail(photoUrl) {
   const u=new URL(photoUrl);
   // Photos must be publicly viewable PNGs on an ALIGN-controlled domain.
@@ -153,9 +226,14 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   pass.addBuffer("logo@2x.png",logo);
   if (member.photoUrl && !isPlaceholderPhoto(member.photoUrl)) {
     onStage("member_photo");
-    const thumbnail=await trustedMemberThumbnail(member.photoUrl);
-    pass.addBuffer("thumbnail.png",thumbnail);
-    pass.addBuffer("thumbnail@2x.png",thumbnail);
+    const photo=member.photoUrl.startsWith("data:")
+      ? await inlineMemberPhoto(member.photoUrl)
+      : await (async()=>{
+          const image=await trustedMemberThumbnail(member.photoUrl);
+          return {normal:image,retina:image};
+        })();
+    pass.addBuffer("thumbnail.png",photo.normal);
+    pass.addBuffer("thumbnail@2x.png",photo.retina);
   }
   onStage("signature");
   return pass.getAsBuffer();
