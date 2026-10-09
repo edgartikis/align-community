@@ -55,9 +55,19 @@ function drawBlackPoster(w,h,portrait) {
       const edgeShade=Math.min(2.5,nearEdge*7);
       const black=clamp(5+sheen+mid+edgeShade);
       const p=(y*w+x)*4;
-      pixels[p]=black;
-      pixels[p+1]=black;
-      pixels[p+2]=clamp(black+1);
+      // Fine satin-silver rounded outline like ALIGN's approved Black Edition.
+      // Keep it faint so native Wallet text and the QR remain fully legible.
+      const margin=14*scale,radius=20*scale;
+      const halfW=w/2-margin,halfH=h/2-margin;
+      const px=Math.abs(x-w/2)-(halfW-radius);
+      const py=Math.abs(y-h/2)-(halfH-radius);
+      const signedDistance=Math.hypot(Math.max(px,0),Math.max(py,0))+
+        Math.min(Math.max(px,py),0)-radius;
+      const outline=Math.max(0,1-Math.abs(signedDistance)/(1.0*scale));
+      const silver=outline*.55;
+      pixels[p]=clamp(black*(1-silver)+217*silver);
+      pixels[p+1]=clamp(black*(1-silver)+221*silver);
+      pixels[p+2]=clamp((black+1)*(1-silver)+227*silver);
       pixels[p+3]=255;
     }
   }
