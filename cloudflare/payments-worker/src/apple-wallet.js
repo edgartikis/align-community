@@ -1,9 +1,10 @@
 // ALIGN Apple Wallet - isolated prototype. Does not touch checkout/webhooks.
 // Enable only after credentials, artwork and ally-scanner end-to-end tests.
-import { PKPass } from "passkit-generator";
+import { PKPass, PassType } from "passkit-generator";
 import jpeg from "jpeg-js";
 import { Buffer } from "node:buffer";
 import { walletIconB64, walletLogoB64 } from "./wallet-artwork-data.js";
+import { marbleWalletArtwork } from "./wallet-marble.js";
 
 const API_HOST = "api.alignmembers.com.mx";
 const ID = "pass.mx.com.alignmembers.membership";
@@ -160,7 +161,8 @@ async function inlineMemberPhoto(photoUrl) {
   });
   return {
     normal:await encodeWalletThumbnail(decoded,90),
-    retina:await encodeWalletThumbnail(decoded,180)
+    retina:await encodeWalletThumbnail(decoded,180),
+    source:decoded
   };
 }
 async function trustedMemberThumbnail(photoUrl) {
@@ -196,9 +198,9 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
     organizationName:"ALIGN Membership",
     description:"Membresía ALIGN",
     // ALIGN's wordmark image already contains the brand name.
-    foregroundColor:"rgb(218,224,234)",
-    backgroundColor:"rgb(14,55,147)", // ALIGN royal blue
-    labelColor:"rgb(189,200,217)" // soft silver
+    foregroundColor:"rgb(217,221,227)", // ALIGN silver
+    backgroundColor:"rgb(15,76,222)", // royal blue generic fallback
+    labelColor:"rgb(217,221,227)"
   });
   pass.type="generic";
   // The amount is short, so it won't dominate or truncate the member name.
@@ -212,6 +214,18 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   pass.backFields.push({key:"code",label:"CÓDIGO DE SOCIO",value:safe(member.memberCode,60)});
   pass.backFields.push({key:"validity",label:"VIGENCIA",value:safe(period(member).until,40)});
   pass.backFields.push({key:"verification",label:"VALIDACIÓN",value:"El aliado debe escanear el QR y comprobar fotografía, identidad y vigencia en el sistema ALIGN. Un pase guardado no garantiza membresía activa."});
+  // iOS 27+ supports native posterGeneric with full artwork. iOS 26 and older
+  // continue to use the same Generic pass with a real member thumbnail + QR.
+  // Field keys must be distinct across styles in passkit-generator.
+  const poster=new PassType("posterGeneric");
+  poster.headerFields.push({key:"posterCode",label:"CÓDIGO",value:safe(member.memberCode,48)});
+  poster.primaryFields.push({key:"posterName",label:"SOCIO",value:safe(member.name,48)});
+  poster.primaryFields.push({key:"posterPlan",label:"MEMBRESÍA",value:safe(member.level,35)});
+  poster.primaryFields.push({key:"posterSavings",label:"AHORRADO",value:formatSavingsMXN(member.savings)});
+  poster.backFields.push({key:"posterVerification",label:"VERIFICACIÓN",value:"Presenta tu QR para validar identidad y membresía vigente. El pase por sí solo no prueba vigencia."});
+  poster.backFields.push({key:"posterContact",label:"CONTACTO",value:"https://alignmembers.com.mx"});
+  pass.types.push(poster);
+
   // Stable, non-secret, opaque pointer. The verifier reads CURRENT KV state.
   pass.setBarcodes({format:"PKBarcodeFormatQR",message:walletQrUrl(requestUrl,id),messageEncoding:"iso-8859-1",altText:safe(member.memberCode,60)});
   // Public brand assets are bundled at build time; no runtime external requests.
@@ -224,6 +238,9 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   pass.addBuffer("icon@2x.png",icon);
   pass.addBuffer("logo.png",logo);
   pass.addBuffer("logo@2x.png",logo);
+  pass.addBuffer("primaryLogo.png",logo);
+  pass.addBuffer("primaryLogo@2x.png",logo);
+  let posterPhoto=null;
   if (member.photoUrl && !isPlaceholderPhoto(member.photoUrl)) {
     onStage("member_photo");
     const photo=member.photoUrl.startsWith("data:")
@@ -232,9 +249,14 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
           const image=await trustedMemberThumbnail(member.photoUrl);
           return {normal:image,retina:image};
         })();
+    posterPhoto=photo.source||null;
     pass.addBuffer("thumbnail.png",photo.normal);
     pass.addBuffer("thumbnail@2x.png",photo.retina);
   }
+  onStage("artwork_marble");
+  const artwork=await marbleWalletArtwork(posterPhoto);
+  pass.addBuffer("artwork.png",artwork.normal);
+  pass.addBuffer("artwork@2x.png",artwork.retina);
   onStage("signature");
   return pass.getAsBuffer();
 }
