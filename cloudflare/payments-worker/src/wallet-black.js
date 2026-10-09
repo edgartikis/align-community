@@ -74,7 +74,7 @@ function premiumBackdrop(w,h) {
       const dark=7.5+2.2*(1-yy/896)+1.1*Math.sin(xx*.009+yy*.004);
       let r=dark,g=dark+1.5,b=dark+3;
       // Very subtle black-on-black diagonal satin panel.
-      if(xx>853-yy*.63){r+=6;g+=7;b+=10;}
+      if(yy<602 && xx>853-yy*.63){r+=6;g+=7;b+=10;}
       // Metallic cobalt diagonal accent in upper left.
       if(yy<=216) {
         const factor=1-yy/216,left=130*factor,right=208*factor;
@@ -87,50 +87,17 @@ function premiumBackdrop(w,h) {
         const rim2=203*(1-yy/214);
         if(yy<214&&Math.abs(xx-rim2)<1.15){r=125;g=206;b=255;}
       }
-      // Continuous Black & Metallic Blue finish: the lower panel keeps the
-      // same dark satin material as the top instead of turning flat navy.
-      // Everything begins below the native QR's occupied area.
-      if(yy>662) {
-        const t=Math.min(1,Math.max(0,(yy-662)/234));
+      // Exact dark navy-black tone from the approved lower-left reference:
+      // extend it continuously across the FULL bottom width. The earlier
+      // cobalt ribbon and brighter right half were rejected.
+      // Upper logo, texts and Apple-provided QR are unaffected.
+      if(yy>602) {
+        const t=Math.min(1,(yy-602)/294);
         const smooth=t*t*(3-2*t);
-        const panel=Math.max(0,Math.min(1,(xx-(575-(yy-662)*.47))/42));
-        const satin=.5+.5*Math.cos((xx-358)*.011+yy*.006);
-        const rr=8+3*satin+2*panel;
-        const gg=12+8*satin+5*panel;
-        const bb=27+16*satin+10*panel;
-        r=r*(1-smooth)+rr*smooth;
-        g=g*(1-smooth)+gg*smooth;
-        b=b*(1-smooth)+bb*smooth;
-      }
-      // A mirrored cobalt ribbon in the bottom-right reprises the blue
-      // metallic corner of the header. Softly emerges below the QR area.
-      if(yy>731) {
-        const t=Math.min(1,(yy-731)/165);
-        const satinEase=t*t*(3-2*t);
-        const left=716-208*satinEase;
-        const right=716-130*satinEase;
-        if(xx>=left && xx<=right && right-left>2) {
-          const shine=(xx-left)/(right-left);
-          const blue=[5+13*shine,35+65*shine,91+111*shine];
-          const blend=Math.min(1,t*4);
-          r=r*(1-blend)+blue[0]*blend;
-          g=g*(1-blend)+blue[1]*blend;
-          b=b*(1-blend)+blue[2]*blend;
-        }
-        // Narrow silver-blue glints match the top corner's hairlines.
-        const edgeL=716-178*satinEase;
-        const edgeR=716-203*satinEase;
-        const glow=Math.min(1,t*5);
-        if(Math.abs(xx-edgeL)<2.1) {
-          r=85*glow+r*(1-glow);
-          g=169*glow+g*(1-glow);
-          b=237*glow+b*(1-glow);
-        }
-        if(Math.abs(xx-edgeR)<.95) {
-          r=161*glow+r*(1-glow);
-          g=209*glow+g*(1-glow);
-          b=249*glow+b*(1-glow);
-        }
+        const subtleSatin=Math.sin(xx*.014+yy*.007)*.85;
+        r=8.0*(1-smooth)+5.0*smooth+subtleSatin*.36;
+        g=9.5*(1-smooth)+10.3*smooth+subtleSatin*.40;
+        b=12.0*(1-smooth)+25.0*smooth+subtleSatin*.54;
       }
       const k=(y*w+x)*4;
       pix[k]=clamp(r);pix[k+1]=clamp(g);pix[k+2]=clamp(b);pix[k+3]=255;
