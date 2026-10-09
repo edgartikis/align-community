@@ -43,7 +43,7 @@ function approvedImage() {
     const bytes=Buffer.from(approvedBlackMarbleJpegB64,"base64");
     const image=jpeg.decode(bytes,{useTArray:true,formatAsRGBA:true,
       tolerantDecoding:false,maxResolutionInMP:3,maxMemoryUsageInMB:24});
-    if(image.width!==358||image.height!==448)throw new Error("Invalid approved ALIGN image");
+    if(image.width!==716||image.height!==896)throw new Error("Invalid approved ALIGN image");
     baseImage=image;
   }
   return baseImage;
@@ -108,17 +108,16 @@ function paintSerif(target,w,h,atlas,value,x,y,size,maxWidth) {
 function render(w,h,photo,name,savings,atlas) {
   const original=approvedImage(),scale=w/358;
   const pixels=Buffer.alloc(w*h*4);
-  // Bilinear interpolation instead of duplicating each JPEG pixel into a
-  // 2x2 block. This removes the obvious stair-stepping in Retina artwork.
-  // Coordinates are pixel-centered to avoid shifting ALIGN's lettering.
+  // Full Retina artwork is 716×896. Keep its pixels intact at @2x;
+  // downsample smoothly at 1x with pixel-centred bilinear filtering.
   for(let y=0;y<h;y++){
-    const sourceY=Math.max(0,Math.min(447,(y+.5)/scale-.5));
-    const y0=Math.floor(sourceY),y1=Math.min(447,y0+1),dy=sourceY-y0;
+    const sourceY=Math.max(0,Math.min(895,(y+.5)*896/h-.5));
+    const y0=Math.floor(sourceY),y1=Math.min(895,y0+1),dy=sourceY-y0;
     for(let x=0;x<w;x++){
-      const sourceX=Math.max(0,Math.min(357,(x+.5)/scale-.5));
-      const x0=Math.floor(sourceX),x1=Math.min(357,x0+1),dx=sourceX-x0;
-      const i00=(y0*358+x0)*4,i10=(y0*358+x1)*4;
-      const i01=(y1*358+x0)*4,i11=(y1*358+x1)*4;
+      const sourceX=Math.max(0,Math.min(715,(x+.5)*716/w-.5));
+      const x0=Math.floor(sourceX),x1=Math.min(715,x0+1),dx=sourceX-x0;
+      const i00=(y0*716+x0)*4,i10=(y0*716+x1)*4;
+      const i01=(y1*716+x0)*4,i11=(y1*716+x1)*4;
       const target=(y*w+x)*4;
       for(let c=0;c<3;c++){
         const top=original.data[i00+c]*(1-dx)+original.data[i10+c]*dx;
