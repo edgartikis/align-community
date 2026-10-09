@@ -88,6 +88,20 @@ function premiumBackdrop(w,h) {
         if(yy<214&&Math.abs(xx-rim2)<1.15){r=125;g=206;b=255;}
       }
       if(yy>594&&Math.abs(xx-(716-(yy-594)*.82))<1.25){r=13;g=79;b=160;}
+      // Deep sapphire satin fade at the bottom, instead of the previous
+      // abruptly dark, empty-looking zone. Do not brighten the QR area.
+      // Wallet may cover the lower art with its native material/footer strip.
+      if(yy>698) {
+        const t=Math.min(1,Math.max(0,(yy-698)/198));
+        const smooth=t*t*(3-2*t);
+        const sweep=.5+.5*Math.cos((xx-358)*.0063+yy*.0035);
+        const rr=7.5+2*sweep;
+        const gg=18+8*sweep;
+        const bb=39+16*sweep;
+        r=r*(1-smooth)+rr*smooth;
+        g=g*(1-smooth)+gg*smooth;
+        b=b*(1-smooth)+bb*smooth;
+      }
       const k=(y*w+x)*4;
       pix[k]=clamp(r);pix[k+1]=clamp(g);pix[k+2]=clamp(b);pix[k+3]=255;
     }
@@ -177,9 +191,19 @@ function render(w,h,name,savings,assets) {
   drawText(pixels,w,h,font,name,54,344,32,608,"left",[234,236,240],0.35);
   drawText(pixels,w,h,font,"AHORRADO",56,380,18,213,"left",[158,180,207],0.85);
   drawText(pixels,w,h,font,savings,54,418,30,415,"left",[236,238,243],0.15);
-  // Bottom branding stays below the native QR. No duplicate member ID.
-  drawText(pixels,w,h,font,"BELONG TO SOMETHING",45,827,18,445,"left",[191,201,215],0.8);
-  drawText(pixels,w,h,font,"ALIGN",657,842,27,180,"right",[226,233,244],1.0);
+  // Delicate rule just below the anticipated QR safe zone. Subtle enough
+  // not to compete with Apple's barcode or distract from member details.
+  const scale=w/716;
+  const ruleY=Math.round(799*scale),ruleX0=Math.round(118*scale),ruleX1=Math.round(598*scale);
+  for(let x=ruleX0;x<=ruleX1;x++) {
+    const t=(x/scale-118)/480;
+    const alpha=.30*Math.pow(Math.sin(Math.PI*t),1.3);
+    paint(pixels,w,x,ruleY,155,179,211,alpha);
+    if(ruleY+1<h)paint(pixels,w,x,ruleY+1,82,137,206,alpha*.48);
+  }
+  // Secondary brand signature inside the artwork. iOS 27's material strip
+  // can hide this layer, so BELONG TO SOMETHING is also a NATIVE footer field.
+  drawText(pixels,w,h,font,"ALIGN MEMBERSHIP",358,865,16,335,"center",[160,182,215],1.4);
   return pixels;
 }
 export async function blackWalletArtwork({name="",savings=""}={}) {
