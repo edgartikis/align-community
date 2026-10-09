@@ -3,7 +3,14 @@
 // QR is supplied natively by Wallet and must never be painted or obscured.
 import { Buffer } from "node:buffer";
 import { ramB64,ramWidth,ramHeight } from "./wallet-borrego-asset.js";
-import { memberSerifGlyphsB64,memberSerifAlphabet,memberSerifWidth,memberSerifHeight } from "./wallet-serif-glyphs.js";
+import { interGlyphPartA } from "./wallet-inter-font-a.js";
+import { interGlyphPartB } from "./wallet-inter-font-b.js";
+
+// Rasterized anti-aliased uppercase Inter Display letters. Only pixel coverage
+// is bundled; no font files or dependencies are delivered to iPhone users.
+const fontAlphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$.,-/ :";
+const fontAdvance=[26.94,25.61,28.95,27.73,23.56,22.55,29.3,28.45,9.66,21.77,26.06,21.7,34.78,28.59,29.94,24.73,29.94,25.53,25.08,24.75,28.14,26.84,38.59,26.5,26.33,24.81,25.02,14.86,22.95,24.22,25.23,23.38,23.81,21.08,23.72,23.81,25.08,9.12,9.12,17.36,13.52,9.53,9.12];
+const fontWidth=48,fontHeight=53,fontBaseSize=40,fontBaseline=40;
 
 function crc32(bytes) {
   let c=0xffffffff;
@@ -40,10 +47,13 @@ async function loadAssets() {
       await writer.write(Buffer.from(b64,"base64"));await writer.close();
       return Buffer.from(await pending);
     }
-    const [ram,font]=await Promise.all([inflate(ramB64),inflate(memberSerifGlyphsB64)]);
+    const [ram,font]=await Promise.all([
+      inflate(ramB64),
+      inflate(interGlyphPartA+interGlyphPartB)
+    ]);
     if(ram.length!==ramWidth*ramHeight)throw new Error("Invalid official ALIGN ram emblem");
-    if(font.length!==memberSerifAlphabet.length*memberSerifWidth*memberSerifHeight)
-      throw new Error("Invalid ALIGN font atlas");
+    if(font.length!==fontAlphabet.length*fontWidth*fontHeight/2)
+      throw new Error("Invalid high-resolution ALIGN font atlas");
     return {ram,font};
   })();
   return assetsPromise;
@@ -95,43 +105,63 @@ function paintOfficialRam(out,w,h,data) {
     paint(out,w,left+x,top+y,gray*.94,gray*.97,Math.min(255,gray*1.02),opacity);
   }
 }
-// Bilinear sample of a genuine anti-aliased source atlas. The old code used
-// integer nearest-neighbour glyph pixels, visibly jagged on iPhone.
-function sampleGlyph(font,at,gx,gy) {
-  const sw=memberSerifWidth,sh=memberSerifHeight;
-  const sx=Math.max(0,Math.min(sw-1,gx)),sy=Math.max(0,Math.min(sh-1,gy));
-  const x0=Math.floor(sx),y0=Math.floor(sy),x1=Math.min(sw-1,x0+1),y1=Math.min(sh-1,y0+1);
-  const fx=sx-x0,fy=sy-y0,start=at*sw*sh;
-  return (font[start+y0*sw+x0]*(1-fx)+font[start+y0*sw+x1]*fx)*(1-fy)
-    +(font[start+y1*sw+x0]*(1-fx)+font[start+y1*sw+x1]*fx)*fy;
+// 4-bit antialiased glyph coverage at a 40px source size. Glyphs are
+// proportionally spaced using their REAL advances rather than a fixed cell
+// stride (the old 12.5px stride caused MEMBERSHI P and SOCI O artifacts).
+function coverageAt(font,index,x,y) {
+  if(x<0||y<0||x>=fontWidth||y>=fontHeight)return 0;
+  const at=index*fontWidth*fontHeight+y*fontWidth+x;
+  const packed=font[at>>1];
+  return ((at&1)?(packed&15):(packed>>>4))/15;
+}
+function coverageSmooth(font,index,x,y) {
+  const x0=Math.floor(x),y0=Math.floor(y),dx=x-x0,dy=y-y0;
+  const top=coverageAt(font,index,x0,y0)*(1-dx)+coverageAt(font,index,x0+1,y0)*dx;
+  const bottom=coverageAt(font,index,x0,y0+1)*(1-dx)+coverageAt(font,index,x0+1,y0+1)*dx;
+  return top*(1-dy)+bottom*dy;
+}
+export function walletTextWidth(value,fontSize,tracking=0) {
+  const str=String(value??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .toUpperCase().replace(/[^A-Z0-9$.,\/-: ]/g," ").replace(/\s+/g," ").trim();
+  if(!str)return 0;
+  return str.split("").reduce((width,c)=>{
+    const idx=fontAlphabet.indexOf(c);
+    return width+(idx<0?fontAdvance[fontAlphabet.indexOf(" ")]:fontAdvance[idx]);
+  },0)*fontSize/fontBaseSize+(str.length-1)*tracking;
 }
 function drawText(out,w,h,font,value,x,baseline,size,maxWidth,align="left",color=[224,228,235],tracking=0) {
   const chars=String(value??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-    .toUpperCase().replace(/[^A-Z0-9$.,\/\- :]/g," ").replace(/\s+/g," ").trim();
+    .toUpperCase().replace(/[^A-Z0-9$.,\/-: ]/g," ").replace(/\s+/g," ").trim();
   if(!chars)return;
-  const scale=w/716,advance=12.5,sourceSize=18;
-  let fontScale=size/sourceSize;
-  let visualLength=(chars.length*advance+Math.max(0,chars.length-1)*tracking)*fontScale;
-  if(visualLength>maxWidth)fontScale*=maxWidth/visualLength;
-  visualLength=Math.min(maxWidth,visualLength);
-  const left=(align==="center"?x-visualLength/2:align==="right"?x-visualLength:x)*scale;
-  // Keep space for descenders from the original 17x23 font atlas.
-  const top=Math.round((baseline-memberSerifHeight*fontScale*.78)*scale);
-  const glyphW=Math.max(1,Math.round(memberSerifWidth*fontScale*scale));
-  const glyphH=Math.max(1,Math.round(memberSerifHeight*fontScale*scale));
-  for(let i=0;i<chars.length;i++) {
-    const idx=memberSerifAlphabet.indexOf(chars[i]);if(idx<0)continue;
-    const tx=Math.round(left+i*(advance+tracking)*fontScale*scale);
-    for(let gy=0;gy<glyphH;gy++) {
-      const yy=top+gy;if(yy<0||yy>=h)continue;
-      const sourceY=(gy+.5)/(fontScale*scale)-.5;
-      for(let gx=0;gx<glyphW;gx++) {
-        const xx=tx+gx;if(xx<0||xx>=w)continue;
-        const sourceX=(gx+.5)/(fontScale*scale)-.5;
-        const opacity=sampleGlyph(font,idx,sourceX,sourceY)/255;
-        if(opacity>.003)paint(out,w,xx,yy,color[0],color[1],color[2],opacity);
+  const px=w/716;
+  const nominal=walletTextWidth(chars,size,tracking);
+  const fit=Math.min(1,maxWidth/Math.max(1,nominal));
+  const fontScale=(size/fontBaseSize)*fit;
+  const letterSpace=tracking*fit;
+  const actualWidth=walletTextWidth(chars,size*fit,letterSpace);
+  const left=(align==="center"?x-actualWidth/2:align==="right"?x-actualWidth:x)*px;
+  const top=(baseline-fontBaseline*fontScale)*px;
+  const bitmapW=Math.ceil(fontWidth*fontScale*px);
+  const bitmapH=Math.ceil(fontHeight*fontScale*px);
+  let cursor=0;
+  for(const character of chars) {
+    const index=fontAlphabet.indexOf(character);
+    const advance=(index<0?fontAdvance[fontAlphabet.indexOf(" ")]:fontAdvance[index]);
+    if(index>=0&&character!==" ") {
+      const x0=Math.round(left+cursor*px);
+      const y0=Math.round(top);
+      for(let gy=0;gy<bitmapH;gy++) {
+        const yy=y0+gy;if(yy<0||yy>=h)continue;
+        const sourceY=(gy+.5)/(fontScale*px)-.5;
+        for(let gx=0;gx<bitmapW;gx++) {
+          const xx=x0+gx;if(xx<0||xx>=w)continue;
+          const sourceX=(gx+.5)/(fontScale*px)-.5;
+          const opacity=coverageSmooth(font,index,sourceX,sourceY);
+          if(opacity>.003)paint(out,w,xx,yy,color[0],color[1],color[2],opacity);
+        }
       }
     }
+    cursor+=advance*fontScale+letterSpace;
   }
 }
 function stampPortrait(out,w,h,portrait) {
@@ -156,19 +186,19 @@ function render(w,h,photo,name,savings,assets) {
   const pixels=premiumBackdrop(w,h),font=assets.font;
   paintOfficialRam(pixels,w,h,assets.ram);
   // Static upper branding that imitates the approved physical-card hierarchy.
-  drawText(pixels,w,h,font,"MEMBERSHIP",358,217,31,480,"center");
-  drawText(pixels,w,h,font,"CARD - ALIGN",358,270,31,510,"center");
+  drawText(pixels,w,h,font,"MEMBERSHIP",358,223,40,480,"center",[235,239,246],1.1);
+  drawText(pixels,w,h,font,"CARD - ALIGN",358,271,39,510,"center",[231,236,244],0.9);
   for(let y=Math.round(286*w/716);y<Math.round(289*w/716);y++)
     for(let x=Math.round(327*w/716);x<Math.round(390*w/716);x++)
       paint(pixels,w,x,y,29,160,246);
   // Only user-specific name, savings and portrait precede the reserved QR area.
-  drawText(pixels,w,h,font,name,56,341,25,498);
-  drawText(pixels,w,h,font,"AHORRADO",58,372,13,213,"left",[156,176,201],.5);
-  drawText(pixels,w,h,font,savings,57,409,23,413);
+  drawText(pixels,w,h,font,name,54,344,32,505,"left",[234,236,240],0.35);
+  drawText(pixels,w,h,font,"AHORRADO",56,380,18,213,"left",[158,180,207],0.85);
+  drawText(pixels,w,h,font,savings,54,418,30,415,"left",[236,238,243],0.15);
   stampPortrait(pixels,w,h,photo);
   // Bottom branding stays below the native QR. No duplicate member ID.
-  drawText(pixels,w,h,font,"BELONG TO SOMETHING",40,824,13,433,"left",[174,182,193],.5);
-  drawText(pixels,w,h,font,"ALIGN",657,839,19,145,"right",[214,222,234]);
+  drawText(pixels,w,h,font,"BELONG TO SOMETHING",45,827,18,445,"left",[191,201,215],0.8);
+  drawText(pixels,w,h,font,"ALIGN",657,842,27,180,"right",[226,233,244],1.0);
   return pixels;
 }
 export async function blackWalletArtwork({photo=null,name="",savings=""}={}) {
