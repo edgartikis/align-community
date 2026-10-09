@@ -130,8 +130,10 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   pass.type="generic";
   // The amount is short, so it won't dominate or truncate the member name.
   pass.primaryFields.push({key:"savings",label:"AHORRADO",value:formatSavingsMXN(member.savings)});
-  pass.secondaryFields.push({key:"name",label:"SOCIO",value:safe(member.name,70)});
-  pass.auxiliaryFields.push({key:"plan",label:"MEMBRESÍA",value:safe(member.level,48)});
+  pass.secondaryFields.push({key:"name",label:"SOCIO",value:safe(member.name,48)});
+  // Position the membership in the same visible details group as the name.
+  // Wallet may drop auxiliary fields when the square QR consumes available space.
+  pass.secondaryFields.push({key:"plan",label:"MEMBRESÍA",value:safe(member.level,35)});
   // A long code would compete with photo and name on small screens; the QR
   // alt text displays it below the barcode and details always show it.
   pass.backFields.push({key:"code",label:"CÓDIGO DE SOCIO",value:safe(member.memberCode,60)});
