@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
+import { inflateSync } from "node:zlib";
 import { producePass } from "../src/apple-wallet.js";
 import jpeg from "jpeg-js";
 
@@ -65,6 +66,22 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
       assert.equal(bytes.subarray(0,8).toString("hex"),"89504e470d0a1a0a");
       assert.equal(bytes.readUInt32BE(16),width);
       assert.equal(bytes.readUInt32BE(20),height);
+      if(asset==="artwork.png") {
+        // Assert the approved option 1 is BLACK, with a silver hairline,
+        // never a recycled royal-blue or marble backdrop.
+        let offset=8;const compressed=[];
+        while(offset+8<bytes.length){
+          const size=bytes.readUInt32BE(offset),name=bytes.toString("ascii",offset+4,offset+8);
+          if(name==="IDAT")compressed.push(bytes.subarray(offset+8,offset+8+size));
+          offset+=size+12;
+        }
+        const raw=inflateSync(Buffer.concat(compressed));
+        const pixel=(x,y)=>{const i=y*(width*4+1)+1+x*4;return [...raw.subarray(i,i+3)];};
+        const backdrop=pixel(175,210);
+        assert.ok(backdrop.every(c=>c<30),"Black Edition must be near-black, not blue");
+        const border=pixel(179,14);
+        assert.ok(border.every(c=>c>95),"Silver hairline should be visible");
+      }
     }
 
     assert.equal(properties.storeCard,undefined);
