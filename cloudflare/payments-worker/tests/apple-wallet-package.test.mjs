@@ -71,7 +71,7 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.equal(imageBytes.readUInt32BE(20),448);
     assert.equal(image2x.readUInt32BE(16),716);
     assert.equal(image2x.readUInt32BE(20),896);
-    const pixels=(png)=>{
+    const unpackArtworkPixels=(png)=>{
       let off=8;const compressed=[];
       while(off<png.length) {
         const size=png.readUInt32BE(off),type=png.toString("ascii",off+4,off+8);
@@ -80,7 +80,7 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
       }
       return inflateSync(Buffer.concat(compressed));
     };
-    const basePixel=pixels(imageBytes);
+    const basePixel=unpackArtworkPixels(imageBytes);
     const rgbAt=(raw,x,y)=>([...raw.subarray(y*(358*4+1)+1+x*4,y*(358*4+1)+1+x*4+3)]);
     assert.ok(rgbAt(basePixel,180,68).some(c=>c>100),"Prominent top ALIGN logo exists");
     assert.ok(rgbAt(basePixel,90,173).every(c=>c>45),"Silver divider is visible between sections");
