@@ -120,6 +120,17 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     const beforeRule=rgbAt(retinaPixel,716,200,792);
     assert.ok(fineRule[2]>beforeRule[2]+7,
       "Subtle metallic separator should cross the lower artwork safely");
+    // The iPhone bottom section must visually continue the same metallic-blue
+    // geometry as the approved upper corner, while QR reserve stays dark.
+    const lowerRibbon=rgbAt(retinaPixel,716,575,856);
+    const bottomSatin=rgbAt(retinaPixel,716,470,856);
+    assert.ok(lowerRibbon[2]>bottomSatin[2]+35,
+      "Mirrored lower-right metallic cobalt stripe must stand out over satin");
+    assert.ok(lowerRibbon[2]>lowerRibbon[0]+60,
+      "Lower accent must retain ALIGN's metallic-blue color");
+    const qrUnchanged=rgbAt(retinaPixel,716,359,560);
+    assert.deepEqual(qrUnchanged,black,
+      "The native-QR clearance region must remain untouched");
     // Different resolutions have separately rendered antialiased pixels.
     assert.equal(retinaPixel.length,896*(716*4+1));
     assert.equal(basePixel.length,448*(358*4+1));
