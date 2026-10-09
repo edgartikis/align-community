@@ -4,7 +4,7 @@ import { PKPass, PassType } from "passkit-generator";
 import jpeg from "jpeg-js";
 import { Buffer } from "node:buffer";
 import { walletIconB64, walletLogoB64 } from "./wallet-artwork-data.js";
-import { marbleWalletArtwork } from "./wallet-marble.js";
+import { blackWalletArtwork } from "./wallet-black.js";
 
 const API_HOST = "api.alignmembers.com.mx";
 const ID = "pass.mx.com.alignmembers.membership";
@@ -198,9 +198,9 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
     organizationName:"ALIGN Membership",
     description:"Membresía ALIGN",
     // ALIGN's wordmark image already contains the brand name.
-    foregroundColor:"rgb(217,221,227)", // ALIGN silver
-    backgroundColor:"rgb(15,76,222)", // royal blue generic fallback
-    labelColor:"rgb(217,221,227)"
+    foregroundColor:"rgb(217,221,227)", // bright satin silver
+    backgroundColor:"rgb(5,5,5)", // Black Edition fallback for iOS 26 and earlier
+    labelColor:"rgb(194,198,207)" // soft silver labels
   });
   pass.type="generic";
   // The amount is short, so it won't dominate or truncate the member name.
@@ -214,14 +214,13 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   pass.backFields.push({key:"code",label:"CÓDIGO DE SOCIO",value:safe(member.memberCode,60)});
   pass.backFields.push({key:"validity",label:"VIGENCIA",value:safe(period(member).until,40)});
   pass.backFields.push({key:"verification",label:"VALIDACIÓN",value:"El aliado debe escanear el QR y comprobar fotografía, identidad y vigencia en el sistema ALIGN. Un pase guardado no garantiza membresía activa."});
-  // iOS 27+ supports native posterGeneric with full artwork. iOS 26 and older
-  // continue to use the same Generic pass with a real member thumbnail + QR.
-  // Field keys must be distinct across styles in passkit-generator.
+  // Black Edition: iOS 27+ displays a native poster; earlier devices use
+  // Wallet's fixed-layout generic membership pass. Keep the QR native in both.
   const poster=new PassType("posterGeneric");
-  poster.headerFields.push({key:"posterCode",label:"CÓDIGO",value:safe(member.memberCode,48)});
   poster.primaryFields.push({key:"posterName",label:"SOCIO",value:safe(member.name,48)});
   poster.primaryFields.push({key:"posterPlan",label:"MEMBRESÍA",value:safe(member.level,35)});
   poster.primaryFields.push({key:"posterSavings",label:"AHORRADO",value:formatSavingsMXN(member.savings)});
+  poster.backFields.push({key:"posterMemberCode",label:"CÓDIGO DE SOCIO",value:safe(member.memberCode,48)});
   poster.backFields.push({key:"posterVerification",label:"VERIFICACIÓN",value:"Presenta tu QR para validar identidad y membresía vigente. El pase por sí solo no prueba vigencia."});
   poster.backFields.push({key:"posterContact",label:"CONTACTO",value:"https://alignmembers.com.mx"});
   pass.types.push(poster);
@@ -253,8 +252,8 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
     pass.addBuffer("thumbnail.png",photo.normal);
     pass.addBuffer("thumbnail@2x.png",photo.retina);
   }
-  onStage("artwork_marble");
-  const artwork=await marbleWalletArtwork(posterPhoto);
+  onStage("artwork_black");
+  const artwork=await blackWalletArtwork(posterPhoto);
   pass.addBuffer("artwork.png",artwork.normal);
   pass.addBuffer("artwork@2x.png",artwork.retina);
   onStage("signature");
