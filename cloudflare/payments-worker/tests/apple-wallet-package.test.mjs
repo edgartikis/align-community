@@ -39,7 +39,7 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
       WALLET_TEAM_ID: "2WG8DN922L",
       SITE_ORIGIN: "https://alignmembers.com.mx",
     }, fakeMember, id, origin + "/api/wallet/apple", (stage) => stages.push(stage));
-    assert.deepEqual(stages, ["certificate_setup", "artwork_icon", "artwork_logo", "artwork_marble", "signature"]);
+    assert.deepEqual(stages, ["certificate_setup", "artwork_icon", "artwork_logo", "artwork_black", "signature"]);
 
     assert.equal(result.subarray(0, 2).toString(), "PK");
     writeFileSync(pkpass, result);
@@ -51,12 +51,12 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.equal(properties.passTypeIdentifier, "pass.mx.com.alignmembers.membership");
     assert.equal(properties.teamIdentifier, "2WG8DN922L");
     assert.equal(properties.serialNumber, id);
-    assert.equal(properties.backgroundColor,"rgb(15,76,222)");
+    assert.equal(properties.backgroundColor,"rgb(5,5,5)");
     assert.equal(properties.foregroundColor,"rgb(217,221,227)");
-    assert.equal(properties.labelColor,"rgb(217,221,227)");
+    assert.equal(properties.labelColor,"rgb(194,198,207)");
     assert.ok(properties.generic, "Pass must be generic to display a member thumbnail");
-    assert.ok(properties.posterGeneric, "iOS 27 poster style is required for full marble background");
-    assert.equal(properties.posterGeneric.headerFields[0].value,"ALIGN-TEST-0001");
+    assert.ok(properties.posterGeneric, "iOS 27 poster style provides Black Edition artwork");
+    assert.equal((properties.posterGeneric.headerFields||[]).length,0,"QR altText displays code without cluttering the header");
     assert.equal(properties.posterGeneric.primaryFields[0].value,"SOCIO PRUEBA ALIGN");
     assert.equal(properties.posterGeneric.primaryFields[1].value,"The Brotherhood");
     assert.equal(properties.posterGeneric.primaryFields[2].value,"$0 MXN");
@@ -76,6 +76,7 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.equal(properties.generic.secondaryFields[1].value,"The Brotherhood");
     assert.equal((properties.generic.auxiliaryFields||[]).length,0);
     assert.equal(properties.generic.backFields[0].value,"ALIGN-TEST-0001");
+    assert.equal(properties.posterGeneric.backFields[0].value,"ALIGN-TEST-0001");
 
     assert.match(JSON.stringify(properties.barcodes), /feature-apple-wallet-align-align-payments\.alignservice18\.workers\.dev/);
 
@@ -133,6 +134,7 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.equal(privatePassFields.posterGeneric.primaryFields[1].value,"The Brotherhood");
     assert.match(privatePassFields.posterGeneric.primaryFields[2].value,/231[.,]75 MXN/);
     assert.match(execFileSync("unzip",["-Z","-1",pkpass],{encoding:"utf8"}),/artwork@2x.png/);
+    assert.equal(privatePassFields.posterGeneric.backFields[0].value,"ALIGN-PRIVATE-002");
 
     assert.doesNotMatch(JSON.stringify(privatePassFields),/data:image\/jpeg/);
 
