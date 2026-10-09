@@ -52,7 +52,8 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.equal(properties.passTypeIdentifier, "pass.mx.com.alignmembers.membership");
     assert.equal(properties.teamIdentifier, "2WG8DN922L");
     assert.equal(properties.serialNumber, id);
-    assert.equal(properties.backgroundColor,"rgb(5,5,5)");
+    assert.equal(properties.backgroundColor,"rgb(5,10,25)",
+      "Native Apple Wallet footer must match the approved full-width midnight-navy background");
     assert.equal(properties.foregroundColor,"rgb(217,221,227)");
     assert.equal(properties.labelColor,"rgb(194,198,207)");
     assert.ok(properties.generic, "Generic style is required for native top-fields / bottom-QR");
@@ -125,6 +126,15 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
       "Left and right halves must share the same subdued dark gradient");
     assert.ok(Math.max(...rightFooter)<35,
       "Never reintroduce a bright cobalt ribbon in the lower-right corner");
+    // Even when Poster Generic draws the footer with a native material,
+    // its base tone must blend into the bottom artwork without a split band.
+    const nativeTint=[5,10,25];
+    for (const x of [80,185,358,530,635]) {
+      const p=rgbAt(retinaPixel,716,x,891);
+      for(let channel=0;channel<3;channel++)
+        assert.ok(Math.abs(p[channel]-nativeTint[channel])<=3,
+          "Entire bottom edge should blend into Apple's native navy footer");
+    }
     const fineRule=rgbAt(retinaPixel,716,200,799);
     const beforeRule=rgbAt(retinaPixel,716,200,792);
     assert.ok(fineRule[2]>beforeRule[2]+7,
