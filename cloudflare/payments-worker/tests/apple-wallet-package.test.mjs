@@ -92,7 +92,7 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
       if(rgbAt(retinaPixel,716,x*2,y*2).every(c=>c>95))brightRamPixels++;
     assert.ok(brightRamPixels>70,"Original silver standing borrego must be present");
     // The approved new layout is black and metallic blue at the top left.
-    const stripe=rgbAt(retinaPixel,716,70,90);
+    const stripe=rgbAt(retinaPixel,716,100,90);
     assert.ok(stripe[2]>stripe[0]+60,
       "Cobalt blue upper-left diagonal stripe must be visible");
     const black=rgbAt(retinaPixel,716,359,560);
