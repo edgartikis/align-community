@@ -92,7 +92,7 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
     description:"Membresía ALIGN",
     // ALIGN's wordmark image already contains the brand name.
     foregroundColor:"rgb(217,221,227)", // bright satin silver
-    backgroundColor:"rgb(5,5,5)", // Black Edition fallback for iOS 26 and earlier
+    backgroundColor:"rgb(5,10,25)", // Approved uniform midnight-navy: also tints native Poster footer
     labelColor:"rgb(194,198,207)" // soft silver labels
   });
   // Keep Generic as fallback on older devices, with no member thumbnail.
