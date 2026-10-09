@@ -6,7 +6,8 @@
     "googleapis": "^144.0.0",
     "stripe": "^16.12.0",
     "@netlify/blobs": "^10.7.12",
-    "passkit-generator": "^3.6.1"
+    "passkit-generator": "^3.6.1",
+    "jpeg-js": "^0.4.4"
   },
   "devDependencies": {
     "wrangler": "^4.135.0"
