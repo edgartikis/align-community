@@ -119,37 +119,54 @@ function walletDisplayText(value) {
 }
 // Small antialiased silver sans letterforms, rendered into the signed artwork.
 // All member data remains private and stays inside each member's .pkpass.
-function drawMemberText(pixels,w,h,value,x,y,desiredHeight,maxWidth) {
-  let chars=walletDisplayText(value).replace(/\s+/g," ").trim();
-  const scale=w/358;
-  if(!chars)return;
-  const advance=6/7,minimumSize=7.5;
-  const maxChars=Math.max(3,Math.floor(maxWidth/(minimumSize*advance)));
-  // A longer name is readable in full on the pass reverse; ellipsize on
-  // artwork rather than allowing it to overlap the private portrait.
-  if(chars.length>maxChars)chars=chars.slice(0,maxChars-1).trimEnd()+".";
-  const size=Math.max(minimumSize,Math.min(desiredHeight,maxWidth/(chars.length*advance)));
-  const unit=size*scale/7;
-  let cursor=x*scale;
-  for(const ch of chars) {
-    const glyph=PERSONAL_GLYPHS[ch]||PERSONAL_GLYPHS[" "];
-    for(let row=0;row<7;row++) for(let col=0;col<5;col++) {
-      if(glyph[row*5+col]!=="1")continue;
-      const x0=cursor+col*unit,y0=y*scale+row*unit;
-      const x1=x0+unit*.95,y1=y0+unit*.95;
-      for(let yy=Math.max(0,Math.floor(y0));yy<Math.min(h,Math.ceil(y1));yy++) {
-        for(let xx=Math.max(0,Math.floor(x0));xx<Math.min(w,Math.ceil(x1));xx++) {
-          const alpha=Math.max(0,Math.min(x1,xx+1)-Math.max(x0,xx))*
-            Math.max(0,Math.min(y1,yy+1)-Math.max(y0,yy))*.94;
-          if(alpha===0)continue;
-          const p=(yy*w+xx)*4;
-          pixels[p]=clamp(pixels[p]*(1-alpha)+217*alpha);
-          pixels[p+1]=clamp(pixels[p+1]*(1-alpha)+221*alpha);
-          pixels[p+2]=clamp(pixels[p+2]*(1-alpha)+227*alpha);
-        }
-      }
+// Fine high-contrast serif alphabet rasterized from a licensed local font
+// into an in-repository bitmap atlas (16x20, 40 glyphs, 1 bit/pixel).
+// This avoids the old blocky 5x7 pixel typography on the iPhone.
+const SERIF_CHARS="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$.,-";
+const SERIF_BITS=Buffer.from("AAAAAAYABgAHAAMACwABgAGAH4AQwADAIOBw4AAAAAAAAAAAAAAAAAAAAAA/ABmAGYAZgBmAHwAZgBjAGMAYwBmAPwAAAAAAAAAAAAAAAAAAAAAAD4AZwDDAMAAwADAAMAAwADAAMMAYwA+AAAAAAAAAAAAAAAAAAAAAAD+AGcAYwBjgGGAYYBhgGGAY4BjAGcA/AAAAAAAAAAAAAAAAAAAAAAA/gBiAGAAYABgAHwAYABgAGAAYQBjAP8AAAAAAAAAAAAAAAAAAAAAAP4AYgBgAGAAYABgAGAAYABgAGAAYADwAAAAAAAAAAAAAAAAAAAAAAA+AGMAwwDAAMAAwADHgMMAwwDDAGMAPwAAAAAAAAAAAAAAAAAAAAAA88BhgGGAYYBhgGOAY4BhgGGAYYBhgPPAAAAAAAAAAAAAAAAAAAAAAPAAYABgAGAAYABgAGAAYABgAGAAYADwAAAAAAAAAAAAAAAAAAAAAADwAGAAYABgAGAAYABgAGAAYABgAGAAYABgAGAAwACAAAAAAAAAAAAAAADzAGIAZABkAGgAeAB8AG4AZgBnAOOA8YAAAAAAAAAAAAAAAAAAAAAA8ABgAGAAYABgAGAAYABgAGAAYQDjAP8AAAAAAAAAAAAAAAAAAAAAAOBwYGBw4DDgOGBZYFlgXGBMYA5gRmDk8AAAAAAAAAAAAAAAAAAAAADhgHEAMAA5AFkATQBOAEYARwADAEMA4QAAAAAAAAAAAAAAAAAAAAAAPgBjAMOAwYDBgMGAwYDBgMGAwwBjAD4AAAAAAAAAAAAAAAAAAAAAAPwAZgBmAGcAZgBmAG4AeABgAGAA4ADwAAAAAAAAAAAAAAAAAAAAAAA+AGMAw4DBgMGAwYDBgMGAwYDDAGMAPgAcAAwADgACAAAAAAAAAAAA/ABmAGYAZgBmAGYAfABsAG4AZgDnAPMAAAAAAAAAAAAAAAAAAAAAAHgAzADMAMAA4AB4ADwADACOAYwAzAB4AAAAAAAAAAAAAAAAAAAAAAH/ATkAOQA4ADgAOAA4ADgAOAA4ADgAOAAAAAAAAAAAAAAAAAAAAAAAAADjgOEA4QDhAOEA4QDhAOEA4QBhAHIAPAAAAAAAAAAAAAAAAAAAAAAB4wDAAOIAYgBiAHQANAA0ADgAGAAYABgAAAAAAAAAAAAAAAAAAAAAAOMYwwDjEGMQZZB1gDWAMcA4wDjAGMAQQAAAAAAAAAAAAAAAAAAAAADnAGIAdAA0ADgAGAAYACwALABGAMcAxwAAAAAAAAAAAAAAAAAAAAAA4wBiAGIAMAA0ADgAGAAYABgAGAAYADwAAAAAAAAAAAAAAAAAAAAAAP4AjgAMABgAGAA4ADAAcABgAOIAwgD+AAAAAAAAAAAAAAAAAAAAAAB4AMwAzADOAc4BxgHGAM4AzADMAGwAOAAAAAAAAAAAAAAAAAAAAAAAMADwAPAAMAAwADAAMAAwADAAMAA4AHgAAAAAAAAAAAAAAAAAAAAAAPgAzADMAAwADAAYADAAIABAAIQB/AD8AAAAAAAAAAAAAAAAAAAAAAD4AMwAzAAMABwAOAAMAA4AjgCMAMwAeAAAAAAAAAAAAAAAAAAAAAAAAAAcABwAPABcAFwAnAAYAf4B/gAYABwAHAAAAAAAAAAAAAAAAAAAAAAA/AD8AIAAAAD4AIwADAAMAAwAzADcAHAAAAAAAAAAAAAAAAAAAAAAAHwAbADEAMAA3ADMAM4AzgDOAMwAbAA4AAAAAAAAAAAAAAAAAAAAAAD+APwABAAMAAwACAAYABgAEAAwADAAIAAAAAAAAAAAAAAAAAAAAAAAfADMAMwAzADsAHgA3ADOAcYAxgDMAHgAAAAAAAAAAAAAAAAAAAAAAHgAzADMAMwAzgDOAH4ADAAMAIwA2ABwAAAAAAAAAAAAAAAAAAAAAAAwAHwAzADMAOAAcAA8ABwAjADMAOwAMAAAAAAAAAAAAAAAAAAAAAAAwADAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAwABAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==","base64");
+const glyphWidths=Array.from(SERIF_CHARS,(_,i)=>{
+  let max=0,min=16;
+  for(let y=0;y<20;y++)for(let x=0;x<16;x++){
+    const at=i*320+y*16+x;
+    if((SERIF_BITS[at>>3]>>(7-(at&7)))&1){min=Math.min(min,x);max=Math.max(max,x)}
+  }
+  return min>max?{min:0,width:5}:{min,width:max-min+1};
+});
+function isSerifPixel(index,x,y){
+  if(index<0||x<0||x>=16||y<0||y>=20)return 0;
+  const at=index*320+y*16+x;
+  return (SERIF_BITS[at>>3]>>(7-(at&7)))&1;
+}
+function drawMemberText(pixels,w,h,value,x,y,desiredHeight,maxWidth){
+  const str=walletDisplayText(value).replace(/\s+/g," ").trim();
+  if(!str)return;
+  const chars=[...str];
+  const estimated=chars.reduce((a,ch)=>a+(ch===" "?6:(glyphWidths[SERIF_CHARS.indexOf(ch)]?.width||7)+3),0);
+  // Use proportional serif letterforms, not the old monospaced bitmap glyphs.
+  const baseScale=Math.min(desiredHeight/15,maxWidth/estimated);
+  const scale=baseScale*w/358;
+  let pen=x*w/358,top=y*w/358;
+  const white=[226,229,235];
+  for(const char of chars){
+    if(char===" "){pen+=6*scale;continue;}
+    const index=SERIF_CHARS.indexOf(char);
+    if(index<0){pen+=7*scale;continue;}
+    const metrics=glyphWidths[index],gw=metrics.width;
+    const destW=Math.ceil(gw*scale),destH=Math.ceil(20*scale);
+    for(let yy=0;yy<destH;yy++)for(let xx=0;xx<destW;xx++){
+      const gx=metrics.min+(xx+.5)/scale-.5,gy=(yy+.5)/scale-.5;
+      const bx=Math.floor(gx),by=Math.floor(gy),fx=gx-bx,fy=gy-by;
+      const a=(isSerifPixel(index,bx,by)*(1-fx)*(1-fy)+
+        isSerifPixel(index,bx+1,by)*fx*(1-fy)+
+        isSerifPixel(index,bx,by+1)*(1-fx)*fy+
+        isSerifPixel(index,bx+1,by+1)*fx*fy)*.93;
+      if(a<=0)continue;
+      const px=Math.floor(pen+xx),py=Math.floor(top+yy);
+      if(px<0||py<0||px>=w||py>=h)continue;
+      const p=(py*w+px)*4;
+      for(let i=0;i<3;i++)pixels[p+i]=clamp(pixels[p+i]*(1-a)+white[i]*a);
     }
-    cursor+=6*unit;
+    pen+=(gw+3)*scale;
   }
 }
 function stampWordmark(pixels,width,height,logo) {
