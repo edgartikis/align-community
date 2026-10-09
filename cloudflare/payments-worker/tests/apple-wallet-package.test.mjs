@@ -59,7 +59,9 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.equal(properties.generic.primaryFields[0].label,"AHORRADO");
     assert.match(properties.generic.primaryFields[0].value,/\$0(?:\.00)? MXN/);
     assert.equal(properties.generic.secondaryFields[0].value,"SOCIO PRUEBA ALIGN");
-    assert.equal(properties.generic.auxiliaryFields[0].value,"The Brotherhood");
+    assert.equal(properties.generic.secondaryFields[1].label,"MEMBRESÍA");
+    assert.equal(properties.generic.secondaryFields[1].value,"The Brotherhood");
+    assert.equal((properties.generic.auxiliaryFields||[]).length,0);
     assert.equal(properties.generic.backFields[0].value,"ALIGN-TEST-0001");
 
     assert.match(JSON.stringify(properties.barcodes), /feature-apple-wallet-align-align-payments\.alignservice18\.workers\.dev/);
