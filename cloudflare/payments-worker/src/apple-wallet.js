@@ -1,10 +1,9 @@
 // ALIGN Apple Wallet - isolated prototype. Does not touch checkout/webhooks.
 // Enable only after credentials, artwork and ally-scanner end-to-end tests.
-import { PKPass, PassType } from "passkit-generator";
+import { PKPass } from "passkit-generator";
 import jpeg from "jpeg-js";
 import { Buffer } from "node:buffer";
 import { walletIconB64, walletLogoB64 } from "./wallet-artwork-data.js";
-import { blackWalletArtwork } from "./wallet-black.js";
 
 const API_HOST = "api.alignmembers.com.mx";
 const ID = "pass.mx.com.alignmembers.membership";
@@ -202,30 +201,28 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
     backgroundColor:"rgb(5,5,5)", // Black Edition fallback for iOS 26 and earlier
     labelColor:"rgb(194,198,207)" // soft silver labels
   });
+  // Use one native Generic pass on iOS 27 and older. Wallet fixes the
+  // position of the QR below the fields and supports a native member photo
+  // thumbnail to the right of the primary field. Poster Generic instead
+  // placed the QR in the middle, obscuring the desired hierarchy.
   pass.type="generic";
-  // The amount is short, so it won't dominate or truncate the member name.
-  pass.primaryFields.push({key:"savings",label:"AHORRADO",value:formatSavingsMXN(member.savings)});
-  pass.secondaryFields.push({key:"name",label:"SOCIO",value:safe(member.name,48)});
-  // Position the membership in the same visible details group as the name.
-  // Wallet may drop auxiliary fields when the square QR consumes available space.
-  pass.secondaryFields.push({key:"plan",label:"MEMBRESÍA",value:safe(member.level,35)});
-  // A long code would compete with photo and name on small screens; the QR
-  // alt text displays it below the barcode and details always show it.
+  // Fidelity to ALIGN Black Edition option 1 takes priority over the previous
+  // oversized money field. The order is member -> plan -> savings -> QR.
+  // Wallet controls font sizing; a long member name can wrap or truncate.
+  pass.primaryFields.push({
+    key:"name",label:"SOCIO",value:safe(member.name,70)
+  });
+  pass.secondaryFields.push({
+    key:"plan",label:"MEMBRESÍA",value:safe(member.level,48)
+  });
+  pass.auxiliaryFields.push({
+    key:"savings",label:"AHORRADO",value:formatSavingsMXN(member.savings)
+  });
   pass.backFields.push({key:"code",label:"CÓDIGO DE SOCIO",value:safe(member.memberCode,60)});
+  pass.backFields.push({key:"fullName",label:"NOMBRE COMPLETO",value:safe(member.name,90)});
   pass.backFields.push({key:"validity",label:"VIGENCIA",value:safe(period(member).until,40)});
   pass.backFields.push({key:"verification",label:"VALIDACIÓN",value:"El aliado debe escanear el QR y comprobar fotografía, identidad y vigencia en el sistema ALIGN. Un pase guardado no garantiza membresía activa."});
-  // Black Edition: iOS 27+ displays a native poster; earlier devices use
-  // Wallet's fixed-layout generic membership pass. Keep the QR native in both.
-  const poster=new PassType("posterGeneric");
-  poster.primaryFields.push({key:"posterName",label:"SOCIO",value:safe(member.name,48)});
-  poster.primaryFields.push({key:"posterPlan",label:"MEMBRESÍA",value:safe(member.level,35)});
-  // Wallet places footer fields below the member detail area, before the QR.
-  // This creates a separate savings block instead of three same-level fields.
-  poster.footerFields.push({key:"posterSavings",label:"AHORRADO",value:formatSavingsMXN(member.savings)});
-  poster.backFields.push({key:"posterMemberCode",label:"CÓDIGO DE SOCIO",value:safe(member.memberCode,48)});
-  poster.backFields.push({key:"posterVerification",label:"VERIFICACIÓN",value:"Presenta tu QR para validar identidad y membresía vigente. El pase por sí solo no prueba vigencia."});
-  poster.backFields.push({key:"posterContact",label:"CONTACTO",value:"https://alignmembers.com.mx"});
-  pass.types.push(poster);
+  pass.backFields.push({key:"issuerContact",label:"CONTACTO",value:"https://alignmembers.com.mx"});
 
   // Stable, non-secret, opaque pointer. The verifier reads CURRENT KV state.
   pass.setBarcodes({format:"PKBarcodeFormatQR",message:walletQrUrl(requestUrl,id),messageEncoding:"iso-8859-1",altText:safe(member.memberCode,60)});
@@ -239,10 +236,8 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   pass.addBuffer("icon@2x.png",icon);
   pass.addBuffer("logo.png",logo);
   pass.addBuffer("logo@2x.png",logo);
-  // For Poster Generic, the brand wordmark is integrated into artwork.png
-  // at the top center, avoiding a second logo at the top-left.
-  // Generic retains its native logo.png for pre-iOS-27 compatibility.
-  let posterPhoto=null;
+  // Original ALIGN brand is displayed through Wallet's native logo slot.
+  // Real private enrollment photos are converted to native PNG thumbnails.
   if (member.photoUrl && !isPlaceholderPhoto(member.photoUrl)) {
     onStage("member_photo");
     const photo=member.photoUrl.startsWith("data:")
@@ -251,14 +246,9 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
           const image=await trustedMemberThumbnail(member.photoUrl);
           return {normal:image,retina:image};
         })();
-    posterPhoto=photo.source||null;
     pass.addBuffer("thumbnail.png",photo.normal);
     pass.addBuffer("thumbnail@2x.png",photo.retina);
   }
-  onStage("artwork_black");
-  const artwork=await blackWalletArtwork(posterPhoto);
-  pass.addBuffer("artwork.png",artwork.normal);
-  pass.addBuffer("artwork@2x.png",artwork.retina);
   onStage("signature");
   return pass.getAsBuffer();
 }
