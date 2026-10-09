@@ -1,9 +1,10 @@
-// ALIGN Royal Marble Edition — Poster Generic artwork for compatible iOS.
+// ALIGN approved Black Marble — real Poster Generic artwork for compatible iOS.
 // Fixed branded marble background + member-specific image text/photo.
 // The signed QR and its code are ALWAYS Wallet-native; never paint a QR here.
 // All member photos remain in-memory and are packed into the signed .pkpass.
 import { Buffer } from "node:buffer";
-import { walletLogoB64 } from "./wallet-artwork-data.js";
+import jpeg from "jpeg-js";
+import { approvedBlackMarbleJpegB64 } from "./wallet-approved-marble-data.js";
 
 function crc32(bytes) {
   let c=0xffffffff;
@@ -185,110 +186,60 @@ function stampWordmark(pixels,width,height,logo) {
 // Deterministic marble: deep navy and royal-cobalt clouds with thin, soft
 // white veins. The center remains dark so member text and the native QR
 // remain legible. No network image dependencies or additional fonts.
-function drawMarblePoster(w,h,portrait,logo,member) {
+// ALIGN's exact user-approved marble image already contains the original
+// centered chrome logo and tagline. Do NOT draw or replace that branding.
+// Each .pkpass gets its own member name, savings and private photo.
+let approvedBackground=null;
+function getApprovedBackground(){
+  if(!approvedBackground){
+    const bytes=Buffer.from(approvedBlackMarbleJpegB64,"base64");
+    approvedBackground=jpeg.decode(bytes,{useTArray:true,formatAsRGBA:true,
+      tolerantDecoding:false,maxResolutionInMP:1,maxMemoryUsageInMB:12});
+    if(approvedBackground.width!==358||approvedBackground.height!==448)
+      throw new Error("Approved Wallet background has invalid dimensions");
+  }
+  return approvedBackground;
+}
+function drawBlackPoster(w,h,portrait,member) {
+  const original=getApprovedBackground();
   const pixels=Buffer.alloc(w*h*4);
   const scale=w/358;
-  for (let y=0;y<h;y++) {
-    const yn=y/h;
-    const qrZone=Math.max(0,Math.min(1,(yn-.52)*5));
-    for(let x=0;x<w;x++) {
-      const xn=x/w;
-      const swirl=.074*Math.sin(yn*11.7+xn*5.4)+
-        .027*Math.sin(yn*25.1-xn*11.3);
-      const course=xn*.94-yn*.65+swirl;
-      const cloud=.5+.5*Math.sin(course*8.6+1.3*Math.sin(yn*4.1));
-      const haze=.5+.5*Math.sin(xn*8.8+yn*7.5+
-        .7*Math.sin(xn*13.8-yn*6.7));
-      // Blue marble has broad waves and a few elegant white veins.
-      const blue=.2+cloud*.49+haze*.31;
-      const inset=Math.min(xn,1-xn,yn,1-yn);
-      const depth=.75+.25*Math.min(1,inset*7);
-      const veinPath=course*11.8+.27*Math.sin(yn*13.4+xn*4.9);
-      const thin=Math.exp(-Math.pow(Math.sin(veinPath)/.048,2));
-      const faint=Math.exp(-Math.pow(Math.sin(veinPath+1.4)/.11,2));
-      const vein=thin*.39+faint*.10;
-      // Restrained texture near the identity, stronger toward card edges.
-      const edge=Math.min(1,Math.abs(xn-.5)*1.55+.18);
-      const fade=1-qrZone*.3;
-      const white=(vein*(.32+.68*edge)*fade);
-      const darkCenter=1-.16*Math.exp(-Math.pow((xn-.49)/.37,2));
-      const p=(y*w+x)*4;
-      let red=(8+19*blue)*depth*darkCenter;
-      let green=(25+62*blue)*depth*darkCenter;
-      let blueChannel=(71+143*blue)*depth*darkCenter;
-      // Marble vein appears silver-white rather than a bright neon streak.
-      pixels[p]=clamp(red*(1-white)+239*white);
-      pixels[p+1]=clamp(green*(1-white)+244*white);
-      pixels[p+2]=clamp(blueChannel*(1-white)+251*white);
-      pixels[p+3]=255;
-    }
-  }
-  // Restrained silver outline; both native code and artwork remain legible.
-  const radius=18*scale,margin=12*scale;
+  // Copy the actual uploaded image, not procedural blue/black marble.
   for(let y=0;y<h;y++){
-    const ty=Math.abs(y-h/2)-(h/2-margin-radius);
+    const sy=Math.min(447,Math.floor(y/scale));
     for(let x=0;x<w;x++){
-      const tx=Math.abs(x-w/2)-(w/2-margin-radius);
-      const d=Math.hypot(Math.max(tx,0),Math.max(ty,0))+
-        Math.min(Math.max(tx,ty),0)-radius;
-      const tint=Math.max(0,1-Math.abs(d)/(1.2*scale))*.50;
-      if(tint<=0)continue;
-      const p=(y*w+x)*4;
-      pixels[p]=clamp(pixels[p]*(1-tint)+216*tint);
-      pixels[p+1]=clamp(pixels[p+1]*(1-tint)+224*tint);
-      pixels[p+2]=clamp(pixels[p+2]*(1-tint)+235*tint);
+      const sx=Math.min(357,Math.floor(x/scale));
+      const i=(y*w+x)*4,j=(sy*358+sx)*4;
+      pixels[i]=original.data[j];
+      pixels[i+1]=original.data[j+1];
+      pixels[i+2]=original.data[j+2];
+      pixels[i+3]=255;
     }
   }
-  // A restrained silver border around the photograph; no decorative stars.
-  if(portrait) {
+  if(portrait){
     const {width:pw,height:ph,data}=portrait;
-    if(pw>0&&ph>0&&pw<=1800&&ph<=1800&&data?.length===pw*ph*4) {
-      const portraitSide=Math.round(74*scale);
-      const x0=Math.round(256*scale), y0=Math.round(144*scale);
-      const frame=Math.max(1,Math.round(2*scale));
-      const radius=Math.round(7*scale);
-      const crop=Math.min(pw,ph);
-      const ox=Math.floor((pw-crop)/2),oy=Math.floor((ph-crop)/2);
-      for(let py=-frame;py<portraitSide+frame;py++){
-        for(let px=-frame;px<portraitSide+frame;px++){
-          const xx=x0+px, yy=y0+py;
-          if(xx<0||yy<0||xx>=w||yy>=h)continue;
-          const innerX=Math.max(radius,Math.min(portraitSide-radius,px));
-          const innerY=Math.max(radius,Math.min(portraitSide-radius,py));
-          const distance=Math.hypot(px-innerX,py-innerY);
-          if(distance>radius+frame)continue;
-          const p=(yy*w+xx)*4;
-          if(px<0||py<0||px>=portraitSide||py>=portraitSide||distance>radius) {
-            pixels[p]=217;pixels[p+1]=221;pixels[p+2]=227;
-          } else {
-            const sx=ox+Math.min(crop-1,Math.floor((px+.5)*crop/portraitSide));
-            const sy=oy+Math.min(crop-1,Math.floor((py+.5)*crop/portraitSide));
-            const src=(sy*pw+sx)*4;
-            pixels[p]=data[src];pixels[p+1]=data[src+1];pixels[p+2]=data[src+2];
-          }
-        }
+    if(pw>0&&ph>0&&pw<=1800&&ph<=1800&&data?.length===pw*ph*4){
+      const side=Math.round(68*scale),x0=Math.round(261*scale),y0=Math.round(145*scale);
+      const crop=Math.min(pw,ph),ox=Math.floor((pw-crop)/2),oy=Math.floor((ph-crop)/2);
+      // The user requested no frames around the member's photo.
+      for(let y=0;y<side;y++)for(let x=0;x<side;x++){
+        const xx=x0+x,yy=y0+y,srcX=ox+Math.min(crop-1,Math.floor(x*crop/side)),
+          srcY=oy+Math.min(crop-1,Math.floor(y*crop/side));
+        const p=(yy*w+xx)*4,q=(srcY*pw+srcX)*4;
+        pixels[p]=data[q];pixels[p+1]=data[q+1];pixels[p+2]=data[q+2];
       }
     }
   }
-  stampWordmark(pixels,w,h,logo);
-  // Artwork personalized at signing time, not fields that iOS may relocate.
-  // Text and portrait sit in the upper third; the lower half stays free for
-  // Apple's native, scannable QR and member-code altText.
-  drawMemberText(pixels,w,h,"SOCIO",28,142,9,211);
-  drawMemberText(pixels,w,h,member?.name||"",28,155,14.5,214);
-  drawMemberText(pixels,w,h,"MEMBRESIA",28,179,9,211);
-  drawMemberText(pixels,w,h,member?.membership||"",28,191,12.5,214);
-  drawMemberText(pixels,w,h,"AHORRADO",28,218,9,211);
-  drawMemberText(pixels,w,h,member?.savings||"",28,231,17,222);
+  // Keep every overlay ABOVE the real iPhone's native QR region, which starts
+  // around artwork y=216. Never paint membership, a duplicate logo or a QR.
+  drawMemberText(pixels,w,h,member?.name||"",28,149,13,218);
+  drawMemberText(pixels,w,h,member?.savings||"",28,183,16,225);
   return pixels;
 }
-// Member name, tier, savings and portrait are in each individually signed pass.
-// The same branded royal-marble design is recreated with deterministic math.
-export async function blackWalletArtwork({photo=null,name="",membership="",savings=""}={}) {
-  const logo=await posterWordmark();
-  const member={name,membership,savings};
+export async function blackWalletArtwork({photo=null,name="",savings=""}={}) {
+  const member={name,savings};
   return {
-    normal:await encodePng(358,448,drawMarblePoster(358,448,photo,logo,member)),
-    retina:await encodePng(716,896,drawMarblePoster(716,896,photo,logo,member))
+    normal:await encodePng(358,448,drawBlackPoster(358,448,photo,member)),
+    retina:await encodePng(716,896,drawBlackPoster(716,896,photo,member))
   };
 }
