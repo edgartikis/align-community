@@ -87,27 +87,20 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     for(let yy=20;yy<123;yy+=2) for(let xx=28;xx<330;xx+=2)
       if(rgbAt(basePixel,xx,yy).every(c=>c>95))brightLogoPixels++;
     assert.ok(brightLogoPixels>300,"Prominent original silver ALIGN wordmark must span the top");
-    assert.ok(rgbAt(basePixel,90,128).every(c=>c>75),
-      "Thin silver divider separates centered ALIGN logo from member identity");
-    // Marble must be genuinely royal-blue / navy, not the previous black
-    // edition with only blue-tinted fields. Sample several background areas.
-    const samples=[[55,320],[105,315],[175,305],[265,320],[300,405]];
-    let royalBlueSamples=0;
-    for(const [x,y] of samples) {
+    // Assert that the user's actual black artwork is embedded, not blue.
+    for(const [x,y] of [[55,320],[105,315],[175,305],[265,320],[300,405]]) {
       const [red,green,blue]=rgbAt(basePixel,x,y);
-      if(blue>green+25 && green>red+9 && blue>65) royalBlueSamples++;
+      assert.ok(Math.abs(red-blue)<40&&Math.abs(green-blue)<40,
+        "Artwork must be black/neutral marble, not royal-blue");
     }
-    assert.ok(royalBlueSamples>=4,
-      "Poster artwork should show substantial blue royal-marble background");
     assert.ok(!names.includes("primaryLogo.png"));
 
-    // Different membership tiers must change the PERSONALIZED artwork, not
-    // merely a field on the reverse. Keep the native QR completely separate.
-    const otherTier=await blackWalletArtwork({
-      name:"SOCIO PRUEBA ALIGN",membership:"Girls Club",savings:"$0 MXN"
+    // No membership tier in the visible artwork; only name and savings.
+    const altered=await blackWalletArtwork({
+      name:"DIFFERENT MEMBER",savings:"$225 MXN"
     });
-    assert.notDeepEqual(otherTier.normal,imageBytes,
-      "Poster image must contain each member's membership tier");
+    assert.notDeepEqual(altered.normal,imageBytes,
+      "Name and savings must be individualized on approved black marble");
     assert.equal(properties.barcodes[0].format,"PKBarcodeFormatQR");
     assert.equal(properties.storeCard,undefined);
     assert.equal(properties.logoText,undefined,"Wordmark must not be duplicated");
@@ -116,15 +109,13 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.equal(properties.generic.primaryFields.length,1);
     assert.equal(properties.generic.primaryFields[0].label,"AHORRADO");
     assert.equal(properties.generic.primaryFields[0].value,"$0 MXN");
-    assert.equal(properties.generic.secondaryFields.length,2);
+    assert.equal(properties.generic.secondaryFields.length,1);
     assert.equal(properties.generic.secondaryFields[0].label,"SOCIO");
     assert.equal(properties.generic.secondaryFields[0].value,"SOCIO PRUEBA ALIGN");
-    assert.equal(properties.generic.secondaryFields[1].label,"MEMBRESÍA");
-    assert.equal(properties.generic.secondaryFields[1].value,"The Brotherhood");
     assert.equal((properties.generic.auxiliaryFields||[]).length,0);
     assert.equal(properties.generic.backFields[0].value,"ALIGN-TEST-0001");
     assert.equal(properties.generic.backFields[1].value,"SOCIO PRUEBA ALIGN");
-    assert.equal(properties.barcodes[0].altText,"ALIGN-TEST-0001");
+    assert.equal(properties.barcodes[0].altText,"");
 
     assert.match(JSON.stringify(properties.barcodes), /feature-apple-wallet-align-align-payments\.alignservice18\.workers\.dev/);
 
@@ -182,9 +173,9 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     const privatePassFields=JSON.parse(execFileSync("unzip",["-p",pkpass,"pass.json"],{encoding:"utf8"}));
     assert.equal(privatePassFields.generic.backFields[0].value,"ALIGN-PRIVATE-002");
     assert.match(privatePassFields.barcodes[0].message,/\/api\/wallet\/verify\//);
-    assert.equal(privatePassFields.generic.secondaryFields[1].value,"The Brotherhood");
+    assert.equal(privatePassFields.generic.secondaryFields[0].value,"SOCIO PRUEBA ALIGN");
     assert.match(privatePassFields.generic.primaryFields[0].value,/231[.,]75 MXN/);
-    assert.equal(privatePassFields.barcodes[0].altText,"ALIGN-PRIVATE-002");
+    assert.equal(privatePassFields.barcodes[0].altText,"");
     assert.equal(privatePassFields.posterGeneric.backFields[0].value,"SOCIO PRUEBA ALIGN");
     assert.equal(privatePassFields.posterGeneric.backFields[3].value,"ALIGN-PRIVATE-002");
     assert.notDeepEqual(execFileSync("unzip",["-p",pkpass,"artwork.png"]),savingsArtwork,
