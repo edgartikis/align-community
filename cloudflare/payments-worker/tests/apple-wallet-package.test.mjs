@@ -7,6 +7,7 @@ import { execFileSync } from "node:child_process";
 import { inflateSync } from "node:zlib";
 import { producePass } from "../src/apple-wallet.js";
 import { blackWalletArtwork } from "../src/wallet-black.js";
+import { approvedBlackMarbleJpegB64 } from "../src/wallet-approved-marble-data.js";
 import jpeg from "jpeg-js";
 
 // Uses a temporary, intentionally untrusted certificate. This verifies package
@@ -72,6 +73,12 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.equal(imageBytes.readUInt32BE(20),448);
     assert.equal(image2x.readUInt32BE(16),716);
     assert.equal(image2x.readUInt32BE(20),896);
+    const approvedSource=Buffer.from(approvedBlackMarbleJpegB64,"base64");
+    assert.ok(approvedSource.length>40000,
+      "Use full-resolution original marble art, never a tiny over-compressed JPEG");
+    const approvedJpeg=jpeg.decode(approvedSource,{useTArray:true,formatAsRGBA:true});
+    assert.equal(approvedJpeg.width,716);
+    assert.equal(approvedJpeg.height,896);
     const unpackArtworkPixels=(png)=>{
       let off=8;const compressed=[];
       while(off<png.length) {
@@ -81,6 +88,18 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
       }
       return inflateSync(Buffer.concat(compressed));
     };
+    const retinaPixel=unpackArtworkPixels(image2x);
+    // At @2x the bitmap must use actual 716x896 source pixels. Old
+    // implementations enlarged 358px art and looked visibly pixelated.
+    for (const [x,y] of [[90,670],[235,745],[430,804],[610,770]]) {
+      const pngAt=y*(716*4+1)+1+x*4;
+      const jpgAt=(y*716+x)*4;
+      assert.deepEqual(
+        [...retinaPixel.subarray(pngAt,pngAt+3)],
+        [...approvedJpeg.data.subarray(jpgAt,jpgAt+3)],
+        "Retina pass must retain real approved source detail, not duplicated pixels"
+      );
+    }
     const basePixel=unpackArtworkPixels(imageBytes);
     const rgbAt=(raw,x,y)=>([...raw.subarray(y*(358*4+1)+1+x*4,y*(358*4+1)+1+x*4+3)]);
     let brightLogoPixels=0;
