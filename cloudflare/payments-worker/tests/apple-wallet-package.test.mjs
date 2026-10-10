@@ -52,8 +52,8 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.equal(properties.passTypeIdentifier, "pass.mx.com.alignmembers.membership");
     assert.equal(properties.teamIdentifier, "2WG8DN922L");
     assert.equal(properties.serialNumber, id);
-    assert.equal(properties.backgroundColor,"rgb(5,10,25)",
-      "Native Apple Wallet footer must match the approved full-width midnight-navy background");
+    assert.equal(properties.backgroundColor,"rgb(0,0,0)",
+      "Native iOS Wallet footer must be absolute black to eliminate optical seams");
     assert.equal(properties.foregroundColor,"rgb(217,221,227)");
     assert.equal(properties.labelColor,"rgb(194,198,207)");
     assert.ok(properties.generic, "Generic style is required for native top-fields / bottom-QR");
@@ -111,31 +111,26 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
       "Cobalt blue upper-left diagonal stripe must be visible");
     const black=rgbAt(retinaPixel,716,359,560);
     assert.ok(black.every(c=>c<35),"QR reserve zone must stay dark/empty");
-    // iOS' translucent Poster Generic footer paints the native background
-    // (5,10,25) as roughly (0,6,25) on the actual iPhone. Our raster artwork
-    // must converge to that DISPLAYED color before its band starts near y=670.
-    // This removes the horizontal edge visible where both regions touch.
-    const artworkTint=[0,6,25];
-    for(const y of [665,680,720,820,870]) {
+    // Black is the only color guaranteed not to darken when iOS renders its
+    // own Poster Generic bottom material. Artwork and native pass share RGB 0.
+    const artworkTint=[0,0,0];
+    for(const y of [638,650,665,680,720,820,870]) {
       for(const x of [30,155,358,575,686]) {
         assert.deepEqual(rgbAt(retinaPixel,716,x,y),artworkTint,
-          "Poster artwork must meet iOS native material with no visible seam");
+          "No color seam at the border between Poster art and iOS footer");
       }
     }
-    // The fade is long, monotone and two-dimensional, never a color reset at
-    // a single scan line. This checks its end is imperceptible for all x values.
+    // The fade finishes with zero derivative: no last-minute hard boundary.
     for(const x of [80,185,358,530,635]) {
-      for(const y of [630,645,659,665,680]) {
+      for(const y of [608,624,630,636,645,660]) {
         const pixel=rgbAt(retinaPixel,716,x,y);
         const next=rgbAt(retinaPixel,716,x,Math.min(y+2,895));
         for(let c=0;c<3;c++)
           assert.ok(Math.abs(pixel[c]-next[c])<=2,
-            "No abrupt two-pixel color step ahead of Apple's native footer");
+            "Fade must have no perceptible two-pixel color step");
       }
     }
-    // Keep Apple Wallet's native material tint independent: iOS applies its
-    // own display transform, so the pass JSON must retain its existing color.
-    assert.equal(properties.backgroundColor,"rgb(5,10,25)");
+    assert.equal(properties.backgroundColor,"rgb(0,0,0)");
     // Before the fade, preserve the upper black-and-metallic-blue identity.
     const upperRight=rgbAt(retinaPixel,716,630,450);
     const upperLeft=rgbAt(retinaPixel,716,75,450);
