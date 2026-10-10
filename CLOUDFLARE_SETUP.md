@@ -20,50 +20,27 @@ Documentación principal:
 
 Los antiguos `/functions` (Pages/D1) y `/netlify` son legado y no deben usarse para funciones nuevas ni recibir tráfico de producción.
 
-## Verificación
+## Verificación LIVE sin tocar producción
 
-Abre:
+El repositorio declara `STRIPE_MODE="live"`; confirma el modo **efectivamente desplegado** en
+`https://api.alignmembers.com.mx/api/health`. La respuesta debe incluir
+`ok:true`, `stripeMode:"live"`, `storage:"kv-ready"` y
+`stripeApi`, `stripeWebhook`, `stripePrices` configurados.
 
-`https://api.alignmembers.com.mx/api/health`
+Las credenciales nunca se publican en GitHub. Cloudflare debe almacenar
+`STRIPE_SECRET_KEY_LIVE` y `STRIPE_WEBHOOK_SECRET_LIVE` para Live,
+`STRIPE_SECRET_KEY` y `STRIPE_WEBHOOK_SECRET` para Test.
+Mantén `QR_SIGNING_SECRET` fijo y separado para evitar invalidar QR
+y sesiones de aliados al rotar claves.
 
-La respuesta debe indicar:
+Stripe Live debe tener un endpoint activo
+`https://api.alignmembers.com.mx/api/stripe/webhook` con los eventos:
+`checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`,
+`customer.subscription.updated` y `customer.subscription.deleted`.
+Revisar el historial de entregas: endpoint activo no equivale a entregas exitosas.
 
-- `ok: true`
-- `architecture: "cloudflare-worker-kv"`
-- `storage: "kv-ready"`
-- `stripeMode: "test"` mientras se realizan pruebas
-
-## Stripe TEST antes de LIVE
-
-Mantener una clave `sk_test_...`/`rk_test_...` y el webhook TEST hasta completar:
-
-1. registro;
-2. checkout;
-3. activación;
-4. login;
-5. tarjeta y QR;
-6. visita en portal de aliados;
-7. renovación;
-8. pago fallido;
-9. cancelación.
-
-Eventos necesarios:
-
-- `checkout.session.completed`
-- `invoice.paid`
-- `invoice.payment_failed`
-- `customer.subscription.updated`
-- `customer.subscription.deleted`
-
-## Paso a LIVE
-
-Solo cuando el recorrido TEST esté certificado:
-
-1. configurar `STRIPE_SECRET_KEY` LIVE en Cloudflare;
-2. crear un webhook LIVE para `https://api.alignmembers.com.mx/api/stripe/webhook`;
-3. guardar su nuevo `STRIPE_WEBHOOK_SECRET`;
-4. confirmar que `/api/health` reporte `stripeMode: "live"`;
-5. ejecutar una compra real controlada;
-6. verificar pago → activación → login → QR → renovación/cancelación.
-
-No se guardan claves privadas ni signing secrets en GitHub.
+Las correcciones de facturación y vigencia se validan automáticamente en un PR:
+`node --test tests/stripe-runtime.test.mjs` y
+`python scripts/check_backend_contract.py`.
+La prueba de cobro real / renovación / cancelación exige aprobación expresa
+antes de ejecutarla. Los cambios en esta rama de GitHub **no despliegan producción**.
