@@ -44,11 +44,29 @@ def main():
         if value != expected:
             problems.append(f"{key}: expected {expected!r}, got {value!r}")
 
+    # Stage A is safe only when the QR-signing cutover is OFF.
+    # These fields are intentionally absent in the legacy deployed Worker, so
+    # this also confirms the new compatible code reached production.
+    STAGE_A = {
+        "qrSigningMode": "legacy-compatibility",
+        "qrSigningReady": True,
+        "qrLegacyGrace": "not-configured",
+    }
+    for key, expected in STAGE_A.items():
+        value = data.get(key) if isinstance(data, dict) else None
+        print(f"  {key}: {value!r}")
+        if value != expected:
+            problems.append(f"{key}: expected {expected!r}, got {value!r}")
+    secret_state = data.get("qrSigningSecret") if isinstance(data, dict) else None
+    print(f"  qrSigningSecret: {secret_state!r}")
+    if secret_state != "missing":
+        problems.append(f"qrSigningSecret expected 'missing' during stage A, got {secret_state!r}")
+
     if problems:
         print("UNVERIFIED: deployed configuration fails one or more checks.")
         return 1
 
-    print("PASS: publicly deployed API reports Live ready.")
+    print("PASS: Cloudflare production has Stage A compatibility and no QR secret cutover.")
     print("NOTE: Health does not confirm webhook deliveries, KV member sync, or a successful end-to-end purchase.")
     return 0
 
