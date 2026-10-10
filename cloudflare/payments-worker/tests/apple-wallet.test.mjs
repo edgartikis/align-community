@@ -81,7 +81,9 @@ test("A production Wallet QR reads a REAL active member from PAYMENT_STATE",asyn
   const token="a".repeat(48);
   const member={status:"Activa",name:"SOCIO REAL ALIGN",level:"Cowboys",memberCode:"AL-COW-AB1234",
     validFrom:new Date(Date.now()-3600000).toISOString(),validUntil:new Date(Date.now()+86400000).toISOString()};
-  const env={PAYMENT_STATE:{get:async key=>key==="wallet:id:"+id?token:key==="member:"+token?JSON.stringify(member):null}};
+  const env={WALLET_ENABLED:"true",WALLET_TEAM_ID:"TEAM",WALLET_SIGNER_CERT_PEM:"cert",
+    WALLET_SIGNER_KEY_PEM:"key",WALLET_WWDR_PEM:"wwdr",
+    PAYMENT_STATE:{get:async key=>key==="wallet:id:"+id?token:key==="member:"+token?JSON.stringify(member):null}};
   const response=await walletRoute(new Request("https://api.alignmembers.com.mx/api/wallet/verify/"+id),env);
   assert.equal(response.status,200);
   assert.match(await response.text(),/SOCIO REAL ALIGN/);
@@ -92,7 +94,8 @@ test("An unpaid or cancelled member is rejected even if their Wallet pass remain
   const id="abcdef0123456789abcdef0123456789",token="b".repeat(48);
   for(const status of ["Inactiva","Pago pendiente"]){
     const member={status,name:"SOCIO",validFrom:new Date(Date.now()-3600000).toISOString(),validUntil:new Date(Date.now()+86400000).toISOString()};
-    const env={PAYMENT_STATE:{get:async key=>key==="wallet:id:"+id?token:key==="member:"+token?JSON.stringify(member):null}};
+    const env={WALLET_ENABLED:"true",WALLET_TEAM_ID:"TEAM",WALLET_SIGNER_CERT_PEM:"cert",WALLET_SIGNER_KEY_PEM:"key",WALLET_WWDR_PEM:"wwdr",
+      PAYMENT_STATE:{get:async key=>key==="wallet:id:"+id?token:key==="member:"+token?JSON.stringify(member):null}};
     const response=await walletRoute(new Request("https://api.alignmembers.com.mx/api/wallet/verify/"+id),env);
     assert.equal(response.status,403);
   }
@@ -186,6 +189,18 @@ test("Pilot requires an explicit CURRENT paid period",async()=>{
   assert.equal((await walletRoute(pilotRequest(token),expired)).status,403);
   const cancelled={...env,PAYMENT_STATE:{get:async key=>key==="member:"+token?JSON.stringify({...member,status:"Inactiva"}):null}};
   assert.equal((await walletRoute(pilotRequest(token),cancelled)).status,403);
+});
+
+test("Pilot verification QR exposes no personal info after the pilot expires",async()=>{
+  const {id,env}=pilotFixture();
+  const check=()=>walletRoute(new Request("https://api.alignmembers.com.mx/api/wallet/verify/"+id),env);
+  const before=await check();
+  assert.equal(before.status,200);
+  assert.match(await before.text(),/SOCIO PILOTO/);
+  const expiredEnv={...env,WALLET_PILOT_EXPIRES_AT:new Date(Date.now()-3000).toISOString()};
+  const after=await walletRoute(new Request("https://api.alignmembers.com.mx/api/wallet/verify/"+id),expiredEnv);
+  assert.equal(after.status,403);
+  assert.doesNotMatch(await after.text(),/SOCIO PILOTO|BRO-PILOT-007/);
 });
 
 test("Only the allowlisted pilot member may scan a Wallet QR while global issuance is disabled",async()=>{
