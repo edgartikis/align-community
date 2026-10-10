@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { stripeMode, stripeSecret, stripeWebhookSecret, qrSigningSecret, subscriptionPeriod } from "../cloudflare/payments-worker/src/stripe-runtime.js";
+import { createHmac, webcrypto } from "node:crypto";
+
+globalThis.crypto ??= webcrypto;
+import { stripeMode, stripeSecret, stripeWebhookSecret, qrSigningSecret, qrCutoverEnabled, qrVerificationSecrets, verifyQrHmac, subscriptionPeriod } from "../cloudflare/payments-worker/src/stripe-runtime.js";
 
 const env = {
   STRIPE_MODE: "live",
@@ -32,15 +35,57 @@ test("Fail closed when the selected mode has no matching key", () => {
   assert.throws(() => stripeWebhookSecret({ ...env, STRIPE_WEBHOOK_SECRET_LIVE: "" }), /webhook/);
 });
 
-test("QR signatures use a stable dedicated secret when configured", () => {
-  const dedicated = { ...env, QR_SIGNING_SECRET: "qr-secret-kept-across-payment-key-rotation" };
-  assert.equal(qrSigningSecret(dedicated), dedicated.QR_SIGNING_SECRET);
-  assert.equal(qrSigningSecret({ ...dedicated, STRIPE_SECRET_KEY_LIVE: "sk_live_changed" }), dedicated.QR_SIGNING_SECRET);
+const newQrKey = "align_64_random_characters_placeholder_but_not_an_actual_secret_ok12345";
+const migrationNow = Date.parse("2026-10-10T13:00:00Z");
+const migrationUntil = new Date(migrationNow + 13 * 60 * 60 * 1000).toISOString();
+const stage = { ...env, QR_SIGNING_SECRET: newQrKey, QR_SIGNING_CUTOVER: "true", QR_LEGACY_ACCEPT_UNTIL: migrationUntil };
+const mac = (key, value) => createHmac("sha256", key).update(value).digest("base64url");
+
+test("Stage 1: adding new QR secret alone cannot change existing QR or ally signatures", () => {
+  assert.equal(qrCutoverEnabled({ ...env, QR_SIGNING_SECRET: newQrKey }), false);
+  assert.equal(qrSigningSecret({ ...env, QR_SIGNING_SECRET: newQrKey }), env.STRIPE_SECRET_KEY);
+  assert.equal(qrSigningSecret(env), env.STRIPE_SECRET_KEY);
+  assert.deepEqual(qrVerificationSecrets({ ...env, QR_SIGNING_SECRET: newQrKey }), [env.STRIPE_SECRET_KEY]);
 });
 
-test("QR signature fallback uses the active Stripe mode, never the other mode", () => {
-  assert.equal(qrSigningSecret(env), env.STRIPE_SECRET_KEY_LIVE);
-  assert.equal(qrSigningSecret({ ...env, STRIPE_MODE: "test" }), env.STRIPE_SECRET_KEY);
+test("Stage 2: QR cutover signs with new dedicated secret and resists Stripe key rotation", () => {
+  assert.equal(qrCutoverEnabled(stage), true);
+  assert.equal(qrSigningSecret(stage), newQrKey);
+  assert.equal(qrSigningSecret({ ...stage, STRIPE_SECRET_KEY_LIVE: "sk_live_changed" }), newQrKey);
+});
+
+test("Fail closed if cutover is enabled before configuring a sufficiently long secret", () => {
+  assert.throws(() => qrSigningSecret({ ...stage, QR_SIGNING_SECRET: "" }), /requiere/);
+  assert.throws(() => qrSigningSecret({ ...stage, QR_SIGNING_SECRET: "short" }), /requiere/);
+});
+
+test("Legacy test and Live QR signatures verify ONLY inside the grace period", async () => {
+  const message = "memberToken:2026-10-10T00:00:00Z|2026-11-10T00:00:00Z:123456";
+  assert.equal(await verifyQrHmac(stage, message, mac(env.STRIPE_SECRET_KEY, message), { now: migrationNow }), true);
+  assert.equal(await verifyQrHmac(stage, message, mac(env.STRIPE_SECRET_KEY_LIVE, message), { now: migrationNow }), true);
+  assert.equal(await verifyQrHmac(stage, message, mac(newQrKey, message), { now: migrationNow }), true);
+  assert.equal(await verifyQrHmac(stage, message, mac(env.STRIPE_SECRET_KEY, message), { now: migrationNow + 13 * 60 * 60 * 1000 }), false);
+  assert.equal(await verifyQrHmac(stage, message, mac(env.STRIPE_SECRET_KEY_LIVE, message), { now: migrationNow + 13 * 60 * 60 * 1000 }), false);
+  assert.equal(await verifyQrHmac(stage, message, mac(newQrKey, message), { now: migrationNow + 13 * 60 * 60 * 1000 }), true);
+  assert.equal(await verifyQrHmac({ ...stage, QR_LEGACY_ACCEPT_UNTIL: "" }, message, mac(env.STRIPE_SECRET_KEY, message), { now: migrationNow }), false);
+});
+
+test("Short QR links, long QR links and ally sessions can migrate without new logins", async () => {
+  const shortMessage = "short:token:2026-10-10|2026-11-10:12345";
+  const sessionMessage = "ally-session:opaque_encoded_payload";
+  const qrMessage = "token:2026-10-10|2026-11-10:12345";
+  assert.equal(await verifyQrHmac(stage, shortMessage, mac(env.STRIPE_SECRET_KEY, shortMessage).slice(0, 22), { short: true, now: migrationNow }), true);
+  assert.equal(await verifyQrHmac(stage, sessionMessage, mac(env.STRIPE_SECRET_KEY, sessionMessage), { now: migrationNow }), true);
+  assert.equal(await verifyQrHmac(stage, qrMessage, mac(env.STRIPE_SECRET_KEY, qrMessage), { now: migrationNow }), true);
+  assert.equal(await verifyQrHmac(stage, qrMessage, mac(env.STRIPE_SECRET_KEY, qrMessage).slice(1), { now: migrationNow }), false);
+  assert.equal(await verifyQrHmac(stage, qrMessage, mac(env.STRIPE_SECRET_KEY, qrMessage), { now: migrationNow + 13 * 60 * 60 * 1000 }), false);
+});
+
+test("Invalid or changed QR payload and tampered ally sessions never validate", async () => {
+  const message = "ally-session:payload";
+  const oldSignature = mac(env.STRIPE_SECRET_KEY, message);
+  assert.equal(await verifyQrHmac(stage, message + "-edited", oldSignature, { now: migrationNow }), false);
+  assert.equal(await verifyQrHmac(stage, message, mac("unknown_key", message), { now: migrationNow }), false);
 });
 
 test("Current Stripe subscription item dates control the paid period", () => {
@@ -82,5 +127,8 @@ test("Live billing, checkout, renewal and QR portals share the runtime", () => {
   for (const name of ["entry.js", "entry-member-login.js", "entry-short-qr.js", "entry-visits.js"]) {
     assert.doesNotMatch(source(name), /env\.STRIPE_SECRET_KEY\b/, `${name} must not silently reuse the test key in Live mode`);
   }
-  assert.match(source("entry.js"), /const period = subscriptionPeriod\(subscription\);\s*if \(!period\) return null;/);
+  assert.match(source("entry.js"), /const period = subscriptionPeriod\\(subscription\\);\\s*if \\(!period\\) return null;/);
+  for (const name of ["entry.js", "entry-visits.js", "entry-short-qr.js", "index.js"]) {
+    assert.match(source(name), /verifyQrHmac/, `${name} must validate old and new QR signatures`);
+  }
 });
