@@ -216,7 +216,10 @@ export async function walletRoute(request,env) {
     } catch { return json({error:"Solicitud no válida."},400); }
     if (!await pilotTokenMatches(env,token)) return json({error:"Esta cuenta no está autorizada para la prueba."},403);
     const member = await getMember(env,token);
-    if (!active(member) || /^ALIGN-TEST-/i.test(String(member?.memberCode||"")) ||
+    // An explicitly confirmed paid period is mandatory for a Live pilot.
+    // Joined-at and inferred calendar-month fallbacks are not sufficient.
+    if (!active(member) || !member?.validFrom || !member?.validUntil ||
+        /^ALIGN-TEST-/i.test(String(member?.memberCode||"")) ||
         !String(member?.memberCode||"").trim()) {
       return json({error:"Se requiere una membresía real y vigente."},403);
     }
@@ -287,7 +290,8 @@ export async function rewriteWalletAllyRequest(request,env,apiWorker) {
   if (!active(member)) return request;
   // While global issuance is disabled, ONLY the single allowlisted pilot
   // membership may use the wallet QR in the existing ally scanner.
-  if (!supported(env) && !await pilotTokenMatches(env,token)) return request;
+  if (!supported(env) && (!member?.validFrom || !member?.validUntil ||
+      !await pilotTokenMatches(env,token))) return request;
   const dynamicUrl=new URL("/api/monthly-qr?token="+encodeURIComponent(token),new URL(request.url).origin).toString();
   const dynamicResponse=await apiWorker.fetch(new Request(dynamicUrl),env);
   if (!dynamicResponse.ok) return request;
