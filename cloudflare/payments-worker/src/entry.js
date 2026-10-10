@@ -1,3 +1,4 @@
+import { stripeSecret, qrSigningSecret, subscriptionPeriod } from "./stripe-runtime.js";
 import baseWorker from "./index.js";
 
 const ALLOWED_ORIGINS = new Set([
@@ -30,14 +31,6 @@ function clean(value, max = 200) {
     .slice(0, max);
 }
 
-function stripeSecret(env) {
-  const secret = String(env.STRIPE_SECRET_KEY || "").trim();
-  if (!/^sk_(test|live)_/.test(secret) && !/^rk_(test|live)_/.test(secret)) {
-    throw new Error("La clave privada de Stripe no tiene un formato válido.");
-  }
-  return secret;
-}
-
 async function stripeGet(env, path) {
   const response = await fetch(`https://api.stripe.com/v1/${path}`, {
     headers: { authorization: `Bearer ${stripeSecret(env)}` },
@@ -68,18 +61,6 @@ function fallbackPeriod(member) {
   return { validFrom, validUntil };
 }
 
-function periodFromSubscription(subscription, fallbackIso = new Date().toISOString()) {
-  const start = Number(subscription?.current_period_start || 0);
-  const end = Number(subscription?.current_period_end || 0);
-  if (start > 0 && end > start) {
-    return {
-      validFrom: new Date(start * 1000).toISOString(),
-      validUntil: new Date(end * 1000).toISOString(),
-    };
-  }
-  return { validFrom: fallbackIso, validUntil: addCalendarMonth(fallbackIso) };
-}
-
 async function putMemberPeriod(env, token, period) {
   const raw = await env.PAYMENT_STATE.get(`member:${token}`);
   if (!raw) return;
@@ -96,7 +77,8 @@ async function updateTokensPeriod(env, tokens, period) {
 async function syncSubscriptionPeriod(env, subscriptionId, directTokens = []) {
   if (!subscriptionId) return null;
   const subscription = await stripeGet(env, `subscriptions/${encodeURIComponent(subscriptionId)}`);
-  const period = periodFromSubscription(subscription);
+  const period = subscriptionPeriod(subscription);
+  if (!period) return null;
 
   if (directTokens.length) {
     await updateTokensPeriod(env, directTokens, period);
@@ -137,10 +119,6 @@ function constantTimeEqual(a, b) {
 
 const QR_ROTATION_MS = 15 * 60 * 1000;
 
-function qrSecret(env) {
-  return String(env.QR_SIGNING_SECRET || env.STRIPE_SECRET_KEY || "");
-}
-
 function cycleKey(period) {
   return `${period.validFrom}|${period.validUntil}`;
 }
@@ -155,7 +133,7 @@ function qrWindow(now = Date.now()) {
 }
 
 async function qrSignature(env, token, period, slot) {
-  return hmacBase64Url(qrSecret(env), `${token}:${cycleKey(period)}:${slot}`);
+  return hmacBase64Url(qrSigningSecret(env), `${token}:${cycleKey(period)}:${slot}`);
 }
 
 function isWithinPeriod(period, now = Date.now()) {
