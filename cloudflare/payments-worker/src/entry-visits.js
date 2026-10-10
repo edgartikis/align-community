@@ -1,3 +1,4 @@
+import { qrSigningSecret } from "./stripe-runtime.js";
 import billingWorker from "./entry.js";
 
 const QR_ROTATION_MS = 15 * 60 * 1000;
@@ -104,12 +105,6 @@ function constantTimeEqual(a, b) {
   return diff === 0;
 }
 
-function qrSecret(env) {
-  const secret = String(env.QR_SIGNING_SECRET || env.STRIPE_SECRET_KEY || "").trim();
-  if (!secret) throw new Error("No está configurada la firma de QR.");
-  return secret;
-}
-
 function base64UrlEncode(value) {
   const bytes = new TextEncoder().encode(value);
   let binary = "";
@@ -130,7 +125,7 @@ function publicAlly(ally) {
 
 async function createAllySession(env, allyId) {
   const payload = base64UrlEncode(JSON.stringify({ allyId, exp: Date.now() + 12 * 60 * 60 * 1000, nonce: crypto.randomUUID() }));
-  const signature = await hmacBase64Url(qrSecret(env), `ally-session:${payload}`);
+  const signature = await hmacBase64Url(qrSigningSecret(env), `ally-session:${payload}`);
   return `${payload}.${signature}`;
 }
 
@@ -139,7 +134,7 @@ async function allyFromSession(request, env) {
   const token = authorization.replace(/^Bearer\s+/i, "").trim();
   const [payload, signature, extra] = token.split(".");
   if (!payload || !signature || extra) throw new Error("La sesión del aliado no es válida. Inicia sesión nuevamente.");
-  const expected = await hmacBase64Url(qrSecret(env), `ally-session:${payload}`);
+  const expected = await hmacBase64Url(qrSigningSecret(env), `ally-session:${payload}`);
   if (!constantTimeEqual(expected, signature)) throw new Error("La sesión del aliado no es válida. Inicia sesión nuevamente.");
   let data;
   try { data = JSON.parse(base64UrlDecode(payload)); } catch (_) { throw new Error("La sesión del aliado no es válida. Inicia sesión nuevamente."); }
@@ -156,7 +151,7 @@ function qrWindow(now = Date.now()) {
     validUntil: new Date((slot + 1) * QR_ROTATION_MS).toISOString(),
   };
 }
-async function qrSignature(env, token, period, slot) { return hmacBase64Url(qrSecret(env), `${token}:${cycleKey(period)}:${slot}`); }
+async function qrSignature(env, token, period, slot) { return hmacBase64Url(qrSigningSecret(env), `${token}:${cycleKey(period)}:${slot}`); }
 
 function parseQr(raw) {
   let url;
