@@ -1,6 +1,12 @@
 name: ALIGN Backend Contract
 
 on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "cloudflare/payments-worker/**"
+      - "tests/stripe-runtime.test.mjs"
+      - ".github/workflows/backend-contract.yml"
   push:
     branches: ["main"]
     paths:
@@ -16,6 +22,7 @@ on:
       - "netlify.toml"
       - "scripts/check_backend_contract.py"
       - ".github/workflows/backend-contract.yml"
+      - "tests/stripe-runtime.test.mjs"
   workflow_dispatch:
 
 permissions:
@@ -25,7 +32,12 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout main
+      - name: Checkout proposed code
         uses: actions/checkout@v4
       - name: Verify canonical backend
         run: python scripts/check_backend_contract.py
+      - name: Check Stripe Worker JavaScript syntax
+        run: |
+          for file in cloudflare/payments-worker/src/*.js; do node --check "$file"; done
+      - name: Test Stripe Live/Test and renewal safety
+        run: node --test tests/stripe-runtime.test.mjs
