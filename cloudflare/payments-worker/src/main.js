@@ -1,3 +1,4 @@
+import { stripeMode } from "./stripe-runtime.js";
 import apiWorker from "./entry-member-login.js";
 
 const BACKEND_VERSION = "2026-10-02-rotating-qr-15m-v1";
@@ -13,12 +14,8 @@ const PRICE_ENV_NAMES = [
   "STRIPE_PRICE_CIRCLE",
 ];
 
-function requestedStripeMode(env) {
-  return String(env.STRIPE_MODE || "test").trim().toLowerCase() === "live" ? "live" : "test";
-}
-
 function stripeReadiness(env) {
-  const mode = requestedStripeMode(env);
+  const mode = stripeMode(env);
   const live = mode === "live";
   const key = String(env[live ? "STRIPE_SECRET_KEY_LIVE" : "STRIPE_SECRET_KEY"] || "").trim();
   const webhook = String(env[live ? "STRIPE_WEBHOOK_SECRET_LIVE" : "STRIPE_WEBHOOK_SECRET"] || "").trim();
