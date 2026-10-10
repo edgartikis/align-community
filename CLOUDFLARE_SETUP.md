@@ -44,3 +44,17 @@ Las correcciones de facturación y vigencia se validan automáticamente en un PR
 `python scripts/check_backend_contract.py`.
 La prueba de cobro real / renovación / cancelación exige aprobación expresa
 antes de ejecutarla. Los cambios en esta rama de GitHub **no despliegan producción**.
+
+## Plan seguro para `QR_SIGNING_SECRET`
+
+**No añadir el secreto en Cloudflare antes de desplegar el código compatible de la rama #29.** El código actualmente desplegado usa el secreto de forma inmediata si aparece.
+
+1. Primero, previa autorización, desplegar el código de compatibilidad con `QR_SIGNING_CUTOVER` ausente/`false` y sin `QR_SIGNING_SECRET`. Comprobar que los QR antiguos y el portal de aliados funcionen.
+2. Solo entonces crear `QR_SIGNING_SECRET` como *Secret* usando 32 bytes aleatorios (por ejemplo, `openssl rand -hex 32` generado localmente, sin compartirlo). Con el flag apagado no cambia la firma.
+3. Antes de activar el flag, agregar `QR_LEGACY_ACCEPT_UNTIL` con hora UTC ISO 8601 aproximadamente 13 horas después del inicio previsto. Mantener las claves antiguas sin rotar hasta concluir la transición.
+4. Con nueva autorización, poner `QR_SIGNING_CUTOVER=true`. Verificar `qrSigningMode: dedicated`, `qrSigningReady: true` y `qrLegacyGrace: active` en `/api/health`; validar Wallet, QR corto y sesión de aliado iniciada antes del corte.
+5. Pasadas las 13 horas, las firmas antiguas ya no se aceptan. El secreto independiente permanece fijo.
+
+Si hay un problema durante la ventana, se puede volver a `QR_SIGNING_CUTOVER=false` temporalmente, sin borrar el secreto ni modificar pagos. Revisar el procedimiento completo en `cloudflare/payments-worker/README.md`.
+
+**No fusionar, desplegar, hacer cambios en Cloudflare ni pruebas con dinero real sin autorización específica.**
