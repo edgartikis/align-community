@@ -1,3 +1,5 @@
+import { stripeMode, stripeSecret, stripeWebhookSecret, qrSigningSecret } from "./stripe-runtime.js";
+
 const PLANS = Object.freeze({
   brotherhood: { name: "The Brotherhood", seats: 1, prefix: "BRO", founderPriceEnv: "STRIPE_PRICE_BROTHERHOOD_FOUNDER", regularPriceEnv: "STRIPE_PRICE_BROTHERHOOD_REGULAR" },
   girls: { name: "Girls Club", seats: 1, prefix: "GIR", founderPriceEnv: "STRIPE_PRICE_GIRLS_FOUNDER", regularPriceEnv: "STRIPE_PRICE_GIRLS_REGULAR" },
@@ -57,24 +59,8 @@ function siteOrigin(env) { return String(env.SITE_ORIGIN || "https://alignmember
 function apiOrigin(request) { return new URL(request.url).origin; }
 function memberCode(prefix, index) { return `AL-${prefix}-${crypto.randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase()}${index || ""}`; }
 
-function stripeMode(env) {
-  return String(env.STRIPE_MODE || "test").trim().toLowerCase() === "live" ? "live" : "test";
-}
-
 function stripeEnvName(env, baseName) {
   return stripeMode(env) === "live" ? `${baseName}_LIVE` : baseName;
-}
-
-function stripeSecret(env) {
-  const mode = stripeMode(env);
-  const secret = required(env, mode === "live" ? "STRIPE_SECRET_KEY_LIVE" : "STRIPE_SECRET_KEY");
-  const expected = mode === "live" ? /^(sk|rk)_live_/ : /^(sk|rk)_test_/;
-  if (!expected.test(secret)) throw new Error(`La clave privada de Stripe no corresponde al modo ${mode.toUpperCase()}.`);
-  return secret;
-}
-
-function stripeWebhookSecret(env) {
-  return required(env, stripeMode(env) === "live" ? "STRIPE_WEBHOOK_SECRET_LIVE" : "STRIPE_WEBHOOK_SECRET");
 }
 
 async function stripePost(env, path, params) {
@@ -568,7 +554,7 @@ async function uploadProfilePhoto(request, env) {
 }
 
 function periodFor(date = new Date()) { return date.toISOString().slice(0, 7); }
-async function qrSignature(env, token, period) { return hmacBase64Url(env.QR_SIGNING_SECRET || stripeSecret(env), `${token}:${period}`); }
+async function qrSignature(env, token, period) { return hmacBase64Url(qrSigningSecret(env), `${token}:${period}`); }
 
 async function monthlyQr(request, env) {
   const origin = request.headers.get("origin") || "", url = new URL(request.url), token = clean(url.searchParams.get("token"), 140);
