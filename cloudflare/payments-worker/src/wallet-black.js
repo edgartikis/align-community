@@ -65,13 +65,13 @@ function paint(out,w,x,y,r,g,b,alpha=1) {
   out[k+1]=clamp(out[k+1]*(1-alpha)+g*alpha);
   out[k+2]=clamp(out[k+2]*(1-alpha)+b*alpha);
 }
-// iOS 27 draws a translucent native material band over the bottom of a Poster
-// Generic pass. Its *displayed* color is darker than pass.json backgroundColor.
-// Keep the system tint unchanged, but fade the raster artwork toward the color
-// measured on iPhone ([0,6,25]); matching the JSON value ([5,10,25]) caused
-// a distinct horizontal seam precisely where iOS starts painting its footer.
-export const ALIGN_NATIVE_FOOTER_COLOR = "rgb(5,10,25)";
-const FOOTER_RGB = [0,6,25];
+// The iOS Poster Generic footer is drawn by the operating system and can tint
+// navy artwork differently from the underlying native material. A nearly
+// matching blue is still visible as a line on OLED. Use absolute black on BOTH
+// sides of the native/composited area: its zero channels cannot be darkened.
+// The cobalt-blue identity stays in the upper card and fades to black naturally.
+export const ALIGN_NATIVE_FOOTER_COLOR = "rgb(0,0,0)";
+const FOOTER_RGB = [0,0,0];
 const smoothstep = (a,b,v) => {
   const t=Math.max(0,Math.min(1,(v-a)/(b-a)));
   return t*t*(3-2*t);
@@ -81,11 +81,10 @@ function premiumBackdrop(w,h) {
   for(let y=0;y<h;y++) {
     const yy=y/scale;
     const progress=smoothstep(340,896,yy);
-    // iOS starts painting its native material near y=670 (retina artwork
-    // coordinates). It shifts the visible band darker than backgroundColor.
-    // Use a broad one-way optical crossfade that FINISHES before iOS starts
-    // that band. Avoid an extended flat #050a19 region immediately above it.
-    const join=smoothstep(420,662,yy);
+    // Fade to opaque zero RGB continuously over 240 retina pixels. The fade
+    // finishes well before iOS' native footer begins (~670), so that footer
+    // cannot reveal a different color or the edge of the rasterized artwork.
+    const join=smoothstep(395,635,yy);
     for(let x=0;x<w;x++) {
       const xx=x/scale;
       const dark=7.5+2.2*(1-yy/896)+1.1*Math.sin(xx*.009+yy*.004);
@@ -106,9 +105,8 @@ function premiumBackdrop(w,h) {
       r+=progress*.5+cobalt*1.4+satin*.20;
       g+=progress*2.5+cobalt*18.5+satin*.24;
       b+=progress*8.0+cobalt*66+satin*.30;
-      // Optical match to the native footer *as displayed on iOS*.
-      // All artwork pixels converge to one color before the material begins;
-      // no rectangular edge or hard color switch remains on either side.
+      // Flatten only the lower area to true black; upper graphic stays intact.
+      // A one-way smooth transition has a zero slope at its endpoint.
       r=r*(1-join)+FOOTER_RGB[0]*join;
       g=g*(1-join)+FOOTER_RGB[1]*join;
       b=b*(1-join)+FOOTER_RGB[2]*join;
