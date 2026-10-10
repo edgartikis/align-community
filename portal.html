@@ -48,6 +48,7 @@
 @media(max-width:800px){.billing-grid{grid-template-columns:1fr}.billing-actions{justify-content:flex-start}.billing-actions .btn{width:100%}}
 
 </style>
+<style>.digital-card [data-wallet-token][hidden]{display:none!important}</style>
 </head>
 <body>
 <nav class="nav"><a class="brand" href="/"><img src="assets/align-wordmark.png?v=transparent-5" alt="ALIGN — Belong to Something"></a><div class="navlinks"><a href="#resumen">Resumen</a><a href="#lugares">Lugares</a><a href="#tarjetas">Tarjetas</a><button id="logout" class="logout">Cerrar sesión</button></div></nav>
@@ -177,7 +178,7 @@ function render(member,activityData,groupData,billing){
  const cardLink=`member.html?token=${encodeURIComponent(token)}&from=portal`;
  const placesHtml=places.length?places.map((item,index)=>{const sep=item.url.includes('?')?'&':'?';const url=`${item.url}${sep}plan=${encodeURIComponent(planKey)}&from=portal`;return `<article class="place${item.type==='category'?' category':''}${index>=8?' place-hidden':''}"><div class="place-media"><img loading="lazy" src="${escapeHtml(item.image)}" alt="Foto de ${escapeHtml(item.name)}"></div><div class="place-content"><div><p class="eyebrow">${item.type==='category'?'Categoría ALIGN':'Aliado incluido'}</p><h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.offer)}</p></div><div class="place-footer"><span class="tag">Incluido en ${escapeHtml(plan.title)}</span><a class="btn" href="${url}">${escapeHtml(item.button)}</a></div></div></article>`}).join(''):`<div class="empty">Todavía no pudimos identificar el menú de aliados de esta membresía.</div>`;
  const placesMore=places.length>8?'<div class="places-more"><button class="btn places-toggle" id="placesToggle" type="button">Ver todos los lugares</button></div>':'';
- const cardsHtml=cards.map(card=>`<article class="digital-card"><p class="eyebrow">${Number(card.position)===1?'Tarjeta titular':`Integrante ${Number(card.position)||2}`}</p><h3>${escapeHtml(card.name||'Miembro ALIGN')}</h3><p>${escapeHtml(card.memberCode||'')} · ${escapeHtml(card.level||member.level||'')}</p><a class="btn gold" href="member.html?token=${encodeURIComponent(card.token)}&from=portal">Abrir tarjeta digital</a></article>`).join('');
+ const cardsHtml=cards.map(card=>`<article class="digital-card"><p class="eyebrow">${Number(card.position)===1?'Tarjeta titular':`Integrante ${Number(card.position)||2}`}</p><h3>${escapeHtml(card.name||'Miembro ALIGN')}</h3><p>${escapeHtml(card.memberCode||'')} · ${escapeHtml(card.level||member.level||'')}</p><a class="btn gold" href="member.html?token=${encodeURIComponent(card.token)}&from=portal">Abrir tarjeta digital</a><a class="btn" data-wallet-token="${encodeURIComponent(card.token)}" href="${API}/wallet/apple?token=${encodeURIComponent(card.token)}" rel="noreferrer" hidden>Agregar a Apple Wallet</a></article>`).join('');
  const frequentHtml=favorites.length?favorites.map((place,index)=>`<article class="frequent"><span class="frequent-rank">#${index+1} · Frecuencia</span><h3>${escapeHtml(place.place)}</h3><p>${Number(place.visits||0)} visita${Number(place.visits||0)===1?'':'s'}<br>${money.format(place.spent||0)} gastados<br>${money.format(place.savings||0)} ahorrados</p></article>`).join(''):`<div class="empty">Todavía no hay lugares frecuentes. Aparecerán conforme uses tus beneficios.</div>`;
  const recentHtml=recent.length?recent.map(visit=>`<div class="visit"><div><div class="visit-place">${escapeHtml(visit.place)}</div><div class="visit-meta">${escapeHtml(dateLabel(visit.createdAt))}${visit.benefit?` · ${escapeHtml(visit.benefit)}`:''}</div></div><div class="visit-money"><strong>${money.format(visit.spent||0)}</strong><span class="saved">+${money.format(visit.saved||0)} ahorro</span></div></div>`).join(''):`<div class="empty">Aún no tienes salidas registradas. Cuando un aliado valide una visita, aparecerá aquí.</div>`;
  app.className='';
@@ -192,6 +193,13 @@ function render(member,activityData,groupData,billing){
  const placesToggle=document.querySelector('#placesToggle');
  if(placesToggle)placesToggle.addEventListener('click',()=>{document.querySelectorAll('.place-hidden').forEach(card=>card.classList.remove('place-hidden'));placesToggle.remove()});
  insertBillingSection(member,billing);
+ // No Wallet issuance button until the production signing service is enabled.
+ fetch(API+'/wallet/status',{cache:'no-store'}).then(async response=>{
+   if(!response.ok)return;
+   const result=await response.json();
+   if(result.available!==true)return;
+   document.querySelectorAll('[data-wallet-token]').forEach(link=>{link.hidden=false});
+ }).catch(()=>{});
 }
 async function load(){
  if(!token||!/^[A-Za-z0-9_-]{20,}$/.test(token)){location.replace('login.html');return}

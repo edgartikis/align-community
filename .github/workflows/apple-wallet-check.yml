@@ -1,0 +1,30 @@
+name: ALIGN Wallet integration checks
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "cloudflare/payments-worker/**"
+      - "member.html"
+      - "portal.html"
+      - "package.json"
+      - ".github/workflows/apple-wallet-check.yml"
+permissions:
+  contents: read
+jobs:
+  validate-wallet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install test dependencies
+        run: npm install --no-audit --no-fund
+      - name: Test wallet identity, authorization, QR adapter and approved artwork
+        run: node --test cloudflare/payments-worker/tests/apple-wallet.test.mjs cloudflare/payments-worker/tests/apple-wallet-package.test.mjs tests/stripe-runtime.test.mjs
+      - name: Check JavaScript syntax
+        run: |
+          for file in cloudflare/payments-worker/src/*.js; do node --check "$file"; done
+      - name: Bundle Worker without deployment
+        run: npx wrangler deploy --config cloudflare/payments-worker/wrangler.toml --dry-run --outdir ./wallet-build
