@@ -1,3 +1,4 @@
+import { stripeSecret } from "./stripe-runtime.js";
 import memberActivityWorker from "./entry-member-activity.js";
 
 const ALLOWED_ORIGINS = new Set([
@@ -57,11 +58,6 @@ async function readJson(env, key) {
   const raw = await env.PAYMENT_STATE.get(key);
   if (!raw) return null;
   try { return JSON.parse(raw); } catch (_) { return null; }
-}
-
-function stripeSecret(env) {
-  const value = String(env.STRIPE_SECRET_KEY || "").trim();
-  return /^([sr]k)_(test|live)_/.test(value) ? value : "";
 }
 
 function siteOrigin(env) {
