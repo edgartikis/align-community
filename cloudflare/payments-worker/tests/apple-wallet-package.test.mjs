@@ -111,33 +111,31 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
       "Cobalt blue upper-left diagonal stripe must be visible");
     const black=rgbAt(retinaPixel,716,359,560);
     assert.ok(black.every(c=>c<35),"QR reserve zone must stay dark/empty");
-    // No more horizontal boundary between image and iOS Poster material:
-    // the image is feathered to the SAME RGB specified in pass.json.
-    const nativeTint=[5,10,25];
-    for (const x of [80,185,358,530,635]) {
-      const nearJoin=rgbAt(retinaPixel,716,x,602);
-      for(let channel=0;channel<3;channel++)
-        assert.ok(Math.abs(nearJoin[channel]-nativeTint[channel])<=1,
-          "Artwork behind native footer must be pixel-matched across its width");
-      for (const y of [591,599,608,615]) {
-        const pixel=rgbAt(retinaPixel,716,x,y);
-        for(let c=0;c<3;c++)
-          assert.ok(Math.abs(pixel[c]-nearJoin[c])<=3,
-            "No sudden color step where Apple Wallet paints its bottom strip");
-      }
-    }
-    // Option B: the lower region is a *single continuous native color*.
-    // A Gaussian fade used to reverse after y=602, restoring cobalt blue
-    // on the right and creating the visible image-cut seam on iPhone.
-    // The artwork must never diverge from the native pass background after
-    // completing its one-way cross-fade to midnight navy.
-    for(const y of [575,602,670,730,820,870]) {
+    // iOS' translucent Poster Generic footer paints the native background
+    // (5,10,25) as roughly (0,6,25) on the actual iPhone. Our raster artwork
+    // must converge to that DISPLAYED color before its band starts near y=670.
+    // This removes the horizontal edge visible where both regions touch.
+    const artworkTint=[0,6,25];
+    for(const y of [665,680,720,820,870]) {
       for(const x of [30,155,358,575,686]) {
-        const pixel=rgbAt(retinaPixel,716,x,y);
-        assert.deepEqual(pixel,nativeTint,
-          "Wallet's lower background must be uniform, including the right half");
+        assert.deepEqual(rgbAt(retinaPixel,716,x,y),artworkTint,
+          "Poster artwork must meet iOS native material with no visible seam");
       }
     }
+    // The fade is long, monotone and two-dimensional, never a color reset at
+    // a single scan line. This checks its end is imperceptible for all x values.
+    for(const x of [80,185,358,530,635]) {
+      for(const y of [630,645,659,665,680]) {
+        const pixel=rgbAt(retinaPixel,716,x,y);
+        const next=rgbAt(retinaPixel,716,x,Math.min(y+2,895));
+        for(let c=0;c<3;c++)
+          assert.ok(Math.abs(pixel[c]-next[c])<=2,
+            "No abrupt two-pixel color step ahead of Apple's native footer");
+      }
+    }
+    // Keep Apple Wallet's native material tint independent: iOS applies its
+    // own display transform, so the pass JSON must retain its existing color.
+    assert.equal(properties.backgroundColor,"rgb(5,10,25)");
     // Before the fade, preserve the upper black-and-metallic-blue identity.
     const upperRight=rgbAt(retinaPixel,716,630,450);
     const upperLeft=rgbAt(retinaPixel,716,75,450);
@@ -151,9 +149,8 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     const beforeRule=rgbAt(retinaPixel,716,200,776);
     assert.ok(fineRule[2]>beforeRule[2]+7,
       "Silver footer divider must be visible but discreet");
-    assert.deepEqual(rgbAt(retinaPixel,716,358,850),nativeTint,
+    assert.deepEqual(rgbAt(retinaPixel,716,358,850),artworkTint,
       "No extra artwork text must compete with BELONG TO SOMETHING");
-    assert.equal(properties.backgroundColor,`rgb(${nativeTint.join(",")})`);
     const qrUnchanged=rgbAt(retinaPixel,716,359,560);
     assert.deepEqual(qrUnchanged,black,
       "QR clearance and upper artwork must remain untouched");
