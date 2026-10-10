@@ -4,6 +4,32 @@
 
 Objetivo: permitir una **sola prueba de emisión** del pase oficial .pkpass de ALIGN desde Cloudflare usando los certificados Apple que ya están guardados como secretos. La emisión general permanece desactivada (`WALLET_ENABLED=false`), sin modificar Stripe Live, QR web, renovaciones ni precios.
 
+## Decisión aprobada — QR unificado por membresía, no por imagen
+
+El titular de ALIGN aprueba la siguiente arquitectura como **estándar de producto**. Esta decisión no equivale a autorizar despliegue o activación del piloto.
+
+| Superficie | QR mostrado | Qué consulta el validador |
+| --- | --- | --- |
+| Tarjeta digital de la web | URL/código temporal que rota cada ~15 minutos | La identidad y vigencia del socio en `PAYMENT_STATE` y la autorización del aliado |
+| Tarjeta nativa Apple Wallet | Enlace estable con ID aleatorio individual, nunca el token secreto del socio | Exactamente la misma membresía y el mismo estado en `PAYMENT_STATE`; el adaptador del escáner solicita internamente el QR temporal actual para el verificador existente |
+
+- **Los QR visibles NO tienen que ser idénticos.** Ambos identifican la **misma persona/membresía**, comparten registro de visitas, estado y beneficios; ningún descuento se concede solo por mostrar Wallet.
+- **No introducir rotación de código cada 15 minutos dentro de Apple Wallet.** Sin servicio PassKit web + notificaciones APNs, la pantalla de Wallet no se actualiza sola; incluso con ese servicio, las actualizaciones de Apple no garantizan puntualidad.
+- **Cada uso requiere validación ONLINE desde el portal autenticado del aliado**, comprobación de la membresía `Activa` y vigente, revisión visual de nombre e identidad, y aplicación de las reglas de beneficios. Nunca interpretar la tarjeta guardada como autorización suficiente.
+- **Riesgo residual:** cualquiera puede fotografiar/reutilizar un QR estático. Para beneficios de alto valor se acordó añadir una **verificación adicional de posesión** (por ejemplo, código de un solo uso confirmado en la sesión del socio); **esta capa aún NO está implementada** y requiere especificación, interfaz, caducidad y pruebas antes de aplicar dichos beneficios desde Wallet.
+- **En caso de caída del servidor o de la sesión del aliado:** denegar el descuento y proporcionar un procedimiento manual autorizado; no aceptar pases sin consultar el backend.
+- **Múltiples integrantes:** Duo y Circle reciben códigos estables distintos por persona, jamás comparten identificador Wallet, aunque pertenezcan al mismo grupo.
+- **Cancelación o falta de pago:** el mismo escaneo debe rechazar la tarjeta, incluso si el pase permanece instalado. Mantener registro de visita solo tras autorización del backend.
+
+### Criterios de aceptación antes de activar Wallet a todos
+
+1. Web: el QR continúa rotando en el intervalo actual de 15 minutos, y el QR anterior se invalida según las reglas existentes.
+2. Wallet: el QR permanece estable entre descargas y es distinto para cada miembro; no incluye token ni información privada.
+3. Aliado autorizado: el escáner interpreta ambos formatos, consulta el mismo `PAYMENT_STATE`, y aplica el mismo resultado de validación y beneficio; no admite un QR Wallet cuyo socio esté cancelado o vencido.
+4. Aliado sin sesión: no puede registrar visitas ni aplicar descuentos.
+5. Fotografía de QR permanente: requiere comparación de identidad; para beneficios de alto valor, además deberá superar el segundo factor pendiente antes de su habilitación.
+6. Después de apagar el piloto, las validaciones de esa prueba dejan de funcionar; no afecta al QR web actual.
+
 ## Controles de seguridad del piloto
 
 - La nueva ruta `POST /api/wallet/pilot` solo acepta solicitudes a `https://api.alignmembers.com.mx`, enviadas desde `Origin: https://alignmembers.com.mx`. El token del socio viaja en el cuerpo POST, nunca en una URL.
