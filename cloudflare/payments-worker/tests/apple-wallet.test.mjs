@@ -39,7 +39,7 @@ test("Preview KV binding never points to the production namespace", () => {
   const productionVars = toml.split("[vars]")[1].split("[previews]")[0];
   const previewVars = toml.split("[previews.vars]")[1].split("[[previews.kv_namespaces]]")[0];
   assert.match(productionVars, /WALLET_ENABLED\s*=\s*"false"/);
-  assert.match(previewVars, /WALLET_ENABLED\s*=\s*"true"/);
+  assert.match(previewVars, /WALLET_ENABLED\s*=\s*"false"/);
 });
 
 test("Wallet QR uses Preview origin and never redirects testing scans to live API", () => {
@@ -73,4 +73,64 @@ test("Old Preview photo-test URL skips upload and opens Wallet for active member
   assert.equal(rejected.status,403);
   const production=await walletRoute(new Request("https://api.alignmembers.com.mx/api/wallet/photo-test?token="+token),env);
   assert.equal(production,null);
+});
+
+test("A production Wallet QR reads a REAL active member from PAYMENT_STATE",async()=>{
+  const id="abcdef0123456789abcdef0123456789";
+  const token="a".repeat(48);
+  const member={status:"Activa",name:"SOCIO REAL ALIGN",level:"Cowboys",memberCode:"AL-COW-AB1234",
+    validFrom:new Date(Date.now()-3600000).toISOString(),validUntil:new Date(Date.now()+86400000).toISOString()};
+  const env={PAYMENT_STATE:{get:async key=>key==="wallet:id:"+id?token:key==="member:"+token?JSON.stringify(member):null}};
+  const response=await walletRoute(new Request("https://api.alignmembers.com.mx/api/wallet/verify/"+id),env);
+  assert.equal(response.status,200);
+  assert.match(await response.text(),/SOCIO REAL ALIGN/);
+  assert.equal(response.headers.get("referrer-policy"),"no-referrer");
+});
+
+test("An unpaid or cancelled member is rejected even if their Wallet pass remains saved",async()=>{
+  const id="abcdef0123456789abcdef0123456789",token="b".repeat(48);
+  for(const status of ["Inactiva","Pago pendiente"]){
+    const member={status,name:"SOCIO",validFrom:new Date(Date.now()-3600000).toISOString(),validUntil:new Date(Date.now()+86400000).toISOString()};
+    const env={PAYMENT_STATE:{get:async key=>key==="wallet:id:"+id?token:key==="member:"+token?JSON.stringify(member):null}};
+    const response=await walletRoute(new Request("https://api.alignmembers.com.mx/api/wallet/verify/"+id),env);
+    assert.equal(response.status,403);
+  }
+});
+
+test("Ally scan rewrites a live Wallet QR to the CURRENT rotating member QR without accepting previews",async()=>{
+  const id="abcdef0123456789abcdef0123456789",token="a".repeat(48),activeMember={
+    name:"SOCIO REAL",memberCode:"AL-BRO-123456",status:"Activa",
+    validFrom:new Date(Date.now()-1000).toISOString(),validUntil:new Date(Date.now()+86400000).toISOString()};
+  const env={WALLET_ENABLED:"true",WALLET_TEAM_ID:"APPLETEAM",
+    WALLET_SIGNER_CERT_PEM:"cert",WALLET_SIGNER_KEY_PEM:"key",WALLET_WWDR_PEM:"wwdr",
+    PAYMENT_STATE:{get:async key=>key==="wallet:id:"+id?token:key==="member:"+token?JSON.stringify(activeMember):null}};
+  const original=new Request("https://api.alignmembers.com.mx/api/ally/scan",{
+    method:"POST",headers:{"content-type":"application/json","authorization":"Bearer fake-ally-session"},
+    body:JSON.stringify({qr:"https://api.alignmembers.com.mx/api/wallet/verify/"+id,allyKey:"gingers"})});
+  let calls=0;
+  const apiWorker={fetch:async request=>{
+    calls++;
+    assert.match(request.url,/\/api\/monthly-qr\?token=/);
+    return Response.json({validationUrl:"https://api.alignmembers.com.mx/q/mock-current-code"});
+  }};
+  const rewritten=await rewriteWalletAllyRequest(original,env,apiWorker);
+  assert.notEqual(rewritten,original);
+  assert.equal(calls,1);
+  assert.equal((await rewritten.json()).qr,"https://api.alignmembers.com.mx/q/mock-current-code");
+  assert.equal(rewritten.headers.get("authorization"),"Bearer fake-ally-session");
+  const preview=new Request("https://api.alignmembers.com.mx/api/ally/scan",{method:"POST",headers:{"content-type":"application/json"},
+    body:JSON.stringify({qr:"https://feature-apple-wallet-align-align-payments.alignservice18.workers.dev/api/wallet/verify/"+id})});
+  const notRewritten=await rewriteWalletAllyRequest(preview,env,apiWorker);
+  assert.equal(notRewritten,preview);
+  assert.equal(calls,1);
+});
+
+test("Official production issuance rejects Preview TEST identities before attempting to sign",async()=>{
+  const token="c".repeat(48);
+  const record={status:"Activa",memberCode:"ALIGN-TEST-0001",name:"PRUEBA",
+    validFrom:new Date(Date.now()-3600000).toISOString(),validUntil:new Date(Date.now()+86400000).toISOString()};
+  const env={WALLET_ENABLED:"true",WALLET_TEAM_ID:"TEAM",WALLET_SIGNER_CERT_PEM:"cert",
+    WALLET_SIGNER_KEY_PEM:"key",WALLET_WWDR_PEM:"wwdr",PAYMENT_STATE:{get:async key=>key==="member:"+token?JSON.stringify(record):null}};
+  const response=await walletRoute(new Request("https://api.alignmembers.com.mx/api/wallet/apple?token="+token),env);
+  assert.equal(response.status,403);
 });

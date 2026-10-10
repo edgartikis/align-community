@@ -48,3 +48,15 @@ WALLET_TEAM_ID = "2WG8DN922L"
 # Private Cloudflare secrets only, never commit real PEM values:
 # WALLET_SIGNER_CERT_PEM / WALLET_SIGNER_KEY_PEM / WALLET_WWDR_PEM
 # WALLET_SIGNER_KEY_PASSPHRASE, when applicable.
+
+# Worker previews must NEVER inherit the production membership KV.
+# Preview issuance remains disabled until a separate approved staging test.
+[previews]
+[previews.vars]
+SITE_ORIGIN = "https://alignmembers.com.mx"
+WALLET_ENABLED = "false"
+WALLET_TEAM_ID = "2WG8DN922L"
+
+[[previews.kv_namespaces]]
+binding = "PAYMENT_STATE"
+id = "4b23fffb26264609b9f18f110baea954"
