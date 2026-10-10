@@ -1,4 +1,4 @@
-import { qrSigningSecret } from "./stripe-runtime.js";
+import { qrSigningSecret, verifyQrHmac } from "./stripe-runtime.js";
 import syncWorker from "./entry-sync.js";
 
 const QR_ROTATION_MS = 15 * 60 * 1000;
@@ -182,12 +182,11 @@ async function resolveShortCode(env, code) {
 
   const current = periodForMember(member);
   const currentWindow = qrWindow();
-  const expectedCode = Number.isInteger(slot) ? await shortCode(env, token, supplied, slot) : "";
+  const validCode = Number.isInteger(slot) && await verifyQrHmac(env, `short:${token}:${cycleKey(supplied)}:${slot}`, code, { short: true });
   const sameCycle = supplied.validFrom === current.validFrom && supplied.validUntil === current.validUntil;
   const sameSlot = Number.isInteger(slot) && slot === currentWindow.slot;
   const ok = Boolean(
-    expectedCode &&
-    constantTimeEqual(expectedCode, code) &&
+    validCode &&
     sameCycle &&
     sameSlot &&
     member.status === "Activa" &&
@@ -234,8 +233,8 @@ async function expandShortQr(env, rawQr) {
   const period = { validFrom: clean(mapping.validFrom, 60), validUntil: clean(mapping.validUntil, 60) };
   const slot = Number(mapping.slot);
   if (!Number.isInteger(slot) || slot !== qrWindow().slot) return rawQr;
-  const expectedCode = await shortCode(env, token, period, slot);
-  if (!constantTimeEqual(expectedCode, code)) return rawQr;
+  const validCode = await verifyQrHmac(env, `short:${token}:${cycleKey(period)}:${slot}`, code, { short: true });
+  if (!validCode) return rawQr;
 
   const sig = await legacySignature(env, token, period, slot);
   const legacy = new URL("/api/validate-member", url.origin);
