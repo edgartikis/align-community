@@ -1,3 +1,4 @@
+import { qrSigningSecret } from "./stripe-runtime.js";
 import syncWorker from "./entry-sync.js";
 
 const QR_ROTATION_MS = 15 * 60 * 1000;
@@ -63,12 +64,6 @@ async function hmacBase64Url(secret, value) {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
-function qrSecret(env) {
-  const secret = String(env.QR_SIGNING_SECRET || env.STRIPE_SECRET_KEY || "").trim();
-  if (!secret) throw new Error("No está configurada la firma de QR.");
-  return secret;
-}
-
 function cycleKey(period) { return `${period.validFrom}|${period.validUntil}`; }
 
 function qrWindow(now = Date.now()) {
@@ -81,12 +76,12 @@ function qrWindow(now = Date.now()) {
 }
 
 async function shortCode(env, token, period, slot) {
-  const digest = await hmacBase64Url(qrSecret(env), `short:${token}:${cycleKey(period)}:${slot}`);
+  const digest = await hmacBase64Url(qrSigningSecret(env), `short:${token}:${cycleKey(period)}:${slot}`);
   return digest.slice(0, 22);
 }
 
 async function legacySignature(env, token, period, slot) {
-  return hmacBase64Url(qrSecret(env), `${token}:${cycleKey(period)}:${slot}`);
+  return hmacBase64Url(qrSigningSecret(env), `${token}:${cycleKey(period)}:${slot}`);
 }
 
 function constantTimeEqual(a, b) {
