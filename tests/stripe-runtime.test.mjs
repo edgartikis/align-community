@@ -127,7 +127,7 @@ test("Live billing, checkout, renewal and QR portals share the runtime", () => {
   for (const name of ["entry.js", "entry-member-login.js", "entry-short-qr.js", "entry-visits.js"]) {
     assert.doesNotMatch(source(name), /env\.STRIPE_SECRET_KEY\b/, `${name} must not silently reuse the test key in Live mode`);
   }
-  assert.match(source("entry.js"), /const period = subscriptionPeriod\\(subscription\\);\\s*if \\(!period\\) return null;/);
+  assert.match(source("entry.js"), /const period = subscriptionPeriod\(subscription\);\s*if \(!period\) return null;/);
   for (const name of ["entry.js", "entry-visits.js", "entry-short-qr.js", "index.js"]) {
     assert.match(source(name), /verifyQrHmac/, `${name} must validate old and new QR signatures`);
   }
