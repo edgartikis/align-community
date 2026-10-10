@@ -1,4 +1,4 @@
-import { stripeSecret, qrSigningSecret, subscriptionPeriod } from "./stripe-runtime.js";
+import { stripeSecret, qrSigningSecret, verifyQrHmac, subscriptionPeriod } from "./stripe-runtime.js";
 import baseWorker from "./index.js";
 
 const ALLOWED_ORIGINS = new Set([
@@ -287,8 +287,7 @@ async function handleValidation(request, env) {
   const sameCycle = Boolean(currentPeriod && from === currentPeriod.validFrom && until === currentPeriod.validUntil);
   const currentWindow = qrWindow();
   const sameSlot = Number.isInteger(slot) && slot === currentWindow.slot;
-  const expected = sameCycle && sameSlot ? await qrSignature(env, token, suppliedPeriod, slot) : "";
-  const validSig = Boolean(expected && constantTimeEqual(expected, sig));
+  const validSig = Boolean(sameCycle && sameSlot && await verifyQrHmac(env, `${token}:${cycleKey(suppliedPeriod)}:${slot}`, sig));
   const ok = Boolean(member && member.status === "Activa" && validSig && isWithinPeriod(suppliedPeriod));
   const bg = ok
     ? "radial-gradient(circle at top,#245b43,#09130f 65%)"
