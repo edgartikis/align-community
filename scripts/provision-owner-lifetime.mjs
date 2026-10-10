@@ -16,6 +16,7 @@ import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve, join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createInterface } from "node:readline/promises";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const toml = readFileSync(join(root, "cloudflare/payments-worker/wrangler.toml"), "utf8");
@@ -74,11 +75,9 @@ if (mode !== "create") {
 
 if (!process.stdin.isTTY) throw Error("La creación requiere Terminal interactiva");
 console.log("Escribe exactamente CREAR EDGAR para confirmar que eres el administrador de Cloudflare.");
-process.stdout.write("> ");
-const answer = (() => {
-  const buf = Buffer.alloc(256); const bytes=process.stdin.read?.();
-  return bytes ? bytes.toString("utf8").trim() : "";
-})();
+const terminal = createInterface({ input: process.stdin, output: process.stdout });
+const answer = (await terminal.question("> ")).trim();
+terminal.close();
 if (answer !== "CREAR EDGAR") {
   // Standard input may require readline in interactive terminals.
   throw Error("Confirmación no recibida. No se escribió nada.");
