@@ -233,6 +233,7 @@ async function handleMemberCard(request, env) {
     level: member.level,
     planKey: member.planKey,
     memberCode: member.memberCode,
+    membershipType: member.membershipType === "owner_lifetime" ? "owner_lifetime" : "standard",
     joinedAt: member.joinedAt,
     validFrom: period.validFrom,
     validUntil: period.validUntil,
