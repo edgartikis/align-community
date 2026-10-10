@@ -1,4 +1,4 @@
-import { stripeMode } from "./stripe-runtime.js";
+import { stripeMode, qrCutoverEnabled } from "./stripe-runtime.js";
 import apiWorker from "./entry-member-login.js";
 
 const BACKEND_VERSION = "2026-10-02-rotating-qr-15m-v1";
@@ -36,7 +36,12 @@ function health(request, env) {
   const allowOrigin = allowedOrigins.has(origin) ? origin : "https://alignmembers.com.mx";
   const storageReady = Boolean(env.PAYMENT_STATE);
   const stripe = stripeReadiness(env);
-  const ready = storageReady && stripe.keyReady && stripe.webhookReady && stripe.pricesReady;
+  const cutover = qrCutoverEnabled(env);
+  const newQrSecretReady = String(env.QR_SIGNING_SECRET || "").trim().length >= 32;
+  const graceUntil = Date.parse(String(env.QR_LEGACY_ACCEPT_UNTIL || ""));
+  const graceConfigured = Number.isFinite(graceUntil);
+  const qrReady = !cutover || (newQrSecretReady && graceConfigured);
+  const ready = storageReady && stripe.keyReady && stripe.webhookReady && stripe.pricesReady && qrReady;
 
   return Response.json(
     {
@@ -49,6 +54,10 @@ function health(request, env) {
       stripeApi: stripe.keyReady ? "configured" : "missing-or-wrong-mode",
       stripeWebhook: stripe.webhookReady ? "configured" : "missing",
       stripePrices: stripe.pricesReady ? "configured" : "missing",
+      qrSigningMode: cutover ? "dedicated" : "legacy-compatibility",
+      qrSigningSecret: newQrSecretReady ? "configured" : "missing",
+      qrLegacyGrace: !graceConfigured ? "not-configured" : Date.now() < graceUntil ? "active" : "expired",
+      qrSigningReady: qrReady,
       reportingDb: env.ALIGN_DB_URL && env.ALIGN_DB_SECRET ? "configured" : "optional-unconfigured",
     },
     {
