@@ -48,7 +48,24 @@ def main():
         print("UNVERIFIED: deployed configuration fails one or more checks.")
         return 1
 
-    print("PASS: publicly deployed API reports Live ready.")
+    wallet_url = "https://api.alignmembers.com.mx/api/wallet/status"
+    try:
+        request = urllib.request.Request(wallet_url, headers={"Accept": "application/json"}, method="GET")
+        with urllib.request.urlopen(request, timeout=18) as response:
+            wallet_status = response.status
+            wallet = json.loads(response.read(64000).decode("utf-8"))
+    except (urllib.error.URLError, TimeoutError, ValueError, OSError) as error:
+        print(f"UNVERIFIED: Wallet endpoint error ({type(error).__name__})")
+        return 1
+    print(f"Wallet: HTTP {wallet_status}, provider={wallet.get('provider')!r}, available={wallet.get('available')!r}")
+    if wallet_status != 200 or wallet.get("provider") != "apple" or wallet.get("available") is not False:
+        print("FAIL: Wallet is missing or unexpectedly enabled.")
+        return 1
+    if data.get("qrSigningMode") != "legacy-compatibility" or data.get("qrSigningReady") is not True:
+        print("FAIL: QR mode changed from the approved legacy-compatible mode.")
+        return 1
+    print("PASS: Apple Wallet code deployed; pass issuance disabled.")
+    print("PASS: Stripe Live and QR legacy mode still ready.")
     print("NOTE: Health does not confirm webhook deliveries, KV member sync, or a successful end-to-end purchase.")
     return 0
 
