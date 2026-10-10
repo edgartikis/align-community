@@ -56,6 +56,30 @@ Las fechas de renovación se obtienen de `subscription.items.data[0].current_per
 
 Comprobar sin cargos: `node --test tests/stripe-runtime.test.mjs`, `python scripts/check_backend_contract.py` y `node --check cloudflare/payments-worker/src/*.js` (cada archivo individual). Los checks se ejecutan en pull requests a `main`. Ningún secreto se almacena en GitHub.
 
+## Migración segura de QR: DOS ETAPAS (sin cortes)
+
+**IMPORTANTE: no agregues `QR_SIGNING_SECRET` mientras siga publicado el código antiguo.** El Worker que estaba en producción antes de este PR usa la variable de firma directamente; añadirla antes de desplegar la compatibilidad podría invalidar inmediatamente los QR antiguos.
+
+**Etapa A — desplegar primero compatibilidad, sin activar secreto:**
+
+1. Obtener autorización explícita para fusionar y desplegar este PR. Por ahora permanece en borrador.
+2. Conservar las credenciales de Stripe actuales (también la variable `STRIPE_SECRET_KEY` sin sufijo) sin rotarlas. **No establecer todavía** `QR_SIGNING_SECRET`.
+3. Dejar `QR_SIGNING_CUTOVER` ausente o `false`. Con la compatibilidad desplegada, `qrSigningMode: "legacy-compatibility"` y `qrSigningReady: true` en `GET /api/health`. Los QR de 15 minutos y las sesiones de aliados existentes deben seguir usando la firma anterior.
+4. Probar lectura de una tarjeta existente en Apple Wallet y un QR de socio, `/q/<codigo>` y login/escaneo de aliado. No realizar cobros para esta verificación.
+
+**Etapa B — introducir firma independiente solo después de verificar A:**
+
+1. En la configuración de Cloudflare Worker **Production**, generar localmente un valor aleatorio de al menos 32 caracteres, recomendado `openssl rand -hex 32`, y guardarlo **únicamente como Secret** `QR_SIGNING_SECRET`. Nunca enviarlo al chat, GitHub, capturas o logs.
+2. Con `QR_SIGNING_CUTOVER` todavía ausente/`false`, verificar que `qrSigningMode: "legacy-compatibility"` y `qrSigningSecret: "configured"`. Crear el secreto **todavía no cambia las firmas** con este código nuevo.
+3. Elegir una hora de activación y configurar **antes** la variable de texto `QR_LEGACY_ACCEPT_UNTIL` con fecha/hora UTC ISO 8601, aproximadamente **13 horas después** de la activación (cubrir sesiones de aliados de 12h; QR rotan cada 15m). Ejemplo de formato: `2026-10-11T18:00:00Z` — **no reutilizar esta fecha literal**, calcularla al activar.
+4. Con autorización independiente, cambiar **al final** `QR_SIGNING_CUTOVER` a `true` y comprobar `qrSigningMode: "dedicated"`, `qrSigningReady: true` y `qrLegacyGrace: "active"`. Las firmas nuevas usan el secreto independiente, las antiguas de Stripe Test/Live solo se aceptan durante la gracia.
+5. Comprobar en un dispositivo real: QR normal de 15m, QR corto de `/q/<codigo>`, escaneo de aliado y una sesión de aliado que estuviera iniciada antes del corte; confirmar el comportamiento de Apple Wallet. No volver a usar claves de Stripe como firmas cuando expire la gracia.
+6. Al llegar `QR_LEGACY_ACCEPT_UNTIL`, `qrLegacyGrace` cambia a `expired`, y las firmas antiguas **dejan de ser válidas**. Los miembros con tarjetas o sesiones activas las podrán refrescar/reiniciar; la gracia no se extiende indefinidamente. La membresía vigente en KV no se altera.
+
+**Reversión del corte:** si algo falla durante la gracia, desactivar `QR_SIGNING_CUTOVER` (`false`) preservando el secreto configurado y comprobar la emisión/validación legacy. Esto revierte la selección de firma, no modifica Stripe ni membresías; los QR generados durante el corte podrían requerir refrescarse. **No rotar** `STRIPE_SECRET_KEY` durante este procedimiento. La retirada definitiva de la clave antigua debe ser otra operación autorizada.
+
+La verificación antigua exige que el socio siga **activo**, dentro de su **periodo de pago vigente**, y que el QR esté dentro del **slot actual de 15 minutos**. La firma por sí sola nunca permite acceder. Las sesiones de aliados siguen teniendo fecha de expiración de 12h.
+
 ## Código legado
 
 Los directorios `/netlify` y `/functions` corresponden a prototipos/migraciones anteriores. **No deben recibir tráfico de producción ni usarse para nuevas funciones.** Se conservan temporalmente únicamente como referencia hasta completar la prueba integral de Stripe TEST; después pueden eliminarse del árbol principal porque el historial de Git ya conserva sus versiones anteriores.
