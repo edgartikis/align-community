@@ -325,6 +325,34 @@ async function createResubscribeCheckout(env, memberSession, summary) {
 async function handleBilling(request, env) {
   const origin = request.headers.get("origin") || "";
   const memberSession = await requireMemberSession(request, env);
+
+  // OWNER LIFETIME: manually provisioned, complimentary account. Never run
+  // Stripe subscription queries/actions for this group. Only privileged
+  // Cloudflare KV provisioning may create this marker; public checkout cannot.
+  const group = await readJson(env, `group:${memberSession.groupId}`);
+  if (group?.membershipType === "owner_lifetime" && group?.ownerComplimentary === true) {
+    const owner = await readJson(env, `member:${memberSession.primaryToken}`);
+    if (owner?.groupId !== memberSession.groupId ||
+        owner?.membershipType !== "owner_lifetime" || owner?.status !== "Activa") {
+      return json({ error: "La membresía del propietario no está activa." }, 403, origin);
+    }
+    if (request.method !== "GET") {
+      return json({ error: "La membresía del propietario no admite operaciones de cobro o renovación." }, 403, origin);
+    }
+    return json({
+      ok: true,
+      status: "lifetime",
+      lifetime: true,
+      cancelAtPeriodEnd: false,
+      periodStart: null,
+      periodEnd: null,
+      paymentMethod: null,
+      canCancel: false,
+      canResume: false,
+      canChangePayment: false,
+      canResubscribe: false,
+    }, 200, origin);
+  }
   if (request.method === "GET") {
     const summary = await billingSummary(env, memberSession);
     return json({ ok: true, ...summary.public }, 200, origin);
