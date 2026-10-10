@@ -21,7 +21,29 @@ const safe = (s, length=100) => String(s ?? "").replace(/[\u0000-\u001f<>]/g, ""
 const escapeHtml = (s) => safe(s, 250).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 const noCache = { "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer", "access-control-allow-origin": "https://alignmembers.com.mx", "vary": "Origin" };
 const json = (body, status=200) => Response.json(body, {status,headers:noCache});
-const supported = (env) => env.WALLET_ENABLED === "true" && Boolean(env.PAYMENT_STATE && env.WALLET_TEAM_ID && env.WALLET_SIGNER_CERT_PEM && env.WALLET_SIGNER_KEY_PEM && env.WALLET_WWDR_PEM);
+const signingReady = (env) => Boolean(env.PAYMENT_STATE && env.WALLET_TEAM_ID && env.WALLET_SIGNER_CERT_PEM && env.WALLET_SIGNER_KEY_PEM && env.WALLET_WWDR_PEM);
+const supported = (env) => env.WALLET_ENABLED === "true" && signingReady(env);
+// Pilot activation is independent of the global switch, limited to one exact
+// membership token, and expires automatically. No pilot credentials in Git.
+const PILOT_MAX_WINDOW_MS = 12 * 60 * 60 * 1000;
+function pilotReady(env, now = Date.now()) {
+  if (env.WALLET_ENABLED === "true" || env.WALLET_PILOT_ENABLED !== "true" || !signingReady(env)) return false;
+  if (!/^[0-9a-f]{64}$/i.test(String(env.WALLET_PILOT_TOKEN_SHA256 || ""))) return false;
+  const expiration = Date.parse(String(env.WALLET_PILOT_EXPIRES_AT || ""));
+  return Number.isFinite(expiration) && expiration > now && expiration - now <= PILOT_MAX_WINDOW_MS;
+}
+function sameFixedLengthHex(a, b) {
+  if (a.length !== 64 || b.length !== 64) return false;
+  let different = 0;
+  for (let i = 0; i < 64; i++) different |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return different === 0;
+}
+async function pilotTokenMatches(env, token, now = Date.now()) {
+  if (!pilotReady(env, now) || !okToken(token)) return false;
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  const hex = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+  return sameFixedLengthHex(hex, String(env.WALLET_PILOT_TOKEN_SHA256).toLowerCase());
+}
 const period = (m) => {
   const from = m.validFrom || m.joinedAt || "";
   let until = m.validUntil || "";
@@ -178,6 +200,38 @@ function verificationHtml(member) {
 export async function walletRoute(request,env) {
   const url=new URL(request.url),path=url.pathname;
   if (request.method==="GET" && path==="/api/wallet/status") return json({ok:true,available:supported(env),provider:"apple"});
+  if (request.method==="POST" && path==="/api/wallet/pilot") {
+    // Single-member controlled test only. No account-wide Wallet enrollment.
+    // A real Safari POST form is used so the token never appears in URLs.
+    if (url.hostname !== API_HOST || !pilotReady(env)) return json({error:"Prueba Wallet no disponible."},404);
+    if (request.headers.get("origin") !== "https://alignmembers.com.mx") return json({error:"Origen no autorizado."},403);
+    const type = (request.headers.get("content-type") || "").toLowerCase();
+    if (!type.startsWith("application/x-www-form-urlencoded") && !type.startsWith("application/json")) {
+      return json({error:"Formato de solicitud no admitido."},415);
+    }
+    let token = "";
+    try {
+      if (type.startsWith("application/json")) token = String((await request.json()).token || "");
+      else token = String((await request.formData()).get("token") || "");
+    } catch { return json({error:"Solicitud no válida."},400); }
+    if (!await pilotTokenMatches(env,token)) return json({error:"Esta cuenta no está autorizada para la prueba."},403);
+    const member = await getMember(env,token);
+    if (!active(member) || /^ALIGN-TEST-/i.test(String(member?.memberCode||"")) ||
+        !String(member?.memberCode||"").trim()) {
+      return json({error:"Se requiere una membresía real y vigente."},403);
+    }
+    let stage = "kv_mapping";
+    try {
+      const id = await idForMember(env,token,member);
+      const pass = await producePass(env,member,id,request.url,(next)=>{stage=next;});
+      return new Response(pass,{status:200,headers:{...noCache,
+        "content-type":"application/vnd.apple.pkpass",
+        "content-disposition":"attachment; filename=\"ALIGN-Pilot.pkpass\""}});
+    } catch(e) {
+      console.error("ALIGN Wallet pilot issue stage",stage,"exception",e?.name||"Error");
+      return json({error:"No se pudo emitir el pase de prueba."},503);
+    }
+  }
   if (request.method==="GET" && path==="/api/wallet/photo-test" &&
       url.hostname==="feature-apple-wallet-align-align-payments.alignservice18.workers.dev" &&
       supported(env)) {
@@ -220,7 +274,7 @@ export async function walletRoute(request,env) {
 // The existing ally scanner expects a 15-minute QR. Map a Wallet QR to a
 // freshly generated one only after checking CURRENT member status in KV.
 export async function rewriteWalletAllyRequest(request,env,apiWorker) {
-  if (!supported(env) || request.method!=="POST") return request;
+  if ((!supported(env) && !pilotReady(env)) || request.method!=="POST") return request;
   const pathname=new URL(request.url).pathname;
   if (!["/api/ally/scan","/api/ally/visit"].includes(pathname)) return request;
   const body=await request.clone().json().catch(()=>null);
@@ -231,6 +285,9 @@ export async function rewriteWalletAllyRequest(request,env,apiWorker) {
   const token=await tokenById(env,qr.pathname.split("/").pop());
   const member=token ? await getMember(env,token) : null;
   if (!active(member)) return request;
+  // While global issuance is disabled, ONLY the single allowlisted pilot
+  // membership may use the wallet QR in the existing ally scanner.
+  if (!supported(env) && !await pilotTokenMatches(env,token)) return request;
   const dynamicUrl=new URL("/api/monthly-qr?token="+encodeURIComponent(token),new URL(request.url).origin).toString();
   const dynamicResponse=await apiWorker.fetch(new Request(dynamicUrl),env);
   if (!dynamicResponse.ok) return request;
