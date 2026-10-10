@@ -1,4 +1,4 @@
-import { stripeMode, stripeSecret, stripeWebhookSecret, qrSigningSecret } from "./stripe-runtime.js";
+import { stripeMode, stripeSecret, stripeWebhookSecret, qrSigningSecret, verifyQrHmac } from "./stripe-runtime.js";
 
 const PLANS = Object.freeze({
   brotherhood: { name: "The Brotherhood", seats: 1, prefix: "BRO", founderPriceEnv: "STRIPE_PRICE_BROTHERHOOD_FOUNDER", regularPriceEnv: "STRIPE_PRICE_BROTHERHOOD_REGULAR" },
@@ -573,8 +573,9 @@ function escapeHtml(value) { return String(value || "").replace(/[&<>"']/g, (c) 
 
 async function validateMember(request, env) {
   const url = new URL(request.url), token = clean(url.searchParams.get("token"), 140), period = clean(url.searchParams.get("period"), 20), sig = clean(url.searchParams.get("sig"), 200), current = periodFor();
-  const expected = /^[A-Za-z0-9_-]{20,}$/.test(token) && period === current ? await qrSignature(env, token, period) : "";
-  const validSig = expected && constantTimeEqual(expected, sig);
+  const validSig = /^[A-Za-z0-9_-]{20,}$/.test(token) && period === current
+    ? await verifyQrHmac(env, `${token}:${period}`, sig)
+    : false;
   const raw = validSig ? await env.PAYMENT_STATE.get(`member:${token}`) : null;
   const member = raw ? JSON.parse(raw) : null;
   const ok = Boolean(member && member.status === "Activa");
