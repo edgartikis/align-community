@@ -54,6 +54,9 @@ def main():
         with urllib.request.urlopen(request, timeout=18) as response:
             wallet_status = response.status
             wallet = json.loads(response.read(64000).decode("utf-8"))
+    except urllib.error.HTTPError as error:
+        print(f"UNVERIFIED: Wallet endpoint HTTP {error.code}; route may not be deployed yet.")
+        return 1
     except (urllib.error.URLError, TimeoutError, ValueError, OSError) as error:
         print(f"UNVERIFIED: Wallet endpoint error ({type(error).__name__})")
         return 1
