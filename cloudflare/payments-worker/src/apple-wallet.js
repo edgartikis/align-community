@@ -249,7 +249,12 @@ export async function walletRoute(request,env) {
   }
   if (request.method==="GET" && /^\/api\/wallet\/verify\/[0-9a-f]{32}$/i.test(path)) {
     if (!env.PAYMENT_STATE) return verificationHtml(null);
-    return verificationHtml(await memberById(env,path.split("/").pop()));
+    const walletId=path.split("/").pop();
+    const token=await tokenById(env,walletId);
+    // When global Wallet is OFF, previously issued pilot QR links must not
+    // leak a member's name, code or active status after the pilot expires.
+    if (!token || (!supported(env) && !await pilotTokenMatches(env,token))) return verificationHtml(null);
+    return verificationHtml(await getMember(env,token));
   }
   if (request.method==="GET" && path==="/api/wallet/apple") {
     if (!supported(env)) return json({error:"Apple Wallet aún no está disponible."},503);
