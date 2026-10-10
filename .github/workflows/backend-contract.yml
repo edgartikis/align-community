@@ -6,6 +6,7 @@ on:
     paths:
       - "cloudflare/payments-worker/**"
       - "tests/stripe-runtime.test.mjs"
+      - "scripts/check_live_health.py"
       - ".github/workflows/backend-contract.yml"
   push:
     branches: ["main"]
@@ -23,6 +24,7 @@ on:
       - "scripts/check_backend_contract.py"
       - ".github/workflows/backend-contract.yml"
       - "tests/stripe-runtime.test.mjs"
+      - "scripts/check_live_health.py"
   workflow_dispatch:
 
 permissions:
@@ -41,3 +43,5 @@ jobs:
           for file in cloudflare/payments-worker/src/*.js; do node --check "$file"; done
       - name: Test Stripe Live/Test and renewal safety
         run: node --test tests/stripe-runtime.test.mjs
+      - name: Audit deployed Cloudflare health (read only)
+        run: python scripts/check_live_health.py
