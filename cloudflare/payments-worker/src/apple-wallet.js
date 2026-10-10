@@ -19,7 +19,7 @@ const okToken = (s) => /^[A-Za-z0-9_-]{20,140}$/.test(s);
 const okId = (s) => /^[0-9a-f]{32}$/i.test(s);
 const safe = (s, length=100) => String(s ?? "").replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, length);
 const escapeHtml = (s) => safe(s, 250).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-const noCache = { "cache-control": "no-store", "x-content-type-options": "nosniff", "access-control-allow-origin": "https://alignmembers.com.mx", "vary": "Origin" };
+const noCache = { "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer", "access-control-allow-origin": "https://alignmembers.com.mx", "vary": "Origin" };
 const json = (body, status=200) => Response.json(body, {status,headers:noCache});
 const supported = (env) => env.WALLET_ENABLED === "true" && Boolean(env.PAYMENT_STATE && env.WALLET_TEAM_ID && env.WALLET_SIGNER_CERT_PEM && env.WALLET_SIGNER_KEY_PEM && env.WALLET_WWDR_PEM);
 const period = (m) => {
@@ -199,6 +199,9 @@ export async function walletRoute(request,env) {
     const token=url.searchParams.get("token")||"";
     const member=await getMember(env,token);
     if (!active(member)) return json({error:"La tarjeta no está activa."},403);
+    if (url.hostname===API_HOST && /^ALIGN-TEST-/i.test(String(member.memberCode||""))) {
+      return json({error:"La tarjeta de prueba no es una membresía real."},403);
+    }
     let stage="kv_mapping";
     try {
       const id=await idForMember(env,token,member);

@@ -1,5 +1,6 @@
 import { stripeMode, qrCutoverEnabled } from "./stripe-runtime.js";
 import apiWorker from "./entry-member-login.js";
+import { walletRoute, rewriteWalletAllyRequest } from "./apple-wallet.js";
 
 const BACKEND_VERSION = "2026-10-02-rotating-qr-15m-v1";
 
@@ -77,6 +78,10 @@ export default {
     if (url.pathname === "/api/health" && request.method === "GET") {
       return health(request, env);
     }
-    return apiWorker.fetch(request, env, ctx);
+    // Issuance remains gated OFF pending certified live testing.
+    const walletResponse = await walletRoute(request, env);
+    if (walletResponse) return walletResponse;
+    const allyRequest = await rewriteWalletAllyRequest(request, env, apiWorker);
+    return apiWorker.fetch(allyRequest, env, ctx);
   },
 };
