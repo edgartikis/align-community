@@ -32,12 +32,16 @@
       <button id="issue" type="submit" disabled>Obtener pase de prueba</button>
     </form>
     <p class="quiet">Se requiere sesión de socio en este navegador y una autorización temporal configurada por ALIGN. El código QR se comprobará contra la vigencia real antes de usarlo con un aliado.</p>
+    <p class="quiet">Preparación del piloto, solo para el titular:</p>
+    <button id="copyHash" type="button" disabled style="background:transparent;border:1px solid #788ba3;color:#e3e5ea;font-size:13px">Copiar huella SHA-256 de mi sesión</button>
+    <p class="quiet" id="hashStatus" aria-live="polite">Esta huella permite limitar la prueba a una membresía, sin compartir su token privado.</p>
     <p><a href="portal.html">Regresar a mi portal</a></p>
   </main>
   <script>
     const status=document.getElementById("status");
     const input=document.getElementById("token");
     const button=document.getElementById("issue");
+    const copyHash=document.getElementById("copyHash");
     // Tokens come only from the authenticated member portal's local session,
     // never from the query string or from an external website.
     const token=sessionStorage.getItem("align_selected_member_token") ||
@@ -46,10 +50,22 @@
     if (/^[A-Za-z0-9_-]{20,140}$/.test(token)) {
       input.value=token;
       button.disabled=false;
+      copyHash.disabled=false;
       status.textContent="Sesión de socio detectada. La descarga requiere autorización del servidor.";
     } else {
       status.textContent="Primero inicia sesión en ALIGN y abre tu portal de socio.";
     }
+    copyHash.addEventListener("click",async()=>{
+      if(copyHash.disabled||!input.value)return;
+      try{
+        const bytes=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(input.value));
+        const hash=[...new Uint8Array(bytes)].map(byte=>byte.toString(16).padStart(2,"0")).join("");
+        await navigator.clipboard.writeText(hash);
+        document.getElementById("hashStatus").textContent="Huella copiada. Guárdala únicamente como secreto WALLET_PILOT_TOKEN_SHA256 en Cloudflare, después del permiso para activar la prueba. Nunca compartas el token original.";
+      }catch(_){
+        document.getElementById("hashStatus").textContent="No se pudo copiar; comprueba permisos del portapapeles.";
+      }
+    });
     document.getElementById("pilotForm").addEventListener("submit",event=>{
       if(button.disabled||!input.value){event.preventDefault();return;}
       button.disabled=true;
