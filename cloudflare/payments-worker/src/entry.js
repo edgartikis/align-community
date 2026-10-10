@@ -202,9 +202,18 @@ async function handleWebhook(request, env) {
     } else if (event.type === "customer.subscription.updated") {
       subscriptionId = object.id || "";
     }
-    if (subscriptionId) await syncSubscriptionPeriod(env, subscriptionId);
+    if (subscriptionId) {
+      const period = await syncSubscriptionPeriod(env, subscriptionId);
+      if (!period) throw new Error("Stripe no proporcionó un periodo válido de renovación.");
+    }
   } catch (error) {
     console.error("ALIGN renewal period sync", error);
+    // Stripe retries 5xx deliveries. The base webhook event is idempotent,
+    // and this wrapper still runs the period sync for duplicate deliveries.
+    return new Response("Sincronización de vigencia pendiente.", {
+      status: 503,
+      headers: { "cache-control": "no-store" },
+    });
   }
   return response;
 }
