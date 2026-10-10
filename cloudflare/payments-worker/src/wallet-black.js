@@ -65,11 +65,13 @@ function paint(out,w,x,y,r,g,b,alpha=1) {
   out[k+1]=clamp(out[k+1]*(1-alpha)+g*alpha);
   out[k+2]=clamp(out[k+2]*(1-alpha)+b*alpha);
 }
-// Color shared with the native pass footer in apple-wallet.js.
-// Poster Generic places a system-controlled material band over this artwork.
-// Blend into that color before the band so there is no visible horizontal cut.
+// iOS 27 draws a translucent native material band over the bottom of a Poster
+// Generic pass. Its *displayed* color is darker than pass.json backgroundColor.
+// Keep the system tint unchanged, but fade the raster artwork toward the color
+// measured on iPhone ([0,6,25]); matching the JSON value ([5,10,25]) caused
+// a distinct horizontal seam precisely where iOS starts painting its footer.
 export const ALIGN_NATIVE_FOOTER_COLOR = "rgb(5,10,25)";
-const FOOTER_RGB = [5,10,25];
+const FOOTER_RGB = [0,6,25];
 const smoothstep = (a,b,v) => {
   const t=Math.max(0,Math.min(1,(v-a)/(b-a)));
   return t*t*(3-2*t);
@@ -79,13 +81,11 @@ function premiumBackdrop(w,h) {
   for(let y=0;y<h;y++) {
     const yy=y/scale;
     const progress=smoothstep(340,896,yy);
-    // IMPORTANT: iOS draws its OWN bottom material area. In the previous
-    // version a narrow Gaussian matched the footer only near y=602, then
-    // reintroduced the right-side blue gradient below it. That made the
-    // bottom-right appear to be a different card after the QR.
-    // Fade ONCE into the exact native footer RGB and stay there all the way
-    // to the bottom: the join must never reverse after y=568.
-    const join=smoothstep(470,568,yy);
+    // iOS starts painting its native material near y=670 (retina artwork
+    // coordinates). It shifts the visible band darker than backgroundColor.
+    // Use a broad one-way optical crossfade that FINISHES before iOS starts
+    // that band. Avoid an extended flat #050a19 region immediately above it.
+    const join=smoothstep(420,662,yy);
     for(let x=0;x<w;x++) {
       const xx=x/scale;
       const dark=7.5+2.2*(1-yy/896)+1.1*Math.sin(xx*.009+yy*.004);
@@ -106,9 +106,9 @@ function premiumBackdrop(w,h) {
       r+=progress*.5+cobalt*1.4+satin*.20;
       g+=progress*2.5+cobalt*18.5+satin*.24;
       b+=progress*8.0+cobalt*66+satin*.30;
-      // Irreversible match to Wallet's actual solid native footer color.
-      // Beneath the QR, both halves of the pass are identical; the subtle
-      // silver separator and native tagline supply the premium finish.
+      // Optical match to the native footer *as displayed on iOS*.
+      // All artwork pixels converge to one color before the material begins;
+      // no rectangular edge or hard color switch remains on either side.
       r=r*(1-join)+FOOTER_RGB[0]*join;
       g=g*(1-join)+FOOTER_RGB[1]*join;
       b=b*(1-join)+FOOTER_RGB[2]*join;
