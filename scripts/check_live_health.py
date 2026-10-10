@@ -55,7 +55,14 @@ def main():
             wallet_status = response.status
             wallet = json.loads(response.read(64000).decode("utf-8"))
     except urllib.error.HTTPError as error:
-        print(f"UNVERIFIED: Wallet endpoint HTTP {error.code}; route may not be deployed yet.")
+        # This is a public unauthenticated status endpoint; log only a short
+        # non-sensitive error excerpt and response metadata for diagnosis.
+        content_type = error.headers.get("content-type", "unknown")
+        server = error.headers.get("server", "unknown")
+        sample = error.read(800).decode("utf-8", "replace")
+        sample = " ".join(sample.split())[:240]
+        print(f"UNVERIFIED: Wallet endpoint HTTP {error.code} (content-type={content_type!r}, server={server!r}).")
+        print(f"  Public error excerpt: {sample!r}")
         return 1
     except (urllib.error.URLError, TimeoutError, ValueError, OSError) as error:
         print(f"UNVERIFIED: Wallet endpoint error ({type(error).__name__})")
