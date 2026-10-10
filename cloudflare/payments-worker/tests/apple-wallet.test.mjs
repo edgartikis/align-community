@@ -129,6 +129,50 @@ test("Ally scan rewrites a live Wallet QR to the CURRENT rotating member QR with
   assert.equal(calls,1);
 });
 
+test("Official QR policy: Wallet ID stays fixed but every ally scan requests the current rotating web QR",async()=>{
+  const walletId="fedcba9876543210fedcba9876543210";
+  const token="z".repeat(48);
+  const member={
+    name:"SOCIO ALIGN",memberCode:"AL-BRO-REAL",status:"Activa",
+    validFrom:new Date(Date.now()-60000).toISOString(),
+    validUntil:new Date(Date.now()+86400000).toISOString()
+  };
+  const env={
+    WALLET_ENABLED:"true",WALLET_TEAM_ID:"TEAM",
+    WALLET_SIGNER_CERT_PEM:"cert",WALLET_SIGNER_KEY_PEM:"key",WALLET_WWDR_PEM:"wwdr",
+    PAYMENT_STATE:{get:async key=>key==="wallet:id:"+walletId?token:
+      key==="member:"+token?JSON.stringify(member):null}
+  };
+  const walletQr=walletQrUrl("https://api.alignmembers.com.mx/api/wallet/apple",walletId);
+  assert.equal(walletQr,walletQrUrl("https://api.alignmembers.com.mx/api/wallet/apple",walletId));
+  assert.ok(!walletQr.includes(token),"Wallet QR must never include the raw membership token");
+  let generated=0;
+  const apiWorker={fetch:async request=>{
+    assert.match(request.url,/\/api\/monthly-qr\?token=/);
+    generated++;
+    return Response.json({validationUrl:"https://api.alignmembers.com.mx/q/rotating-"+generated});
+  }};
+  const scan=()=>new Request("https://api.alignmembers.com.mx/api/ally/scan",{
+    method:"POST",headers:{"content-type":"application/json","authorization":"Bearer active-ally"},
+    body:JSON.stringify({qr:walletQr})
+  });
+  const first=await rewriteWalletAllyRequest(scan(),env,apiWorker);
+  const second=await rewriteWalletAllyRequest(scan(),env,apiWorker);
+  assert.equal((await first.json()).qr,"https://api.alignmembers.com.mx/q/rotating-1");
+  assert.equal((await second.json()).qr,"https://api.alignmembers.com.mx/q/rotating-2");
+  assert.equal(generated,2);
+  assert.equal(walletQr,walletQrUrl("https://api.alignmembers.com.mx/api/wallet/apple",walletId));
+
+  // The same stored pass must stop being accepted after nonpayment.
+  const inactive={...env,PAYMENT_STATE:{
+    get:async key=>key==="wallet:id:"+walletId?token:
+      key==="member:"+token?JSON.stringify({...member,status:"Pago pendiente"}):null
+  }};
+  const declined=await rewriteWalletAllyRequest(scan(),inactive,apiWorker);
+  assert.equal((await declined.json()).qr,walletQr);
+  assert.equal(generated,2,"Inactive membership cannot request a rotating QR");
+});
+
 test("Official production issuance rejects Preview TEST identities before attempting to sign",async()=>{
   const token="c".repeat(48);
   const record={status:"Activa",memberCode:"ALIGN-TEST-0001",name:"PRUEBA",
