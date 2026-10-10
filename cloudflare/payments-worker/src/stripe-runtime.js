@@ -33,8 +33,9 @@ export function subscriptionPeriod(subscription) {
   // Newer Stripe API versions expose the subscription cycle on its items.
   // Never invent a new paid period when Stripe did not provide valid dates.
   const item = subscription?.items?.data?.[0] || {};
-  const start = Number(item.current_period_start || subscription?.current_period_start || 0);
-  const end = Number(item.current_period_end || subscription?.current_period_end || 0);
+  const hasItemPeriod = item.current_period_start != null || item.current_period_end != null;
+  const start = Number(hasItemPeriod ? item.current_period_start : subscription?.current_period_start);
+  const end = Number(hasItemPeriod ? item.current_period_end : subscription?.current_period_end);
   if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start <= 0 || end <= start) return null;
   return { validFrom: new Date(start * 1000).toISOString(), validUntil: new Date(end * 1000).toISOString() };
 }
