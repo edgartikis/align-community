@@ -4,8 +4,9 @@ import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { inflateSync } from "node:zlib";
-import { producePass } from "../src/apple-wallet.js";
+import { producePass, walletRoute } from "../src/apple-wallet.js";
 import { blackWalletArtwork,walletTextWidth } from "../src/wallet-black.js";
 
 // Uses a temporary, intentionally untrusted certificate. This verifies package
@@ -225,6 +226,42 @@ test("generates a complete, cryptographically signed .pkpass with preview QR", {
     assert.notDeepEqual(execFileSync("unzip",["-p",pkpass,"artwork.png"]),savingsArtwork,
       "Different savings should update the artwork without any profile photo");
     assert.doesNotMatch(JSON.stringify(privatePassFields),/data:image\/jpeg/);
+    // Confirm the production-compatible pilot endpoint can package a REAL
+    // member with a locally generated test-only signing certificate, keeping
+    // WALLET_ENABLED=false throughout. Never use real secrets in CI.
+    const realToken="m".repeat(48);
+    const realMember={
+      name:"SOCIO REAL PILOTO",memberCode:"BRO-LIVE-PILOT",level:"The Brotherhood",status:"Activa",
+      validFrom:new Date(Date.now()-60000).toISOString(),
+      validUntil:new Date(Date.now()+86400000).toISOString()
+    };
+    const kv=new Map([["member:"+realToken,JSON.stringify(realMember)]]);
+    const pilotEnv={
+      ...signEnv,WALLET_ENABLED:"false",WALLET_PILOT_ENABLED:"true",
+      WALLET_PILOT_EXPIRES_AT:new Date(Date.now()+60*60*1000).toISOString(),
+      WALLET_PILOT_TOKEN_SHA256:createHash("sha256").update(realToken).digest("hex"),
+      PAYMENT_STATE:{get:async key=>kv.get(key)||null,put:async(key,value)=>{kv.set(key,value);}}
+    };
+    const pilotReq=new Request("https://api.alignmembers.com.mx/api/wallet/pilot",{
+      method:"POST",
+      headers:{"origin":"https://alignmembers.com.mx","content-type":"application/x-www-form-urlencoded"},
+      body:new URLSearchParams({token:realToken}).toString()
+    });
+    const pilotRes=await walletRoute(pilotReq,pilotEnv);
+    assert.equal(pilotRes.status,200);
+    assert.equal(pilotRes.headers.get("content-type"),"application/vnd.apple.pkpass");
+    assert.equal(pilotRes.headers.get("referrer-policy"),"no-referrer");
+    assert.equal(pilotRes.headers.get("cache-control"),"no-store");
+    const pilotBytes=Buffer.from(await pilotRes.arrayBuffer());
+    assert.equal(pilotBytes.subarray(0,2).toString(),"PK");
+    writeFileSync(pkpass,pilotBytes);
+    const issued=JSON.parse(execFileSync("unzip",["-p",pkpass,"pass.json"],{encoding:"utf8"}));
+    assert.equal(issued.generic.secondaryFields[0].value,realMember.name);
+    assert.equal(issued.generic.backFields[0].value,realMember.memberCode);
+    assert.match(issued.barcodes[0].message,/^https:\/\/api\.alignmembers\.com\.mx\/api\/wallet\/verify\/[0-9a-f]{32}$/);
+    assert.equal(kv.get("wallet:id:"+issued.serialNumber),realToken);
+    assert.equal(kv.get("wallet:member:"+realMember.memberCode),issued.serialNumber);
+    assert.equal(pilotEnv.WALLET_ENABLED,"false");
 
   } finally {
     globalThis.fetch = previousFetch;

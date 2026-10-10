@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>Prueba privada Apple Wallet | ALIGN</title>
+  <style>
+    :root{color-scheme:dark}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;background:#080b10;color:#e3e5ea;font-family:system-ui,-apple-system,sans-serif;display:grid;place-items:center;padding:24px}
+    main{width:min(540px,100%);border:1px solid #344052;border-radius:24px;padding:36px;background:#101720}
+    .eyebrow{font-size:11px;letter-spacing:.25em;color:#b7c7de}
+    h1{font-family:Georgia,serif;font-weight:400;font-size:38px;line-height:1.1;margin:18px 0}
+    p{line-height:1.6;color:#aebac8}
+    button{background:#c5d2e3;color:#0b1624;border:0;border-radius:12px;padding:14px 20px;font-size:16px;font-weight:700;cursor:pointer;width:100%}
+    button:disabled{opacity:.4;cursor:not-allowed}
+    a{color:#e3e5ea}
+    .quiet{font-size:12px;margin-top:26px}
+    .status{min-height:42px;font-size:14px}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">ALIGN MEMBERSHIP · PRUEBA PRIVADA</div>
+    <h1>Tu tarjeta oficial en Apple Wallet.</h1>
+    <p>Esta página es exclusivamente para validar un pase oficial de un socio autorizado. No compra ni renueva membresías. La emisión general permanece desactivada.</p>
+    <p class="status" id="status" role="status"></p>
+    <form id="pilotForm" method="POST" action="https://api.alignmembers.com.mx/api/wallet/pilot" autocomplete="off">
+      <input id="token" name="token" type="hidden" value="">
+      <button id="issue" type="submit" disabled>Obtener pase de prueba</button>
+    </form>
+    <p class="quiet">Se requiere sesión de socio en este navegador y una autorización temporal configurada por ALIGN. El código QR se comprobará contra la vigencia real antes de usarlo con un aliado.</p>
+    <p class="quiet">Preparación del piloto, solo para el titular:</p>
+    <button id="copyHash" type="button" disabled style="background:transparent;border:1px solid #788ba3;color:#e3e5ea;font-size:13px">Copiar huella SHA-256 de mi sesión</button>
+    <p class="quiet" id="hashStatus" aria-live="polite">Esta huella permite limitar la prueba a una membresía, sin compartir su token privado.</p>
+    <p><a href="portal.html">Regresar a mi portal</a></p>
+  </main>
+  <script>
+    const status=document.getElementById("status");
+    const input=document.getElementById("token");
+    const button=document.getElementById("issue");
+    const copyHash=document.getElementById("copyHash");
+    // Tokens come only from the authenticated member portal's local session,
+    // never from the query string or from an external website.
+    const token=sessionStorage.getItem("align_selected_member_token") ||
+      sessionStorage.getItem("align_member_token") ||
+      localStorage.getItem("align_primary_token") || "";
+    if (/^[A-Za-z0-9_-]{20,140}$/.test(token)) {
+      input.value=token;
+      button.disabled=false;
+      copyHash.disabled=false;
+      status.textContent="Sesión de socio detectada. La descarga requiere autorización del servidor.";
+    } else {
+      status.textContent="Primero inicia sesión en ALIGN y abre tu portal de socio.";
+    }
+    copyHash.addEventListener("click",async()=>{
+      if(copyHash.disabled||!input.value)return;
+      try{
+        const bytes=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(input.value));
+        const hash=[...new Uint8Array(bytes)].map(byte=>byte.toString(16).padStart(2,"0")).join("");
+        await navigator.clipboard.writeText(hash);
+        document.getElementById("hashStatus").textContent="Huella copiada. Guárdala únicamente como secreto WALLET_PILOT_TOKEN_SHA256 en Cloudflare, después del permiso para activar la prueba. Nunca compartas el token original.";
+      }catch(_){
+        document.getElementById("hashStatus").textContent="No se pudo copiar; comprueba permisos del portapapeles.";
+      }
+    });
+    document.getElementById("pilotForm").addEventListener("submit",event=>{
+      if(button.disabled||!input.value){event.preventDefault();return;}
+      button.disabled=true;
+      status.textContent="Solicitando pase firmado. Si no está autorizada tu cuenta, el servidor rechazará la solicitud.";
+    });
+  </script>
+</body>
+</html>
