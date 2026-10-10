@@ -32,33 +32,53 @@ El Worker actual expone, entre otras, estas rutas:
 - `GET /api/validate-member` — validación del QR.
 - rutas de visitas/registro utilizadas por `portal-aliados.html`.
 
-## Flujo que debe quedar probado antes de LIVE
+## Estado LIVE y validación previa a desplegar
 
-1. Registro de integrantes.
-2. Checkout Stripe TEST.
-3. `checkout.session.completed`.
-4. Creación de grupo y tarjetas en KV.
-5. Login del titular.
-6. QR dinámico válido, con rotación de 15 minutos y vigencia de mensualidad correcta.
-7. Registro de visita por aliado.
-8. `invoice.paid` reactiva/renueva.
-9. `invoice.payment_failed` cambia a pago pendiente.
-10. `customer.subscription.deleted` deja la membresía inactiva.
+El código del repositorio define `STRIPE_MODE = "live"`, pero **esto no prueba qué versión está desplegada actualmente**. Antes del despliegue o de abrir ventas al público, comprobar en `GET https://api.alignmembers.com.mx/api/health` que:
 
-Solo después de completar este recorrido se cambia Stripe a LIVE.
+- `ok: true`, `storage: "kv-ready"`, `stripeMode: "live"`.
+- `stripeApi`, `stripeWebhook` y `stripePrices` estén en `"configured"`.
+- En Stripe Live, el webhook apunta a `https://api.alignmembers.com.mx/api/stripe/webhook` y recibe `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.updated` y `customer.subscription.deleted`.
+- Revisar entregas y respuestas del webhook en Stripe Live; tener el endpoint habilitado no prueba que todas las entregas hayan funcionado.
 
-## Variables / secretos
+Validación end-to-end controlada, **solo después de la autorización del titular**: registro → Checkout Live → activación en KV → login → facturación → tarjeta y QR → escaneo de aliado → renovación → pago fallido → cancelación. Nunca provocar pagos reales o alterar suscripciones sin aprobación.
 
-Configuración no secreta: `wrangler.toml`.
+## Variables y secretos en Cloudflare
 
-Secretos en Cloudflare:
+- `STRIPE_MODE`: `"live"` o `"test"`.
+- `STRIPE_SECRET_KEY_LIVE` / `STRIPE_WEBHOOK_SECRET_LIVE`: producción.
+- `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET`: entorno de pruebas, **no se utilizan** cuando el modo es `live`.
+- `QR_SIGNING_SECRET`: recomendado como secreto **fijo**, independiente de Stripe, compartido por la emisión y validación de QR y por sesiones de aliados. Confirmar que existe antes de cambiar el modo o rotar claves: si falta, el sistema utiliza la clave privada del modo activo y al cambiarla podrían invalidarse QR/sesiones emitidos previamente.
+- `PAYMENT_STATE`: KV operativo para membresías, periodos de cobro, tarjetas y QR.
+- `ALIGN_DB_URL` / `ALIGN_DB_SECRET`: sincronización secundaria para reportes, opcional.
 
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `QR_SIGNING_SECRET` (opcional)
-- `ALIGN_DB_URL` / `ALIGN_DB_SECRET` (reportes secundarios)
+Las fechas de renovación se obtienen de `subscription.items.data[0].current_period_start/end` cuando Stripe las proporciona; se mantiene compatibilidad con los campos históricos del objeto `subscription`. Ante fechas faltantes o inválidas no se extiende la membresía de forma inventada; el webhook responde con error recuperable para que Stripe reintente la sincronización.
 
-Nunca deben guardarse secretos en GitHub.
+Comprobar sin cargos: `node --test tests/stripe-runtime.test.mjs`, `python scripts/check_backend_contract.py` y `node --check cloudflare/payments-worker/src/*.js` (cada archivo individual). Los checks se ejecutan en pull requests a `main`. Ningún secreto se almacena en GitHub.
+
+## Migración segura de QR: DOS ETAPAS (sin cortes)
+
+**IMPORTANTE: no agregues `QR_SIGNING_SECRET` mientras siga publicado el código antiguo.** El Worker que estaba en producción antes de este PR usa la variable de firma directamente; añadirla antes de desplegar la compatibilidad podría invalidar inmediatamente los QR antiguos.
+
+**Etapa A — desplegar primero compatibilidad, sin activar secreto:**
+
+1. Obtener autorización explícita para fusionar y desplegar este PR. Por ahora permanece en borrador.
+2. Conservar las credenciales de Stripe actuales (también la variable `STRIPE_SECRET_KEY` sin sufijo) sin rotarlas. **No establecer todavía** `QR_SIGNING_SECRET`.
+3. Dejar `QR_SIGNING_CUTOVER` ausente o `false`. Con la compatibilidad desplegada, `qrSigningMode: "legacy-compatibility"` y `qrSigningReady: true` en `GET /api/health`. Los QR de 15 minutos y las sesiones de aliados existentes deben seguir usando la firma anterior.
+4. Probar lectura de una tarjeta existente en Apple Wallet y un QR de socio, `/q/<codigo>` y login/escaneo de aliado. No realizar cobros para esta verificación.
+
+**Etapa B — introducir firma independiente solo después de verificar A:**
+
+1. En la configuración de Cloudflare Worker **Production**, generar localmente un valor aleatorio de al menos 32 caracteres, recomendado `openssl rand -hex 32`, y guardarlo **únicamente como Secret** `QR_SIGNING_SECRET`. Nunca enviarlo al chat, GitHub, capturas o logs.
+2. Con `QR_SIGNING_CUTOVER` todavía ausente/`false`, verificar que `qrSigningMode: "legacy-compatibility"` y `qrSigningSecret: "configured"`. Crear el secreto **todavía no cambia las firmas** con este código nuevo.
+3. Elegir una hora de activación y configurar **antes** la variable de texto `QR_LEGACY_ACCEPT_UNTIL` con fecha/hora UTC ISO 8601, aproximadamente **13 horas después** de la activación (cubrir sesiones de aliados de 12h; QR rotan cada 15m). Ejemplo de formato: `2026-10-11T18:00:00Z` — **no reutilizar esta fecha literal**, calcularla al activar.
+4. Con autorización independiente, cambiar **al final** `QR_SIGNING_CUTOVER` a `true` y comprobar `qrSigningMode: "dedicated"`, `qrSigningReady: true` y `qrLegacyGrace: "active"`. Las firmas nuevas usan el secreto independiente, las antiguas de Stripe Test/Live solo se aceptan durante la gracia.
+5. Comprobar en un dispositivo real: QR normal de 15m, QR corto de `/q/<codigo>`, escaneo de aliado y una sesión de aliado que estuviera iniciada antes del corte; confirmar el comportamiento de Apple Wallet. No volver a usar claves de Stripe como firmas cuando expire la gracia.
+6. Al llegar `QR_LEGACY_ACCEPT_UNTIL`, `qrLegacyGrace` cambia a `expired`, y las firmas antiguas **dejan de ser válidas**. Los miembros con tarjetas o sesiones activas las podrán refrescar/reiniciar; la gracia no se extiende indefinidamente. La membresía vigente en KV no se altera.
+
+**Reversión del corte:** si algo falla durante la gracia, desactivar `QR_SIGNING_CUTOVER` (`false`) preservando el secreto configurado y comprobar la emisión/validación legacy. Esto revierte la selección de firma, no modifica Stripe ni membresías; los QR generados durante el corte podrían requerir refrescarse. **No rotar** `STRIPE_SECRET_KEY` durante este procedimiento. La retirada definitiva de la clave antigua debe ser otra operación autorizada.
+
+La verificación antigua exige que el socio siga **activo**, dentro de su **periodo de pago vigente**, y que el QR esté dentro del **slot actual de 15 minutos**. La firma por sí sola nunca permite acceder. Las sesiones de aliados siguen teniendo fecha de expiración de 12h.
 
 ## Código legado
 
