@@ -63,13 +63,17 @@ jobs:
               '<meta property="og:url" content="https://alignmembers.com.mx/">',
               '<meta property="og:site_name" content="ALIGN">',
               '<meta property="og:title" content="ALIGN Membership">',
-              '<meta property="og:description" content="La misma ciudad. Distinta experiencia.">',
-              '<meta property="og:image" content="https://alignmembers.com.mx/assets/align-primary.png?v=20260905">',
-              '<meta property="og:image:alt" content="ALIGN Membership">',
+              '<meta property="og:description" content="La misma ciudad. Distinta experiencia. Beneficios, experiencias y comunidad en Tampico.">',
+              '<meta property="og:image" content="https://alignmembers.com.mx/assets/align-share-v1.jpg">',
+              '<meta property="og:image:secure_url" content="https://alignmembers.com.mx/assets/align-share-v1.jpg">',
+              '<meta property="og:image:type" content="image/jpeg">',
+              '<meta property="og:image:width" content="1200">',
+              '<meta property="og:image:height" content="630">',
+              '<meta property="og:image:alt" content="ALIGN Membership. La misma ciudad. Distinta experiencia.">',
               '<meta name="twitter:card" content="summary_large_image">',
               '<meta name="twitter:title" content="ALIGN Membership">',
               '<meta name="twitter:description" content="La misma ciudad. Distinta experiencia.">',
-              '<meta name="twitter:image" content="https://alignmembers.com.mx/assets/align-primary.png?v=20260905">',
+              '<meta name="twitter:image" content="https://alignmembers.com.mx/assets/align-share-v1.jpg">',
               '<link rel="canonical" href="https://alignmembers.com.mx/">',
           ])
           if 'property="og:image"' not in html:
@@ -174,6 +178,55 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
           python scripts/optimize_videos.py
+
+      - name: Generate official ALIGN social sharing image
+        shell: bash
+        run: |
+          python -m pip install --quiet cairosvg
+          python - <<'PY'
+          from io import BytesIO
+          from pathlib import Path
+          from PIL import Image, ImageDraw, ImageFont
+          import cairosvg
+
+          width, height = 1200, 630
+          card = Image.new('RGB', (width, height))
+          draw = ImageDraw.Draw(card)
+
+          # Reserved, brand-consistent navy gradient, with no white/transparency.
+          for y in range(height):
+              t = y / (height - 1)
+              draw.line([(0, y), (width, y)], fill=(
+                  round(7 + 13 * t),
+                  round(21 + 23 * t),
+                  round(36 + 30 * t),
+              ))
+          draw.line([(485, 110), (485, 520)], fill=(100, 120, 142), width=2)
+
+          # Reuse the exact official ALIGN borrego + wordmark vector.
+          svg_path = Path('assets/align-welcome-official.svg')
+          if not svg_path.is_file():
+              raise FileNotFoundError(svg_path)
+          logo_bytes = cairosvg.svg2png(url=str(svg_path), output_width=320, output_height=444)
+          logo = Image.open(BytesIO(logo_bytes)).convert('RGBA')
+          card.paste(logo, (90, 93), logo)
+
+          regular = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+          serif = '/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf'
+          tagline = ImageFont.truetype(serif, 39)
+          small = ImageFont.truetype(regular, 17)
+          micro = ImageFont.truetype(regular, 13)
+          draw.text((548, 215), 'La misma ciudad.', font=tagline, fill=(245, 243, 239))
+          draw.text((548, 283), 'Distinta experiencia.', font=tagline, fill=(245, 243, 239))
+          draw.line([(550, 367), (1020, 367)], fill=(143, 162, 178), width=1)
+          draw.text((550, 397), 'ALIGN MEMBERSHIP', font=small, fill=(211, 219, 229))
+          draw.text((550, 437), 'TAMPICO  /  MADERO  /  ALTAMIRA', font=micro, fill=(177, 190, 204))
+
+          output = Path('assets/align-share-v1.jpg')
+          card.save(output, 'JPEG', quality=93, optimize=True, subsampling=0)
+          assert Image.open(output).size == (1200, 630)
+          print(f'Social preview: {output}, {output.stat().st_size} bytes')
+          PY
 
       - name: Publish main to gh-pages
         uses: peaceiris/actions-gh-pages@v4
