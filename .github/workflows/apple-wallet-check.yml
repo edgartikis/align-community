@@ -22,7 +22,7 @@ jobs:
       - name: Install test dependencies
         run: npm install --no-audit --no-fund
       - name: Test wallet identity, authorization, QR adapter and approved artwork
-        run: node --test cloudflare/payments-worker/tests/apple-wallet.test.mjs cloudflare/payments-worker/tests/apple-wallet-package.test.mjs tests/stripe-runtime.test.mjs
+        run: node --test cloudflare/payments-worker/tests/apple-wallet.test.mjs cloudflare/payments-worker/tests/apple-wallet-package.test.mjs tests/stripe-runtime.test.mjs tests/owner-lifetime.test.mjs
       - name: Check JavaScript syntax
         run: |
           for file in cloudflare/payments-worker/src/*.js; do node --check "$file"; done

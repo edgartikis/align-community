@@ -132,7 +132,8 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   });
   pass.backFields.push({key:"code",label:"CÓDIGO DE SOCIO",value:safe(member.memberCode,60)});
   pass.backFields.push({key:"fullName",label:"NOMBRE COMPLETO",value:safe(member.name,90)});
-  pass.backFields.push({key:"validity",label:"VIGENCIA",value:safe(period(member).until,40)});
+  const visibleValidity=member.membershipType==="owner_lifetime"?"PERMANENTE":safe(period(member).until,40);
+  pass.backFields.push({key:"validity",label:"VIGENCIA",value:visibleValidity});
   pass.backFields.push({key:"verification",label:"VALIDACIÓN",value:"El aliado debe escanear el QR y comprobar identidad y vigencia en el sistema ALIGN. Un pase guardado no garantiza membresía activa."});
   pass.backFields.push({key:"issuerContact",label:"CONTACTO",value:"https://alignmembers.com.mx"});
 
@@ -153,7 +154,7 @@ export async function producePass(env,member,id,requestUrl,onStage=()=>{}) {
   poster.backFields.push({key:"posterSavings",label:"AHORRADO",value:formatSavingsMXN(member.savings)});
   poster.backFields.push({key:"posterMembership",label:"MEMBRESÍA",value:safe(member.level,48)});
   poster.backFields.push({key:"posterMemberCode",label:"CÓDIGO DE SOCIO",value:safe(member.memberCode,60)});
-  poster.backFields.push({key:"posterValidity",label:"VIGENCIA",value:safe(period(member).until,40)});
+  poster.backFields.push({key:"posterValidity",label:"VIGENCIA",value:visibleValidity});
   poster.backFields.push({key:"posterVerification",label:"VERIFICACIÓN",value:"El aliado debe escanear el QR y comprobar identidad y membresía vigente. Un pase guardado no acredita vigencia."});
   poster.backFields.push({key:"posterContact",label:"CONTACTO",value:"https://alignmembers.com.mx"});
   pass.types.push(poster);
