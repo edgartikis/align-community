@@ -64,8 +64,8 @@ jobs:
               '<meta property="og:site_name" content="ALIGN">',
               '<meta property="og:title" content="ALIGN Membership">',
               '<meta property="og:description" content="La misma ciudad. Distinta experiencia. Beneficios, experiencias y comunidad en Tampico.">',
-              '<meta property="og:image" content="https://alignmembers.com.mx/assets/align-share-v1.jpg">',
-              '<meta property="og:image:secure_url" content="https://alignmembers.com.mx/assets/align-share-v1.jpg">',
+              '<meta property="og:image" content="https://alignmembers.com.mx/assets/align-share-v2.jpg">',
+              '<meta property="og:image:secure_url" content="https://alignmembers.com.mx/assets/align-share-v2.jpg">',
               '<meta property="og:image:type" content="image/jpeg">',
               '<meta property="og:image:width" content="1200">',
               '<meta property="og:image:height" content="630">',
@@ -73,7 +73,7 @@ jobs:
               '<meta name="twitter:card" content="summary_large_image">',
               '<meta name="twitter:title" content="ALIGN Membership">',
               '<meta name="twitter:description" content="La misma ciudad. Distinta experiencia.">',
-              '<meta name="twitter:image" content="https://alignmembers.com.mx/assets/align-share-v1.jpg">',
+              '<meta name="twitter:image" content="https://alignmembers.com.mx/assets/align-share-v2.jpg">',
               '<link rel="canonical" href="https://alignmembers.com.mx/">',
           ])
           if 'property="og:image"' not in html:
@@ -201,15 +201,25 @@ jobs:
                   round(21 + 23 * t),
                   round(36 + 30 * t),
               ))
-          draw.line([(485, 110), (485, 520)], fill=(100, 120, 142), width=2)
+          draw.line([(495, 110), (495, 520)], fill=(100, 120, 142), width=2)
 
-          # Reuse the exact official ALIGN borrego + wordmark vector.
-          svg_path = Path('assets/align-welcome-official.svg')
+          # Render the verified official logo supplied by the ALIGN owner, preserving the full silhouette.
+          svg_path = Path('assets/align-cordero-official.svg')
           if not svg_path.is_file():
               raise FileNotFoundError(svg_path)
-          logo_bytes = cairosvg.svg2png(url=str(svg_path), output_width=320, output_height=444)
+          logo_bytes = cairosvg.svg2png(url=str(svg_path), output_width=540, output_height=540)
           logo = Image.open(BytesIO(logo_bytes)).convert('RGBA')
-          card.paste(logo, (90, 93), logo)
+          logo_on_card = logo.resize((420, 420), Image.Resampling.LANCZOS)
+          card.paste(logo_on_card, (50, 103), logo_on_card)
+
+          # Favicon: the same official ram mark, cropped above the ALIGN wordmark.
+          ram_only = logo.crop((75, 20, 460, 455))
+          ram_only.thumbnail((190, 190), Image.Resampling.LANCZOS)
+          icon = Image.new('RGBA', (220, 220), (0, 0, 0, 0))
+          icon_x, icon_y = (220 - ram_only.width) // 2, (220 - ram_only.height) // 2
+          icon.paste(ram_only, (icon_x, icon_y), ram_only)
+          icon_path = Path('assets/align-favicon-v2.png')
+          icon.save(icon_path, 'PNG', optimize=True)
 
           regular = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
           serif = '/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf'
@@ -222,7 +232,7 @@ jobs:
           draw.text((550, 397), 'ALIGN MEMBERSHIP', font=small, fill=(211, 219, 229))
           draw.text((550, 437), 'TAMPICO  /  MADERO  /  ALTAMIRA', font=micro, fill=(177, 190, 204))
 
-          output = Path('assets/align-share-v1.jpg')
+          output = Path('assets/align-share-v2.jpg')
           card.save(output, 'JPEG', quality=93, optimize=True, subsampling=0)
           assert Image.open(output).size == (1200, 630)
           print(f'Social preview: {output}, {output.stat().st_size} bytes')
