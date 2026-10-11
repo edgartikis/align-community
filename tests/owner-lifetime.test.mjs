@@ -6,7 +6,7 @@ import memberLoginWorker from "../cloudflare/payments-worker/src/entry-member-lo
 import memberApiWorker from "../cloudflare/payments-worker/src/entry.js";
 import { walletRoute } from "../cloudflare/payments-worker/src/apple-wallet.js";
 
-const URL="https://api.alignmembers.com.mx";
+const API_ORIGIN="https://api.alignmembers.com.mx";
 function setup(){
  const username="edgar.cordero",password="long-random-test-only-password-do-not-reuse";
  const token="b".repeat(64),groupId="grp_owner_mock",now=new Date(Date.now()-3600000).toISOString();
@@ -30,14 +30,14 @@ function setup(){
    put:async(key,value)=>records.set(key,value),
    delete:async(key)=>records.delete(key)
  };
- const env={PAYMENT_STATE:kv,QR_SIGNING_SECRET:"local-test-qr-signing-only-not-production",
+ const env={PAYMENT_STATE:kv,STRIPE_SECRET_KEY:"sk_test_local_fake_legacy_qr_hmac",
    WALLET_ENABLED:"true",WALLET_TEAM_ID:"2WG8DN922L",
    WALLET_SIGNER_CERT_PEM:"unit-cert",WALLET_SIGNER_KEY_PEM:"unit-key",WALLET_WWDR_PEM:"unit-wwdr"};
  return {username,password,token,member,group,env,records};
 }
 test("Owner account logs into real member login without Stripe subscription",async()=>{
  const {username,password,token,env,records}=setup();
- const request=new Request(URL+"/api/member-login",{method:"POST",
+ const request=new Request(API_ORIGIN+"/api/member-login",{method:"POST",
    headers:{"origin":"https://alignmembers.com.mx","content-type":"application/json"},
    body:JSON.stringify({username,passwordHash:createHash("sha256").update(password).digest("hex")})});
  const response=await memberLoginWorker.fetch(request,env);
@@ -54,12 +54,12 @@ test("Owner account logs into real member login without Stripe subscription",asy
 });
 test("Lifetime owner billing returns no charges and refuses all billing actions",async()=>{
  const {username,password,env}=setup();
- const login=await memberLoginWorker.fetch(new Request(URL+"/api/member-login",{
+ const login=await memberLoginWorker.fetch(new Request(API_ORIGIN+"/api/member-login",{
    method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({username,passwordHash:createHash("sha256").update(password).digest("hex")})
  }),env);
  const {sessionToken}=await login.json();
  const headers={"authorization":"Bearer "+sessionToken,"origin":"https://alignmembers.com.mx"};
- const response=await memberLoginWorker.fetch(new Request(URL+"/api/member-billing",{headers}),env);
+ const response=await memberLoginWorker.fetch(new Request(API_ORIGIN+"/api/member-billing",{headers}),env);
  assert.equal(response.status,200);
  const billing=await response.json();
  assert.equal(billing.lifetime,true);
@@ -68,7 +68,7 @@ test("Lifetime owner billing returns no charges and refuses all billing actions"
  assert.equal(billing.paymentMethod,null);
  for(const property of ["canCancel","canResume","canChangePayment","canResubscribe"]) assert.equal(billing[property],false);
  for(const action of ["resubscribe","change_payment","cancel","resume","confirm_payment"]){
-   const denied=await memberLoginWorker.fetch(new Request(URL+"/api/member-billing",{
+   const denied=await memberLoginWorker.fetch(new Request(API_ORIGIN+"/api/member-billing",{
      method:"POST",headers:{...headers,"content-type":"application/json"},body:JSON.stringify({action})
    }),env);
    assert.equal(denied.status,403);
@@ -76,7 +76,7 @@ test("Lifetime owner billing returns no charges and refuses all billing actions"
 });
 test("Lifetime owner QR rotates every 15m and passes existing membership validation",async()=>{
  const {token,env}=setup();
- const qr=await memberApiWorker.fetch(new Request(URL+"/api/monthly-qr?token="+token),env);
+ const qr=await memberApiWorker.fetch(new Request(API_ORIGIN+"/api/monthly-qr?token="+token),env);
  assert.equal(qr.status,200);
  const details=await qr.json();
  assert.equal(details.validUntil,"9999-12-31T23:59:59.000Z");
@@ -94,12 +94,12 @@ test("Lifetime owner QR rotates every 15m and passes existing membership validat
 test("Wallet can validate the same owner identity without exposing member token in QR",async()=>{
  const {token,env,records}=setup(),id="0123456789abcdef0123456789abcdef";
  records.set("wallet:id:"+id,token);
- const response=await walletRoute(new Request(URL+"/api/wallet/verify/"+id),env);
+ const response=await walletRoute(new Request(API_ORIGIN+"/api/wallet/verify/"+id),env);
  assert.equal(response.status,200);
  const body=await response.text();
  assert.match(body,/Edgar Cordero/);
  assert.doesNotMatch(body,new RegExp(token));
- const disabled=await walletRoute(new Request(URL+"/api/wallet/verify/"+id),{...env,WALLET_ENABLED:"false"});
+ const disabled=await walletRoute(new Request(API_ORIGIN+"/api/wallet/verify/"+id),{...env,WALLET_ENABLED:"false"});
  assert.equal(disabled.status,403);
 });
 test("Owner provisioning never ships an open public grant route or a payment request",()=>{
