@@ -59,12 +59,29 @@ struct MemberQRScreen: View {
                                 .foregroundStyle(ALIGNStyle.muted)
 
                             if let qr {
-                                QRCodeImage(text: qr.validationUrl)
-                                    .frame(width: 246, height: 246)
-                                    .padding(12)
-                                    .background(.white)
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                                    .accessibilityLabel("Código QR temporal de tu membresía")
+                                // The QR must disappear immediately upon expiration, even if
+                                // networking stalls. A 1-second timeline drives this safety gate.
+                                TimelineView(.periodic(from: .now, by: 1)) { context in
+                                    if let validUntil = expiryDate(qr.qrValidUntil),
+                                       context.date < validUntil && scenePhase == .active {
+                                        VStack(spacing: 8) {
+                                            QRCodeImage(text: qr.validationUrl)
+                                                .frame(width: 246, height: 246)
+                                                .padding(12)
+                                                .background(.white)
+                                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                                .privacySensitive()
+                                                .accessibilityLabel("Código QR temporal de tu membresía")
+                                            Text("Vence a las " + validUntil.formatted(date: .omitted, time: .shortened))
+                                                .font(.caption)
+                                                .foregroundStyle(ALIGNStyle.muted)
+                                        }
+                                    } else {
+                                        Label("Renovando el código seguro…", systemImage: "arrow.clockwise")
+                                            .frame(height: 270)
+                                            .foregroundStyle(ALIGNStyle.muted)
+                                    }
+                                }
                             } else if loading {
                                 ProgressView("Generando QR vigente…")
                                     .tint(ALIGNStyle.gold)
@@ -76,7 +93,7 @@ struct MemberQRScreen: View {
                                     .frame(height: 270)
                             }
 
-                            Text(qr != nil ? "QR vigente · actualización automática" : "Se requiere una membresía activa")
+                            Text(qr != nil ? "Renovación automática · cada 15 minutos" : "QR no disponible en este momento")
                                 .font(.caption)
                                 .foregroundStyle(ALIGNStyle.muted)
 
@@ -112,6 +129,7 @@ struct MemberQRScreen: View {
                     }
                 }
                 .padding(22)
+                .padding(.bottom, 88)
             }
             .background(ALIGNStyle.night.ignoresSafeArea())
             .navigationTitle("Mi tarjeta")
@@ -121,17 +139,26 @@ struct MemberQRScreen: View {
             .onChange(of: scenePhase) { _, newPhase in
                 if newPhase == .active { refreshID += 1 }
             }
-            .task(id: selectedToken + ":" + String(refreshID)) {
+            .task(id: selectedToken + ":" + String(refreshID) + ":" + String(describing: scenePhase)) {
                 await continuallyRefreshQR()
             }
         }
     }
 
+    private func expiryDate(_ text: String) -> Date? {
+        let format = ISO8601DateFormatter()
+        format.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return format.date(from: text)
+    }
+
     @MainActor private func continuallyRefreshQR() async {
-        guard let card = selectedCard else { return }
+        guard scenePhase == .active, let card = selectedCard else {
+            qr = nil
+            return
+        }
         qr = nil
         failure = nil
-        while !Task.isCancelled {
+        while !Task.isCancelled && scenePhase == .active {
             loading = true
             do {
                 let status = try await ALIGNAPI.shared.status(for: card)
@@ -146,7 +173,9 @@ struct MemberQRScreen: View {
                 qr = next
                 failure = nil
                 loading = false
-                let seconds = max(12.0, min(840.0, next.refreshAfterMs / 1000.0 - 3.0))
+                // Wait until the backend's actual 15-minute window ends.
+                // Do not repeatedly fetch the same signed QR before expiry.
+                let seconds = max(1.0, min(900.0, next.refreshAfterMs / 1000.0 + 0.25))
                 try await Task.sleep(for: .seconds(seconds))
             } catch is CancellationError {
                 return
