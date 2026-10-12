@@ -32,6 +32,41 @@ function pilotReady(env, now = Date.now()) {
   const expiration = Date.parse(String(env.WALLET_PILOT_EXPIRES_AT || ""));
   return Number.isFinite(expiration) && expiration > now && expiration - now <= PILOT_MAX_WINDOW_MS;
 }
+// Owner-only authorization is deliberately separate from the expiring pilot.
+// It never enables public issuance and is fail-closed if the canonical owner
+// account, owner marker, member, or group is removed/revoked in Production KV.
+const OWNER_USERNAME = "edgar.cordero";
+const OWNER_CODE = "AL-FOUNDER-001";
+function ownerReady(env) {
+  return env.WALLET_ENABLED !== "true" &&
+    env.WALLET_OWNER_ENABLED === "true" && Boolean(env.PAYMENT_STATE);
+}
+function decodeJson(raw) {
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+async function authorizedOwner(env, token, member) {
+  if (!ownerReady(env) || !okToken(token) || !active(member) ||
+      member.token !== token || member.integranteId !== "OWNER-EDGAR-1" ||
+      member.memberCode !== OWNER_CODE || member.membershipType !== "owner_lifetime" ||
+      member.ownerComplimentary !== true || !member.groupId ||
+      !member.validFrom || !member.validUntil) return false;
+  try {
+    const primary = decodeJson(await env.PAYMENT_STATE.get("owner-lifetime:primary"));
+    if (!primary || primary.username !== OWNER_USERNAME ||
+        primary.memberCode !== OWNER_CODE || primary.groupId !== member.groupId) return false;
+    const account = decodeJson(await env.PAYMENT_STATE.get("account:" + OWNER_USERNAME));
+    if (!account || account.username !== OWNER_USERNAME ||
+        account.primaryToken !== token || account.groupId !== member.groupId ||
+        !Array.isArray(account.tokens) || !account.tokens.includes(token)) return false;
+    const group = decodeJson(await env.PAYMENT_STATE.get("group:" + member.groupId));
+    return Boolean(group && group.groupId === member.groupId &&
+      group.membershipType === "owner_lifetime" && group.ownerComplimentary === true &&
+      Array.isArray(group.tokens) && group.tokens.includes(token));
+  } catch {
+    return false;
+  }
+}
 function sameFixedLengthHex(a, b) {
   if (a.length !== 64 || b.length !== 64) return false;
   let different = 0;
@@ -201,6 +236,40 @@ function verificationHtml(member) {
 export async function walletRoute(request,env) {
   const url=new URL(request.url),path=url.pathname;
   if (request.method==="GET" && path==="/api/wallet/status") return json({ok:true,available:supported(env),provider:"apple"});
+  if (request.method==="POST" && path==="/api/wallet/owner") {
+    // Private owner re-issuance only: no pilot expiry, no global Wallet flag.
+    // The member's bearer token is sent in a POST body, never in the URL.
+    if (url.hostname !== API_HOST || !ownerReady(env) || !signingReady(env)) {
+      return json({error:"La tarjeta de propietario no está disponible."},404);
+    }
+    if (request.headers.get("origin") !== "https://alignmembers.com.mx") {
+      return json({error:"Origen no autorizado."},403);
+    }
+    const type = (request.headers.get("content-type") || "").toLowerCase();
+    if (!type.startsWith("application/x-www-form-urlencoded") && !type.startsWith("application/json")) {
+      return json({error:"Formato de solicitud no admitido."},415);
+    }
+    let token = "";
+    try {
+      if (type.startsWith("application/json")) token = String((await request.json()).token || "");
+      else token = String((await request.formData()).get("token") || "");
+    } catch { return json({error:"Solicitud no válida."},400); }
+    const member = await getMember(env, token);
+    if (!await authorizedOwner(env, token, member)) {
+      return json({error:"Solo la membresía del propietario puede emitir esta tarjeta."},403);
+    }
+    let stage = "kv_mapping";
+    try {
+      const id = await idForMember(env, token, member);
+      const pass = await producePass(env, member, id, request.url, next => {stage=next;});
+      return new Response(pass, {status:200,headers:{...noCache,
+        "content-type":"application/vnd.apple.pkpass",
+        "content-disposition":"attachment; filename=\"ALIGN-Founder-Lifetime.pkpass\""}});
+    } catch(e) {
+      console.error("ALIGN Wallet owner issue stage",stage,"exception",e?.name||"Error");
+      return json({error:"No se pudo emitir la tarjeta de propietario."},503);
+    }
+  }
   if (request.method==="POST" && path==="/api/wallet/pilot") {
     // Single-member controlled test only. No account-wide Wallet enrollment.
     // A real Safari POST form is used so the token never appears in URLs.
@@ -252,10 +321,13 @@ export async function walletRoute(request,env) {
     if (!env.PAYMENT_STATE) return verificationHtml(null);
     const walletId=path.split("/").pop();
     const token=await tokenById(env,walletId);
-    // When global Wallet is OFF, previously issued pilot QR links must not
-    // leak a member's name, code or active status after the pilot expires.
-    if (!token || (!supported(env) && !await pilotTokenMatches(env,token))) return verificationHtml(null);
-    return verificationHtml(await getMember(env,token));
+    // With global Wallet OFF, only the time-limited pilot or the canonical
+    // owner account may validate. Inactive/deleted owner records fail closed.
+    if (!token) return verificationHtml(null);
+    const member=await getMember(env,token);
+    if (!supported(env) && !await pilotTokenMatches(env,token) &&
+        !await authorizedOwner(env,token,member)) return verificationHtml(null);
+    return verificationHtml(member);
   }
   if (request.method==="GET" && path==="/api/wallet/apple") {
     if (!supported(env)) return json({error:"Apple Wallet aún no está disponible."},503);
@@ -283,7 +355,7 @@ export async function walletRoute(request,env) {
 // The existing ally scanner expects a 15-minute QR. Map a Wallet QR to a
 // freshly generated one only after checking CURRENT member status in KV.
 export async function rewriteWalletAllyRequest(request,env,apiWorker) {
-  if ((!supported(env) && !pilotReady(env)) || request.method!=="POST") return request;
+  if ((!supported(env) && !pilotReady(env) && !ownerReady(env)) || request.method!=="POST") return request;
   const pathname=new URL(request.url).pathname;
   if (!["/api/ally/scan","/api/ally/visit"].includes(pathname)) return request;
   const body=await request.clone().json().catch(()=>null);
@@ -294,10 +366,14 @@ export async function rewriteWalletAllyRequest(request,env,apiWorker) {
   const token=await tokenById(env,qr.pathname.split("/").pop());
   const member=token ? await getMember(env,token) : null;
   if (!active(member)) return request;
-  // While global issuance is disabled, ONLY the single allowlisted pilot
-  // membership may use the wallet QR in the existing ally scanner.
-  if (!supported(env) && (!member?.validFrom || !member?.validUntil ||
-      !await pilotTokenMatches(env,token))) return request;
+  // While global issuance is disabled, accept only the temporary pilot or
+  // the canonical owner account. Never extend this exception to other members.
+  if (!supported(env)) {
+    const pilotAllowed=Boolean(member?.validFrom && member?.validUntil &&
+      await pilotTokenMatches(env,token));
+    const ownerAllowed=await authorizedOwner(env,token,member);
+    if (!pilotAllowed && !ownerAllowed) return request;
+  }
   const dynamicUrl=new URL("/api/monthly-qr?token="+encodeURIComponent(token),new URL(request.url).origin).toString();
   const dynamicResponse=await apiWorker.fetch(new Request(dynamicUrl),env);
   if (!dynamicResponse.ok) return request;
