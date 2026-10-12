@@ -37,7 +37,7 @@
 <footer class="footer"><span>© 2026 ALIGN Membership</span><span>Tampico · Madero · Altamira</span></footer>
 <script>
 const params=new URLSearchParams(location.search),plan=params.get('plan'),fromPortal=params.get('from')==='portal';
-const eligibleLuxeria=new Set(['girls','duo','circle']);
+const eligibleLuxeria=new Set(['girls','duo','circle','owner']);
 const luxeriaCard=document.querySelector('#luxeriaCard'),luxeriaLink=document.querySelector('#luxeriaLink');
 if(plan&&!eligibleLuxeria.has(plan)&&luxeriaCard)luxeriaCard.remove();
 if(luxeriaLink&&plan)luxeriaLink.href=`la-luxeria.html?plan=${encodeURIComponent(plan)}${fromPortal?'&from=portal':''}`;

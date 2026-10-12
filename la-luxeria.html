@@ -100,7 +100,7 @@
 <footer class="footer"><span>© 2026 ALIGN Membership</span><span>Tampico · Madero · Altamira</span></footer>
 <script>
 const params=new URLSearchParams(location.search),plan=params.get('plan')||'girls',fromPortal=params.get('from')==='portal';
-const allowed=new Set(['girls','duo','circle']);
+const allowed=new Set(['girls','duo','circle','owner']);
 if(!allowed.has(plan)){location.replace('package-allies.html?plan='+encodeURIComponent(plan))}
 const suffix='?plan='+encodeURIComponent(plan)+(fromPortal?'&from=portal':'');
 const back=document.querySelector('#backLink'),portal=document.querySelector('#portalLink');

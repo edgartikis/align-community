@@ -123,6 +123,40 @@ function publicAlly(ally) {
   return { allyId: ally.allyId, key: ally.key, name: ally.name, category: ally.category };
 }
 
+// Founder Lifetime is a unique, manually provisioned owner account, NOT a
+// purchasable commercial plan. Never authorize owner benefits from planKey,
+// a name, the member code alone, or a client-supplied boolean.
+export async function ownerHasAllBenefits(env, token, member) {
+  if (!env.PAYMENT_STATE || !member || member.status !== "Activa" ||
+      !isWithinPeriod(periodForMember(member)) ||
+      member.token !== token || member.integranteId !== "OWNER-EDGAR-1" ||
+      member.memberCode !== "AL-FOUNDER-001" ||
+      member.membershipType !== "owner_lifetime" ||
+      member.ownerComplimentary !== true ||
+      !member.groupId || !member.validFrom || !member.validUntil) return false;
+  try {
+    const load = async key => {
+      const raw = await env.PAYMENT_STATE.get(key);
+      return raw ? JSON.parse(raw) : null;
+    };
+    const owner = await load("owner-lifetime:primary");
+    if (!owner || owner.username !== "edgar.cordero" ||
+        owner.memberCode !== member.memberCode || owner.groupId !== member.groupId) return false;
+    const account = await load("account:edgar.cordero");
+    if (!account || account.username !== "edgar.cordero" ||
+        account.primaryToken !== token || account.groupId !== member.groupId ||
+        !Array.isArray(account.tokens) || !account.tokens.includes(token)) return false;
+    const group = await load("group:" + member.groupId);
+    return Boolean(group && group.groupId === member.groupId &&
+      group.membershipType === "owner_lifetime" &&
+      group.ownerComplimentary === true &&
+      Array.isArray(group.tokens) && group.tokens.includes(token));
+  } catch (_) {
+    return false;
+  }
+}
+const OWNER_VISIT_WITHOUT_PROMO = "Visita Founder Lifetime · sin descuento configurado";
+
 async function createAllySession(env, allyId) {
   const payload = base64UrlEncode(JSON.stringify({ allyId, exp: Date.now() + 12 * 60 * 60 * 1000, nonce: crypto.randomUUID() }));
   const signature = await hmacBase64Url(qrSigningSecret(env), `ally-session:${payload}`);
@@ -371,11 +405,13 @@ async function handleAllyScan(request, env) {
   const verified = await verifiedMemberFromQr(env, body.qr);
   const member = verified.member;
   const benefitIntent = await pendingIntentFor(env, verified.token, ally.allyId);
+  const ownerAllBenefits = await ownerHasAllBenefits(env, verified.token, member);
   return json({
     ok: true,
     ally: publicAlly(ally),
     benefitIntent,
     member: {
+      ownerAllBenefits,
       name: member.name,
       level: member.level,
       planKey: member.planKey,
@@ -417,6 +453,13 @@ async function handleRegisterVisit(request, env) {
   const gross = amount(body.gross);
   const spent = Math.min(gross || amount(body.spent), amount(body.spent));
   const saved = Math.max(0, Math.round((gross - spent) * 100) / 100);
+  // Only the verified canonical owner may record a visit where the ally has
+  // not yet published a monetary promotion. Never manufacture a discount.
+  if (clean(body.benefit, 180) === OWNER_VISIT_WITHOUT_PROMO) {
+    if (!await ownerHasAllBenefits(env, verified.token, member) || saved !== 0) {
+      throw new Error("El acceso de propietario sin promoción no está autorizado.");
+    }
+  }
   const visitId = `VIS-CF-${crypto.randomUUID().replace(/-/g, "").slice(0, 16).toUpperCase()}`;
   const now = new Date().toISOString();
   const socioId = socioIdFor(member);
