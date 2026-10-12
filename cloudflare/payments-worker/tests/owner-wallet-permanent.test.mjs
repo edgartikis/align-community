@@ -51,14 +51,16 @@ const issue=(token=TOKEN,origin=MEMBER_ORIGIN,host=HOST)=>new Request(host+"/api
   body:new URLSearchParams({token})
 });
 
-test("Owner flag is OFF in both production defaults and isolated preview",()=>{
+test("Production enables only the explicitly approved owner; preview and public Wallet stay OFF",()=>{
   const toml=readFileSync(new URL("../wrangler.toml",import.meta.url),"utf8");
   const prod=toml.split("[vars]")[1].split("[previews]")[0];
   const preview=toml.split("[previews.vars]")[1].split("[[previews.kv_namespaces]]")[0];
   for(const vars of [prod,preview]){
     assert.match(vars,/WALLET_ENABLED\s*=\s*"false"/);
-    assert.match(vars,/WALLET_OWNER_ENABLED\s*=\s*"false"/);
+    assert.match(vars,/WALLET_PILOT_ENABLED\s*=\s*"false"/);
   }
+  assert.match(prod,/WALLET_OWNER_ENABLED\s*=\s*"true"/);
+  assert.match(preview,/WALLET_OWNER_ENABLED\s*=\s*"false"/);
 });
 test("Private owner recovery form POSTs session token in body, not in URL",()=>{
   const html=readFileSync(new URL("../../../wallet-owner.html",import.meta.url),"utf8");
