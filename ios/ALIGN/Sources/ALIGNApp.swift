@@ -12,6 +12,7 @@ enum ALIGNStyle {
 @main
 struct ALIGNApp: App {
     @StateObject private var session = MemberSession()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -24,7 +25,33 @@ struct ALIGNApp: App {
             }
             .environmentObject(session)
             .preferredColorScheme(.dark)
+            // Do not leave membership details visible in the iOS app switcher.
+            .overlay {
+                if scenePhase != .active {
+                    ALIGNPrivacyCover()
+                        .ignoresSafeArea()
+                }
+            }
         }
+    }
+}
+
+private struct ALIGNPrivacyCover: View {
+    var body: some View {
+        ZStack {
+            ALIGNStyle.night
+            VStack(spacing: 12) {
+                Text("ALIGN")
+                    .font(.system(size: 44, design: .serif))
+                    .tracking(5)
+                Text("BELONG TO SOMETHING")
+                    .font(.system(size: 10, design: .monospaced))
+                    .tracking(3)
+                    .foregroundStyle(ALIGNStyle.gold)
+            }
+            .foregroundStyle(ALIGNStyle.ivory)
+        }
+        .accessibilityLabel("ALIGN protegida mientras no está activa")
     }
 }
 
@@ -59,18 +86,39 @@ struct LoginScreen: View {
                     Text("Inicia sesión para consultar tu tarjeta digital, aliados, visitas y beneficios.")
                         .foregroundStyle(ALIGNStyle.muted)
 
-                    TextField("Usuario", text: $username)
-                        .textContentType(.username)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .keyboardType(.asciiCapable)
-                        .textFieldStyle(.roundedBorder)
-                        .accessibilityIdentifier("login.username")
-
-                    SecureField("Contraseña", text: $password)
-                        .textContentType(.password)
-                        .textFieldStyle(.roundedBorder)
-                        .accessibilityIdentifier("login.password")
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("USUARIO")
+                            .font(.system(size: 11, weight: .medium, design: .monospaced))
+                            .tracking(1.6)
+                            .foregroundStyle(ALIGNStyle.gold)
+                        TextField("Nombre de usuario", text: $username)
+                            .textContentType(.username)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .keyboardType(.asciiCapable)
+                            .foregroundStyle(ALIGNStyle.ivory)
+                            .tint(ALIGNStyle.gold)
+                            .padding(14)
+                            .background(ALIGNStyle.navy)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(ALIGNStyle.blue))
+                            .accessibilityIdentifier("login.username")
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("CONTRASEÑA")
+                            .font(.system(size: 11, weight: .medium, design: .monospaced))
+                            .tracking(1.6)
+                            .foregroundStyle(ALIGNStyle.gold)
+                        SecureField("Contraseña", text: $password)
+                            .textContentType(.password)
+                            .foregroundStyle(ALIGNStyle.ivory)
+                            .tint(ALIGNStyle.gold)
+                            .padding(14)
+                            .background(ALIGNStyle.navy)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(ALIGNStyle.blue))
+                            .accessibilityIdentifier("login.password")
+                    }
 
                     if let error = session.loginError {
                         Text(error).foregroundStyle(.red).font(.footnote)
@@ -107,6 +155,7 @@ struct LoginScreen: View {
                 .frame(maxWidth: 480)
                 .frame(maxWidth: .infinity)
                 .padding(.top, 32)
+                .padding(.bottom, 44)
             }
         }
     }
