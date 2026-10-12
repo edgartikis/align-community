@@ -4,6 +4,16 @@ import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { walletRoute, rewriteWalletAllyRequest, walletQrUrl } from "../src/apple-wallet.js";
 
+test("Pilot HTML form sends only the real site Origin for native cross-domain POST", () => {
+  const html = readFileSync(new URL("../../../wallet-pilot.html", import.meta.url), "utf8");
+  // A no-referrer navigation can send Origin: null, which the pilot rightly rejects.
+  assert.match(html, /<meta name="referrer" content="origin">/);
+  assert.doesNotMatch(html, /<meta name="referrer" content="no-referrer">/);
+  assert.match(html, /<form[^>]*method="POST"[^>]*action="https:\/\/api\.alignmembers\.com\.mx\/api\/wallet\/pilot"/);
+  assert.match(html, /<input[^>]*name="token"[^>]*type="hidden"/);
+  assert.match(html, /sessionStorage\.getItem\("align_member_token"\)/);
+});
+
 test("Wallet remains unavailable without signing secrets and opt-in", async () => {
   const response = await walletRoute(new Request("https://api.alignmembers.com.mx/api/wallet/status"), {});
   assert.equal(response.status, 200);
@@ -220,6 +230,8 @@ test("Pilot refuses unapproved member, wrong origin, test identities, and previe
   const {token,member,env}=pilotFixture();
   assert.equal((await walletRoute(pilotRequest("z".repeat(48)),env)).status,403);
   assert.equal((await walletRoute(pilotRequest(token,"https://malicious.example"),env)).status,403);
+  assert.equal((await walletRoute(pilotRequest(token,"null"),env)).status,403);
+  assert.equal((await walletRoute(new Request("https://api.alignmembers.com.mx/api/wallet/pilot",{method:"POST",headers:{"content-type":"application/x-www-form-urlencoded"},body:new URLSearchParams({token})}),env)).status,403);
   assert.equal((await walletRoute(pilotRequest(token,"https://alignmembers.com.mx","example.workers.dev"),env)).status,404);
   const testEnv={...env,PAYMENT_STATE:{get:async key=>key==="member:"+token?JSON.stringify({...member,memberCode:"ALIGN-TEST-0001"}):null}};
   assert.equal((await walletRoute(pilotRequest(token),testEnv)).status,403);
