@@ -6,6 +6,7 @@ on:
       - "cloudflare/payments-worker/**"
       - "member.html"
       - "portal.html"
+      - "wallet-pilot.html"
       - "package.json"
       - ".github/workflows/apple-wallet-check.yml"
 permissions:
