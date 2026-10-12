@@ -80,6 +80,14 @@ const ALLIES={
 
  luxeria:{name:'La Luxería Laser Spa',offer:'10% de descuento en servicios seleccionados: Hollywood Peel, U-Shape, despigmentación, eliminación de tatuajes, masaje relajante, depilación láser y sauna infrarrojo.',url:'la-luxeria.html',button:'Ver La Luxería'},
  nuvello:{name:'Nuvello',offer:'10% de descuento en spa, odonto, injerto capilar y servicios para disfunción eréctil.',url:'nuvello.html',button:'Ver Nuvello'},
+ buns:{name:'Buns & Bros',offer:'Platillo exclusivo ALIGN, pendiente de publicación oficial. Consulta disponibilidad y condiciones con el aliado.',url:'buns-and-bros.html',button:'Ver Buns & Bros'},
+ boris:{name:'Boris Marisquería',offer:'Promociones ALIGN por días de la semana y consumos mínimos; consulta las condiciones vigentes.',url:'boris-marisqueria.html',button:'Ver Boris'},
+ mrsmoky:{name:'Mr Smoky',offer:'Platillo exclusivo ALIGN pendiente de publicación oficial.',url:'restaurantes.html',button:'Ver restaurantes'},
+ studiopalmas:{name:'Studio Palmas',offer:'Experiencia de fotografía ALIGN; consulta las condiciones actuales con el aliado.',url:'studio-palmas.html',button:'Ver Studio Palmas'},
+ veterinaria:{name:'Veterinaria',offer:'Aliado registrado en ALIGN. Beneficio específico pendiente de publicación.',url:'',button:'Beneficio por confirmar'},
+ dentistajessica:{name:'Jessica Manzur · Odontología',offer:'Promociones ALIGN en limpieza dental, blanqueamiento y ortodoncia seleccionada.',url:'jessica-manzur.html',button:'Ver Jessica Manzur'},
+ pokai:{name:'Pokai Pokes & Bowls',offer:'15% de descuento con membresía ALIGN activa; no acumulable.',url:'pokai.html',button:'Ver Pokai'},
+ lauranader:{name:'Laura Nader · Odonto',offer:'10% de descuento en servicios de odontología seleccionados; sujeto a valoración.',url:'laura-nader.html',button:'Ver Laura Nader'},
  restaurants:{name:'Restaurantes',offer:'Buns & Bros y Mr Smoky preparan un platillo exclusivo para miembros ALIGN, próximamente por revelar. Ambos están incluidos en todas las membresías, junto con Boris Marisquería y más aliados gastronómicos.',url:'restaurantes.html',button:'Explorar restaurantes',type:'category'},
  personalcare:{name:'Cuidado personal',offer:'Nuvello: imagen personal y sección Dentista con Laura Nader · Nuvello y Jessica Manzur, además de La Luxería para membresías elegibles.',url:'cuidado-personal.html',button:'Explorar cuidado personal',type:'category'}
 };
@@ -101,6 +109,14 @@ const ALLY_IMAGES={
  restaurants:'greencabana3.png',
  luxeria:'LALUXERIA7.jpeg',
  nuvello:'assets/nuvello-card.svg',
+ buns:'BURGER1.jpeg',
+ boris:'BORIS1.jpeg',
+ mrsmoky:'assets/align-primary.png',
+ studiopalmas:'image-gen-1(20260919-013726).png',
+ veterinaria:'assets/align-primary.png',
+ dentistajessica:'assets/jessica/01_dental_consulta_mejorada.png',
+ pokai:'POKAI8.jpg',
+ lauranader:'assets/nuvello-card.svg',
  personalcare:'Sante4.PNG'
 };
 const PLANS={
@@ -178,7 +194,7 @@ function render(member,activityData,groupData,billing){
  const favorite=favorites[0];
  const lastVisit=activity.lastVisit||recent[0]?.createdAt||'';
  const cardLink=`member.html?token=${encodeURIComponent(token)}&from=portal`;
- const placesHtml=places.length?places.map((item,index)=>{const sep=item.url.includes('?')?'&':'?';const url=`${item.url}${sep}plan=${encodeURIComponent(planKey)}&from=portal`;return `<article class="place${item.type==='category'?' category':''}${index>=8?' place-hidden':''}"><div class="place-media"><img loading="lazy" src="${escapeHtml(item.image)}" alt="Foto de ${escapeHtml(item.name)}"></div><div class="place-content"><div><p class="eyebrow">${item.type==='category'?'Categoría ALIGN':'Aliado incluido'}</p><h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.offer)}</p></div><div class="place-footer"><span class="tag">Incluido en ${escapeHtml(plan.title)}</span><a class="btn" href="${url}">${escapeHtml(item.button)}</a></div></div></article>`}).join(''):`<div class="empty">Todavía no pudimos identificar el menú de aliados de esta membresía.</div>`;
+ const placesHtml=places.length?places.map((item,index)=>{const sep=item.url.includes('?')?'&':'?';const url=item.url?`${item.url}${sep}plan=${encodeURIComponent(planKey)}&from=portal`:'';return `<article class="place${item.type==='category'?' category':''}${index>=8?' place-hidden':''}"><div class="place-media"><img loading="lazy" src="${escapeHtml(item.image)}" alt="Foto de ${escapeHtml(item.name)}"></div><div class="place-content"><div><p class="eyebrow">${item.type==='category'?'Categoría ALIGN':'Aliado incluido'}</p><h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.offer)}</p></div><div class="place-footer"><span class="tag">Incluido en ${escapeHtml(plan.title)}</span>${url?`<a class="btn" href="${escapeHtml(url)}">${escapeHtml(item.button)}</a>`:`<span class="tag">${escapeHtml(item.button)}</span>`}</div></div></article>`}).join(''):`<div class="empty">Todavía no pudimos identificar el menú de aliados de esta membresía.</div>`;
  const placesMore=places.length>8?'<div class="places-more"><button class="btn places-toggle" id="placesToggle" type="button">Ver todos los lugares</button></div>':'';
  const cardsHtml=cards.map(card=>`<article class="digital-card"><p class="eyebrow">${Number(card.position)===1?'Tarjeta titular':`Integrante ${Number(card.position)||2}`}</p><h3>${escapeHtml(card.name||'Miembro ALIGN')}</h3><p>${escapeHtml(card.memberCode||'')} · ${escapeHtml(card.level||member.level||'')}</p><a class="btn gold" href="member.html?token=${encodeURIComponent(card.token)}&from=portal">Abrir tarjeta digital</a><a class="btn" data-wallet-token="${encodeURIComponent(card.token)}" href="${API}/wallet/apple?token=${encodeURIComponent(card.token)}" rel="noreferrer" hidden>Agregar a Apple Wallet</a></article>`).join('');
  const frequentHtml=favorites.length?favorites.map((place,index)=>`<article class="frequent"><span class="frequent-rank">#${index+1} · Frecuencia</span><h3>${escapeHtml(place.place)}</h3><p>${Number(place.visits||0)} visita${Number(place.visits||0)===1?'':'s'}<br>${money.format(place.spent||0)} gastados<br>${money.format(place.savings||0)} ahorrados</p></article>`).join(''):`<div class="empty">Todavía no hay lugares frecuentes. Aparecerán conforme uses tus beneficios.</div>`;
