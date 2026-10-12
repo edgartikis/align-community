@@ -14,6 +14,8 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+      - name: Verify QR expiry, app privacy, and owner-only Wallet safeguards
+        run: node --test ios/ALIGN/Tests/release-readiness.test.mjs
       - name: Xcode version
         run: xcodebuild -version
       - name: Install XcodeGen
