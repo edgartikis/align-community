@@ -35,8 +35,9 @@ struct HomeScreen: View {
                                 .font(.system(size: 12, design: .monospaced))
                                 .foregroundStyle(ALIGNStyle.muted)
 
-                            Label(cardStatus?.active == true ? "Membresía activa" : "Comprobando vigencia",
-                                  systemImage: "checkmark.shield")
+                            Label(cardStatus?.active == true ? "Membresía activa" :
+                                  cardStatus == nil ? "Comprobando vigencia" : "Membresía no vigente",
+                                  systemImage: cardStatus?.active == true ? "checkmark.shield" : "exclamationmark.shield")
                                 .font(.subheadline)
                                 .foregroundStyle(cardStatus?.active == true ? .green : ALIGNStyle.muted)
                         }
@@ -97,6 +98,8 @@ struct HomeScreen: View {
                     }
                 }
                 .padding(22)
+                // Leave room below recent visits for iOS 27's floating tab bar.
+                .padding(.bottom, 88)
             }
             .background(ALIGNStyle.night.ignoresSafeArea())
             .navigationTitle("ALIGN")
@@ -139,6 +142,8 @@ struct HomeScreen: View {
             activity = try await history
             failure = nil
         } catch {
+            cardStatus = nil
+            activity = nil
             failure = error.localizedDescription
         }
     }
