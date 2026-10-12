@@ -11,7 +11,7 @@
 <section class="closing"><h2>Keep it fresh.<br>Keep it ALIGN.</h2><a class="btn" id="returnLink" href="restaurantes.html?plan=girls">Explorar más restaurantes →</a></section></main>
 <script>
 const p=new URLSearchParams(location.search).get('plan');
-const plan=['brotherhood','girls','ranch','duo','circle'].includes(p)?p:'girls';
+const plan=['brotherhood','girls','ranch','duo','circle','owner'].includes(p)?p:'girls';
 for(const id of ['backLink','returnLink'])document.getElementById(id).href='restaurantes.html?plan='+plan;
 
 // El sitio utiliza solo archivos existentes: si todavía no se han subido fotos,
