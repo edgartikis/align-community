@@ -135,7 +135,22 @@ test("Real ally portal allows only backend-confirmed owner to bypass plan filter
   assert.match(html,/founderAccess\|\|offer\.plans\.includes\(plan\)/);
   assert.match(html,/OWNER_NO_PROMO/);
   assert.match(html,/mode:'access'/);
+  assert.match(html,/shownPromotions=promos/);
+  assert.doesNotMatch(html,/offer=\{\.\.\.offer,promotions:promos\}/);
   // Parse HTML inline scripts for syntax correctness without a browser.
   const scripts=[...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(x=>x[1]).filter(x=>x.trim());
   for(const code of scripts)assert.doesNotThrow(()=>new Script(code));
+});
+
+test("Founder Lifetime is not redirected or hidden on partner benefit pages",()=>{
+  const allowedPages=[
+    "cera-mia.html","la-luxeria.html","green-cabana.html","restaurantes.html",
+    "buns-and-bros.html","boris-marisqueria.html","pokai.html"
+  ];
+  for(const file of allowedPages){
+    const html=readFileSync(new URL("../"+file,import.meta.url),"utf8");
+    assert.match(html,/['"]owner['"]/,file+" must preserve owner plan navigation");
+  }
+  const personal=readFileSync(new URL("../cuidado-personal.html",import.meta.url),"utf8");
+  assert.match(personal,/const eligibleLuxeria=new Set\(\['girls','duo','circle','owner'\]\)/);
 });
