@@ -1,0 +1,28 @@
+name: ALIGN iOS native build
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "ios/ALIGN/**"
+      - ".github/workflows/ios-native-check.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-iphone-app:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Xcode version
+        run: xcodebuild -version
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate app icon from ALIGN's official logo
+        run: swift ios/ALIGN/scripts/generate-app-icon.swift assets/align-primary.png ios/ALIGN/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png
+      - name: Generate Xcode project
+        run: cd ios/ALIGN && xcodegen generate
+      - name: Compile for iPhone Simulator without signing or publishing
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/ALIGN/ALIGN.xcodeproj -scheme ALIGN -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build 2>&1 | tee /tmp/align-ios-build.log | tail -n 80
