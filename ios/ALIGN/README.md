@@ -4,10 +4,10 @@ Estado: **prototipo funcional para compilar y probar, NO publicado ni aprobado p
 
 ## Qué está incluido
 
-- Inicio de sesión real con el backend actual: \`POST /api/member-login\`.
-- Datos de membresía y vigencia: \`GET /api/member-card\`.
-- Tarjeta QR rotativa de 15 minutos: \`GET /api/monthly-qr\`. Para Duo y Circle, selector por integrante.
-- Panel de visitas, consumo y ahorro: \`GET /api/member-activity\`.
+- Inicio de sesión real con el backend actual: `POST /api/member-login`.
+- Datos de membresía y vigencia: `GET /api/member-card`.
+- Tarjeta QR rotativa de 15 minutos: `GET /api/monthly-qr`. Para Duo y Circle, selector por integrante.
+- Panel de visitas, consumo y ahorro: `GET /api/member-activity`.
 - Directorio nativo de los 23 aliados que ALIGN tiene registrados, con filtros por plan, búsquedas y enlaces a sus condiciones.
 - Cierre de sesión y almacenamiento de tokens **solo en Keychain**.
 - Enlaces a aviso de privacidad, términos y correo de soporte.
@@ -19,7 +19,7 @@ Requisitos: macOS con Xcode completo, Command Line Tools y Homebrew. No necesita
 
 Desde la raíz del repositorio:
 
-\`\`\`bash
+```bash
 git switch feature/align-ios-native-app-20261012
 git pull --ff-only origin feature/align-ios-native-app-20261012
 brew install xcodegen
@@ -27,9 +27,9 @@ swift ios/ALIGN/scripts/generate-app-icon.swift assets/align-primary.png ios/ALI
 cd ios/ALIGN
 xcodegen generate
 open ALIGN.xcodeproj
-\`\`\`
+```
 
-En Xcode selecciona el target **ALIGN** > **Signing & Capabilities** > tu propio equipo Apple Developer. Comprueba que el bundle ID \`mx.com.alignmembers.app\` esté disponible; si ya existe en tu cuenta, cambia solo ese ID. Selecciona un simulador de iPhone o tu iPhone físico y pulsa **Run**.
+En Xcode selecciona el target **ALIGN** > **Signing & Capabilities** > tu propio equipo Apple Developer. Comprueba que el bundle ID `mx.com.alignmembers.app` esté disponible; si ya existe en tu cuenta, cambia solo ese ID. Selecciona un simulador de iPhone o tu iPhone físico y pulsa **Run**.
 
 No habilites distribución pública ni App Store Connect todavía. No captures ni envíes contraseñas, QR en alta definición, tokens ni certificados.
 
@@ -52,11 +52,11 @@ Apple Developer Program tiene una cuota anual; se gestiona únicamente en la cue
 
 ## Arquitectura
 
-\`\`\`text
+```text
 SwiftUI en iPhone
   -> HTTPS https://api.alignmembers.com.mx
   -> Worker Cloudflare: align-payments
-  -> PAYMENTS_STATE (KV) / servicios de membresía existentes
-\`\`\`
+  -> PAYMENT_STATE (KV) / servicios de membresía existentes
+```
 
 Los pases nativos de Apple Wallet siguen independientes y limitados al propietario. **No desplegar cambios en Worker ni habilitar WALLET_ENABLED por esta app.**
