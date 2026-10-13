@@ -164,3 +164,10 @@ test("Preview member card/activity requests use authenticated POST while public 
   assert.match(privateApi, /member\.groupId !== record\.groupId/);
   assert.match(worker, /handleAppMemberPrivate\(request, env\)/);
 });
+
+test("Preview TestFlight build 6 is isolated; official Release build remains 5", () => {
+  const project = read("ios/ALIGN/project.yml");
+  assert.match(project, /CURRENT_PROJECT_VERSION: "5"/);
+  assert.match(project, /PreviewRelease:[\s\S]*?CURRENT_PROJECT_VERSION: "6"/);
+  assert.match(project, /PreviewRelease:[\s\S]*?PRODUCT_BUNDLE_IDENTIFIER: mx\.com\.alignmembers\.app\.preview/);
+});
