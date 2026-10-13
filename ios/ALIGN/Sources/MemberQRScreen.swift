@@ -10,6 +10,7 @@ struct MemberQRScreen: View {
     @State private var refreshID = 0
     @State private var qr: QRResponse?
     @State private var failure: String?
+    @State private var cardUnavailable = false
     @State private var loading = false
     @State private var isCardVisible = false
     @State private var showScreenshotNotice = false
@@ -60,6 +61,14 @@ struct MemberQRScreen: View {
                         Text(failure)
                             .font(.subheadline)
                             .foregroundStyle(.orange)
+                        if cardUnavailable {
+                            Button("Volver a iniciar sesión") {
+                                session.signOut()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(ALIGNStyle.blue)
+                            .accessibilityIdentifier("memberCard.signInAgain")
+                        }
                     }
 
                     Label("La grabación y duplicación de pantalla ocultan el QR. iOS no permite impedir capturas de pantalla: no compartas fotografías del código. El aliado siempre debe validar al titular.", systemImage: "shield.lefthalf.filled")
@@ -125,6 +134,7 @@ struct MemberQRScreen: View {
                 pendingRotationCode = nil
                 rotationInProgress = false
                 failure = nil
+                cardUnavailable = false
                 qr = nil
                 lastProtectedQRCode = nil
                 lastProtectedToken = nil
@@ -294,6 +304,7 @@ struct MemberQRScreen: View {
         }
         qr = nil
         failure = nil
+        cardUnavailable = false
         while !Task.isCancelled && scenePhase == .active {
             loading = true
             do {
@@ -310,12 +321,22 @@ struct MemberQRScreen: View {
                 lastProtectedQRCode = next.currentAppCode
                 lastProtectedToken = next.currentAppCode == nil ? nil : card.token
                 failure = nil
+                cardUnavailable = false
                 loading = false
                 // Wait until the backend's actual 15-minute window ends.
                 // Do not repeatedly fetch the same signed QR before expiry.
                 let seconds = max(1.0, min(900.0, next.refreshAfterMs / 1000.0 + 0.25))
                 try await Task.sleep(for: .seconds(seconds))
             } catch is CancellationError {
+                return
+            } catch AppFailure.cardUnavailable {
+                qr = nil
+                loading = false
+                lastProtectedQRCode = nil
+                lastProtectedToken = nil
+                cardUnavailable = true
+                failure = AppFailure.cardUnavailable.localizedDescription
+                // A deleted card requires a fresh sign-in; don't keep polling.
                 return
             } catch {
                 qr = nil
