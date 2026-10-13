@@ -72,8 +72,16 @@ WALLET_TEAM_ID = "2WG8DN922L"
 # Worker previews must NEVER inherit the production membership KV.
 # Preview issuance remains disabled until a separate approved staging test.
 [previews]
+
+# Cloudflare creates a separate DO namespace for EACH Preview. Without this
+# explicit env binding, APP_QR_AUTHORITY is unavailable at runtime.
+[[previews.durable_objects.bindings]]
+name = "APP_QR_AUTHORITY"
+class_name = "AlignAppQrAuthority"
+
 [previews.vars]
 SITE_ORIGIN = "https://alignmembers.com.mx"
+STRIPE_MODE = "test"
 # Preview KV is segregated from production. Only preview can exercise this feature.
 ALIGN_APP_QR_ROTATION_ENABLED = "true"
 WALLET_ENABLED = "false"
