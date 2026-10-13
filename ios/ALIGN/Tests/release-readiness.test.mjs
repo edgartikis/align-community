@@ -129,11 +129,24 @@ test("Release uses production, Debug is isolated Preview, production QR flag rem
   const project = read("ios/ALIGN/project.yml");
   const config = read("cloudflare/payments-worker/wrangler.toml");
   const workflow = read(".github/workflows/ios-native-check.yml");
-  assert.match(api, /#if DEBUG\s+private let base = URL\(string: "https:\/\/align-qr-pilot-align-payments\.alignservice18\.workers\.dev"\)!/);
+  assert.match(api, /#if DEBUG \|\| ALIGN_PREVIEW\s+private let base = URL\(string: "https:\/\/align-qr-pilot-align-payments\.alignservice18\.workers\.dev"\)!/);
   assert.match(api, /#else\s+private let base = URL\(string: "https:\/\/api\.alignmembers\.com\.mx"\)!/);
   assert.match(project, /configs:\s+Debug:\s+PRODUCT_BUNDLE_IDENTIFIER: mx\.com\.alignmembers\.app\.preview/);
   const prod = config.split("[vars]")[1].split("[previews]")[0];
   assert.match(prod, /ALIGN_APP_QR_ROTATION_ENABLED = "false"/);
   assert.match(workflow, /-configuration Release/);
   assert.match(workflow, /CODE_SIGNING_ALLOWED=NO build/);
+});
+
+test("Private TestFlight has its own production-optimized Preview archive scheme", () => {
+  const config = read("ios/ALIGN/project.yml");
+  const workflow = read(".github/workflows/ios-native-check.yml");
+  const api = read("ios/ALIGN/Sources/ALIGNAPI.swift");
+  assert.match(config, /configs:\s+Debug: debug\s+Release: release\s+PreviewRelease: release/);
+  assert.match(config, /PreviewRelease:\s+PRODUCT_BUNDLE_IDENTIFIER: mx\.com\.alignmembers\.app\.preview\s+INFOPLIST_KEY_CFBundleDisplayName: ALIGN Preview\s+SWIFT_ACTIVE_COMPILATION_CONDITIONS: ALIGN_PREVIEW/);
+  assert.match(config, /ALIGN Private TestFlight:[\s\S]*?archive:\s+config: PreviewRelease/);
+  assert.match(config, /schemes:\s+ALIGN:[\s\S]*?archive:\s+config: Release/);
+  assert.match(api, /#if DEBUG \|\| ALIGN_PREVIEW/);
+  assert.match(workflow, /-configuration PreviewRelease/);
+  assert.match(workflow, /-scheme ['"]ALIGN Private TestFlight['"]/);
 });
