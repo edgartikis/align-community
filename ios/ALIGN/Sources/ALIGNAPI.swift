@@ -19,12 +19,15 @@ final class ALIGNAPI {
         session = URLSession(configuration: config)
     }
 
-    private func fetch<T: Decodable>(_ request: URLRequest, as type: T.Type = T.self) async throws -> T {
+    private func fetch<T: Decodable>(_ request: URLRequest, as type: T.Type = T.self, missingCardIsGone: Bool = false) async throws -> T {
         let (data, response) = try await session.data(for: request)
         guard let response = response as? HTTPURLResponse else {
             throw AppFailure.invalidResponse
         }
         guard (200..<300).contains(response.statusCode) else {
+            if missingCardIsGone && response.statusCode == 404 {
+                throw AppFailure.cardUnavailable
+            }
             let message = try? JSONDecoder().decode(APIErrorMessage.self, from: data)
             throw AppFailure.server(message?.error ?? "No fue posible completar la solicitud.")
         }
@@ -73,7 +76,7 @@ final class ALIGNAPI {
             path: "/api/member-card",
             query: [.init(name: "token", value: card.token)]
         )
-        return try await fetch(request)
+        return try await fetch(request, missingCardIsGone: true)
     }
 
     /// The protected iOS QR is preview-gated. A 404 means it is not enabled;
