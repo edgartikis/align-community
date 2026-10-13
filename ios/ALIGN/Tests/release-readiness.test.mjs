@@ -48,6 +48,28 @@ test("Privacy shield synchronously covers UIKit window on scene resignation", ()
   assert.match(app, /if scenePhase != \.active/);
 });
 
+test("Screenshot notice appears only on member card after iOS capture notification", () => {
+  const qr = read("ios/ALIGN/Sources/MemberQRScreen.swift");
+  assert.match(qr, /UIApplication\.userDidTakeScreenshotNotification/);
+  assert.match(qr, /isCardVisible && scenePhase == \.active/);
+  assert.match(qr, /\.alert\("Captura de pantalla detectada"/);
+  assert.match(qr, /if isSceneCaptured/);
+  assert.match(qr, /QR oculto durante grabación/);
+});
+
+test("Member card web pages conceal QR while backgrounded or printed", () => {
+  const guard = read("qr-privacy-guard.js");
+  const main = read("member.html");
+  const members = read("mi-membresia.html");
+  assert.match(guard, /visibilitychange/);
+  assert.match(guard, /window\.addEventListener\("blur", mask\)/);
+  assert.match(guard, /window\.addEventListener\("pagehide", mask\)/);
+  assert.match(guard, /@media print/);
+  assert.match(guard, /Browsers cannot block or reliably detect OS screenshots/);
+  assert.match(main, /qr-privacy-guard\.js/);
+  assert.match(members, /qr-privacy-guard\.js/);
+});
+
 test("Keychain and short-lived HTTPS in-memory requests, no public Apple Wallet issuance", () => {
   const keys = read("ios/ALIGN/Sources/SecureSession.swift");
   const api = read("ios/ALIGN/Sources/ALIGNAPI.swift");
