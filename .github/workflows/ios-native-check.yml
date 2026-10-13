@@ -4,6 +4,7 @@ on:
     branches: ["main"]
     paths:
       - "ios/ALIGN/**"
+      - "scripts/verify-align-qr-preview.mjs"
       - ".github/workflows/ios-native-check.yml"
   workflow_dispatch:
 permissions:
@@ -14,8 +15,10 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - name: Verify QR expiry, app privacy, and owner-only Wallet safeguards
-        run: node --test ios/ALIGN/Tests/release-readiness.test.mjs tests/app-qr-capture.test.mjs
+      - name: Verify QR expiry, app privacy, and native QR Preview script syntax
+        run: |
+          node --check scripts/verify-align-qr-preview.mjs
+          node --test ios/ALIGN/Tests/release-readiness.test.mjs tests/app-qr-capture.test.mjs
       - name: Xcode version
         run: xcodebuild -version
       - name: Install XcodeGen
