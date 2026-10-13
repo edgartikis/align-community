@@ -12,6 +12,7 @@ enum ALIGNStyle {
 @main
 struct ALIGNApp: App {
     @StateObject private var session = MemberSession()
+    @StateObject private var privacyShield = ALIGNPrivacyShield()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -25,6 +26,8 @@ struct ALIGNApp: App {
             }
             .environmentObject(session)
             .preferredColorScheme(.dark)
+            // UIKit notifications install a synchronous cover before iOS snapshots.
+            .onAppear { privacyShield.activate() }
             // Do not leave membership details visible in the iOS app switcher.
             .overlay {
                 if scenePhase != .active {
