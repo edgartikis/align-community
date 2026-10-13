@@ -198,6 +198,14 @@ struct MemberQRScreen: View {
             } message: {
                 Text(screenshotNoticeText)
             }
+            .onChange(of: selectedToken) { _, _ in
+                // A pending screenshot rotation belongs to one specific card.
+                // Switching Duo/Circle members must never block the next card.
+                pendingRotationCode = nil
+                rotationInProgress = false
+                failure = nil
+                qr = nil
+            }
             .onChange(of: scenePhase) { _, newPhase in
                 if newPhase == .active { refreshID += 1 }
             }
