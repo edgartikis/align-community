@@ -4,6 +4,7 @@ import CoreImage.CIFilterBuiltins
 struct MemberQRScreen: View {
     @EnvironmentObject private var session: MemberSession
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.isSceneCaptured) private var isSceneCaptured
     @State private var selectedToken = ""
     @State private var refreshID = 0
     @State private var qr: QRResponse?
@@ -58,7 +59,15 @@ struct MemberQRScreen: View {
                                 .font(.system(size: 11, design: .monospaced))
                                 .foregroundStyle(ALIGNStyle.muted)
 
-                            if let qr {
+                            if isSceneCaptured {
+                                Label("QR oculto durante grabación o duplicación de pantalla",
+                                      systemImage: "eye.slash")
+                                    .font(.subheadline)
+                                    .multilineTextAlignment(.center)
+                                    .foregroundStyle(ALIGNStyle.gold)
+                                    .frame(height: 270)
+                                    .accessibilityIdentifier("qr.screenCaptureProtected")
+                            } else if let qr {
                                 // The QR must disappear immediately upon expiration, even if
                                 // networking stalls. A 1-second timeline drives this safety gate.
                                 TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -117,7 +126,7 @@ struct MemberQRScreen: View {
                             .foregroundStyle(.orange)
                     }
 
-                    Label("El aliado debe escanear el QR desde su portal e identificar al titular. Una foto de la tarjeta no autoriza descuentos.", systemImage: "shield.lefthalf.filled")
+                    Label("La grabación y duplicación de pantalla ocultan el QR. iOS no permite impedir capturas de pantalla: no compartas fotografías del código. El aliado siempre debe validar al titular.", systemImage: "shield.lefthalf.filled")
                         .font(.footnote)
                         .foregroundStyle(ALIGNStyle.muted)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -138,6 +147,9 @@ struct MemberQRScreen: View {
             }
             .onChange(of: scenePhase) { _, newPhase in
                 if newPhase == .active { refreshID += 1 }
+            }
+            .onChange(of: isSceneCaptured) { _, captured in
+                if !captured { refreshID += 1 }
             }
             .task(id: selectedToken + ":" + String(refreshID) + ":" + String(describing: scenePhase)) {
                 await continuallyRefreshQR()
