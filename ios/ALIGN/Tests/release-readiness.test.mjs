@@ -9,7 +9,7 @@ test("iOS build is named ALIGN, with an increased TestFlight candidate build num
   const project = read("ios/ALIGN/project.yml");
   assert.match(project, /INFOPLIST_KEY_CFBundleDisplayName: ALIGN/);
   assert.match(project, /MARKETING_VERSION: "0\.2\.0"/);
-  assert.match(project, /CURRENT_PROJECT_VERSION: "2"/);
+  assert.match(project, /CURRENT_PROJECT_VERSION: "3"/);
   assert.match(project, /PRODUCT_BUNDLE_IDENTIFIER: mx\.com\.alignmembers\.app/);
 });
 
@@ -33,6 +33,19 @@ test("No active session data should be shown in the iOS app switcher", () => {
   assert.match(app, /Text\("USUARIO"\)/);
   assert.match(app, /Text\("CONTRASEÑA"\)/);
   assert.match(app, /\.foregroundStyle\(ALIGNStyle\.ivory\)/);
+});
+
+test("Privacy shield synchronously covers UIKit window on scene resignation", () => {
+  const shield = read("ios/ALIGN/Sources/ALIGNPrivacyShield.swift");
+  const app = read("ios/ALIGN/Sources/ALIGNApp.swift");
+  assert.match(shield, /UIScene\.willDeactivateNotification/);
+  assert.match(shield, /UIApplication\.willResignActiveNotification/);
+  assert.match(shield, /UIScene\.didActivateNotification/);
+  assert.match(shield, /window\.addSubview\(cover\)/);
+  assert.match(shield, /window\.bringSubviewToFront\(cover\)/);
+  assert.match(shield, /window\.viewWithTag\(shieldTag\)\?\.removeFromSuperview\(\)/);
+  assert.match(app, /privacyShield\.activate\(\)/);
+  assert.match(app, /if scenePhase != \.active/);
 });
 
 test("Keychain and short-lived HTTPS in-memory requests, no public Apple Wallet issuance", () => {
