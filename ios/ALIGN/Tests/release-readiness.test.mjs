@@ -110,3 +110,16 @@ test("Preview-only screenshots rotate the last protected QR even during SwiftUI 
   assert.match(api, /https:\/\/align-qr-pilot-align-payments\.alignservice18\.workers\.dev/);
   assert.match(config, /PRODUCT_BUNDLE_IDENTIFIER: mx\.com\.alignmembers\.app\.preview/);
 });
+
+test("Removed member card presents re-login action, not an endless error loop", () => {
+  const screen = read("ios/ALIGN/Sources/MemberQRScreen.swift");
+  const api = read("ios/ALIGN/Sources/ALIGNAPI.swift");
+  const models = read("ios/ALIGN/Sources/Models.swift");
+  assert.match(api, /response\.statusCode == 404/);
+  assert.match(api, /missingCardIsGone: true/);
+  assert.match(models, /case cardUnavailable/);
+  assert.match(screen, /catch AppFailure\.cardUnavailable/);
+  assert.match(screen, /Button\("Volver a iniciar sesión"\)/);
+  assert.match(screen, /session\.signOut\(\)/);
+  assert.match(screen, /A deleted card requires a fresh sign-in/);
+});
