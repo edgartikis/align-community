@@ -44,3 +44,22 @@ jobs:
             grep -n -E -C 3 'error:|fatal error:|BUILD FAILED' /tmp/align-ios-release-build.log | tail -n 120 || true
             exit 1
           }
+
+      - name: Verify private TestFlight archive cannot collide with production
+        run: |
+          set -euo pipefail
+          preview_settings="$(xcodebuild -project ios/ALIGN/ALIGN.xcodeproj -scheme 'ALIGN Private TestFlight' -configuration PreviewRelease -showBuildSettings 2>/dev/null)"
+          printf '%s\n' "$preview_settings" | grep -Eq '^ *PRODUCT_BUNDLE_IDENTIFIER = mx\.com\.alignmembers\.app\.preview$'
+          printf '%s\n' "$preview_settings" | grep -Eq '^ *SWIFT_ACTIVE_COMPILATION_CONDITIONS = .*ALIGN_PREVIEW'
+          printf '%s\n' "$preview_settings" | grep -Eq '^ *INFOPLIST_KEY_CFBundleDisplayName = ALIGN Preview$'
+          prod_settings="$(xcodebuild -project ios/ALIGN/ALIGN.xcodeproj -scheme ALIGN -configuration Release -showBuildSettings 2>/dev/null)"
+          printf '%s\n' "$prod_settings" | grep -Eq '^ *PRODUCT_BUNDLE_IDENTIFIER = mx\.com\.alignmembers\.app$'
+          echo "Verified: private TestFlight bundle and Swift flag stay isolated from production Release."
+      - name: Compile private TestFlight scheme for iPhone Simulator without signing or upload
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/ALIGN/ALIGN.xcodeproj -scheme 'ALIGN Private TestFlight' -configuration PreviewRelease -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build 2>&1 | tee /tmp/align-ios-private-testflight-build.log | tail -n 80 || {
+            echo "==== Private TestFlight compiler diagnostics ===="
+            grep -n -E -C 3 'error:|fatal error:|BUILD FAILED' /tmp/align-ios-private-testflight-build.log | tail -n 120 || true
+            exit 1
+          }
