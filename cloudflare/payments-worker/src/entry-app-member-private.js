@@ -3,6 +3,7 @@
 // never in the externally requested URL. Legacy website routes are untouched.
 import { appQrEnabled } from "./entry-app-qr.js";
 import existingWorker from "./entry.js";
+import activityWorker from "./entry-member-activity.js";
 
 const ALLOWED_ORIGINS = new Set([
   "https://alignmembers.com.mx",
@@ -82,7 +83,9 @@ export async function handleAppMemberPrivate(request, env) {
   // external URL from the iPhone or written to analytics.
   const internal = new URL(target, request.url);
   internal.searchParams.set("token", token);
-  const underlying = await existingWorker.fetch(new Request(internal, { method: "GET" }), env);
+  const verifiedRequest = new Request(internal, { method: "GET" });
+  const underlying = await (target === "/api/member-activity" ? activityWorker : existingWorker)
+    .fetch(verifiedRequest, env);
   const bodyResult = await underlying.json().catch(() => ({ error: "No pudimos cargar los datos." }));
   return response(bodyResult, underlying.status, origin);
 }
