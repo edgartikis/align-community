@@ -62,11 +62,6 @@ struct MemberQRScreen: View {
                         .foregroundStyle(ALIGNStyle.muted)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                    if selectedCard?.isOwner == true {
-                        Text("Tu tarjeta Apple Wallet permanece independiente y exclusiva para el propietario. No se emiten pases Wallet para otros socios.")
-                            .font(.caption)
-                            .foregroundStyle(ALIGNStyle.gold)
-                    }
                 }
                 .padding(22)
                 .padding(.bottom, 88)
