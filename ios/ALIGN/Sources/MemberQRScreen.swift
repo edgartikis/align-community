@@ -23,6 +23,11 @@ struct MemberQRScreen: View {
 
     var body: some View {
         NavigationStack {
+            observedCardView
+        }
+    }
+
+    private var cardContentView: some View {
             ScrollView {
                 VStack(spacing: 20) {
                     Text("TU IDENTIDAD ALIGN")
@@ -78,6 +83,10 @@ struct MemberQRScreen: View {
             }
             // Apple reports screenshots AFTER the capture. Only the separately
             // enabled app-QR backend can invalidate the previous image.
+    }
+
+    private var screenshotNoticeView: some View {
+        cardContentView
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.userDidTakeScreenshotNotification)) { _ in
                 guard isCardVisible && scenePhase == .active else { return }
                 if qr?.appRotationEnabled == true,
@@ -99,6 +108,10 @@ struct MemberQRScreen: View {
             } message: {
                 Text(screenshotNoticeText)
             }
+    }
+
+    private var observedCardView: some View {
+        screenshotNoticeView
             .onChange(of: selectedToken) { _, _ in
                 // A pending screenshot rotation belongs to one specific card.
                 // Switching Duo/Circle members must never block the next card.
@@ -116,7 +129,6 @@ struct MemberQRScreen: View {
             .task(id: selectedToken + ":" + String(refreshID) + ":" + String(describing: scenePhase) + ":" + String(rotationInProgress)) {
                 await continuallyRefreshQR()
             }
-        }
     }
 
     // Isolate the large, stateful card from the navigation/notification
