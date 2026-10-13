@@ -71,12 +71,43 @@ final class ALIGNAPI {
         return try await fetch(request)
     }
 
-    func qr(for card: MemberCard) async throws -> QRResponse {
-        let request = request(
+    /// The protected iOS QR is preview-gated. A 404 means it is not enabled;
+    /// until activation, preserve the existing 15-minute web-compatible QR.
+    func qr(for card: MemberCard, sessionToken: String?) async throws -> QRResponse {
+        if let sessionToken, !sessionToken.isEmpty {
+            var appRequest = request(
+                path: "/api/app-qr",
+                query: [.init(name: "token", value: card.token)]
+            )
+            appRequest.setValue("Bearer " + sessionToken, forHTTPHeaderField: "Authorization")
+            let (data, response) = try await session.data(for: appRequest)
+            guard let response = response as? HTTPURLResponse else { throw AppFailure.invalidResponse }
+            if response.statusCode == 200 {
+                return try JSONDecoder().decode(QRResponse.self, from: data)
+            }
+            if response.statusCode != 404 {
+                let message = try? JSONDecoder().decode(APIErrorMessage.self, from: data)
+                throw AppFailure.server(message?.error ?? "No se pudo abrir el QR protegido.")
+            }
+        }
+        return try await fetch(request(
             path: "/api/monthly-qr",
             query: [.init(name: "token", value: card.token)]
-        )
-        return try await fetch(request)
+        ))
+    }
+
+    /// Requires a valid login session AND the previous code. The backend
+    /// checks the active revision before replacing it, on the app channel only.
+    func rotateAppQR(for card: MemberCard, sessionToken: String, previousCode: String) async throws -> QRResponse {
+        var rotation = request(path: "/api/app-qr")
+        rotation.httpMethod = "POST"
+        rotation.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        rotation.setValue("Bearer " + sessionToken, forHTTPHeaderField: "Authorization")
+        rotation.httpBody = try JSONSerialization.data(withJSONObject: [
+            "token": card.token,
+            "previousCode": previousCode,
+        ])
+        return try await fetch(rotation)
     }
 
     func activity(for card: MemberCard) async throws -> MemberActivity {
