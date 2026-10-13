@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreImage.CIFilterBuiltins
+import UIKit
 
 struct MemberQRScreen: View {
     @EnvironmentObject private var session: MemberSession
@@ -10,6 +11,8 @@ struct MemberQRScreen: View {
     @State private var qr: QRResponse?
     @State private var failure: String?
     @State private var loading = false
+    @State private var isCardVisible = false
+    @State private var showScreenshotNotice = false
 
     private var selectedCard: MemberCard? {
         session.cards.first { $0.token == selectedToken }
@@ -143,7 +146,24 @@ struct MemberQRScreen: View {
             .background(ALIGNStyle.night.ignoresSafeArea())
             .navigationTitle("Mi tarjeta")
             .onAppear {
+                isCardVisible = true
                 if selectedToken.isEmpty { selectedToken = session.primary?.token ?? "" }
+            }
+            .onDisappear {
+                isCardVisible = false
+                showScreenshotNotice = false
+            }
+            // Apple notifies apps AFTER a screenshot has already been taken.
+            // This is a deterrence notice; it cannot retroactively block the saved image.
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.userDidTakeScreenshotNotification)) { _ in
+                if isCardVisible && scenePhase == .active {
+                    showScreenshotNotice = true
+                }
+            }
+            .alert("Captura de pantalla detectada", isPresented: $showScreenshotNotice) {
+                Button("Entendido", role: .cancel) {}
+            } message: {
+                Text("Esta tarjeta es personal. Por seguridad, evita compartir capturas de tu QR. El aliado debe verificar tu identidad y la vigencia del código.")
             }
             .onChange(of: scenePhase) { _, newPhase in
                 if newPhase == .active { refreshID += 1 }
