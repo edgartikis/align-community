@@ -21,6 +21,7 @@ jobs:
           node --check scripts/prepare-align-ios-preview.mjs
           node --check cloudflare/payments-worker/src/entry-app-member-private.js
           node --check cloudflare/payments-worker/src/member-login-guard.js
+          node --check scripts/verify-align-login-guard-preview.mjs
           node --test ios/ALIGN/Tests/release-readiness.test.mjs tests/app-qr-capture.test.mjs tests/app-member-private.test.mjs tests/member-login-guard.test.mjs
       - name: Xcode version
         run: xcodebuild -version
