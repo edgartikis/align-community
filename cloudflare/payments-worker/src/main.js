@@ -1,4 +1,5 @@
 import { stripeMode, qrCutoverEnabled } from "./stripe-runtime.js";
+export { AlignAppQrAuthority } from "./app-qr-authority.js";
 import apiWorker from "./entry-member-login.js";
 import { walletRoute, rewriteWalletAllyRequest } from "./apple-wallet.js";
 
