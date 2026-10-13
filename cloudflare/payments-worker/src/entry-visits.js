@@ -1,6 +1,6 @@
 import { qrSigningSecret, verifyQrHmac } from "./stripe-runtime.js";
 import billingWorker from "./entry.js";
-import { verifyAppQrRevision } from "./entry-app-qr.js";
+import { currentAppQrMapping, verifyAppQrRevision } from "./entry-app-qr.js";
 
 const QR_ROTATION_MS = 15 * 60 * 1000;
 
@@ -204,6 +204,19 @@ function parseQr(raw) {
 
 async function verifiedMemberFromQr(env, rawQr) {
   if (!env.PAYMENT_STATE) throw new Error("PAYMENT_STATE no está conectado.");
+  // Native QR validation is authoritative; never convert to legacy HMAC.
+  let appUrl;
+  try { appUrl = new URL(String(rawQr || "").trim()); } catch (_) {}
+  const appMatch = appUrl?.pathname.match(/^\/q\/(A[A-Za-z0-9_-]{31})$/);
+  if (appMatch) {
+    const isAlignHost = appUrl.hostname === "api.alignmembers.com.mx" ||
+      appUrl.hostname.endsWith(".workers.dev");
+    if (!isAlignHost) throw new Error("El QR no pertenece a ALIGN.");
+    const app = await currentAppQrMapping(env, appMatch[1]);
+    if (!app) throw new Error("El QR de la app fue reemplazado o venció. Solicita el código vigente.");
+    return { token: app.token, member: app.member, period: app.period,
+      qrWindow: { validUntil: app.qrValidUntil } };
+  }
   const supplied = parseQr(rawQr);
   if (!/^[A-Za-z0-9_-]{20,}$/.test(supplied.token)) throw new Error("Token de membresía inválido.");
   const raw = await env.PAYMENT_STATE.get(`member:${supplied.token}`);
