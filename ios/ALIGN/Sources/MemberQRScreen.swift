@@ -16,6 +16,11 @@ struct MemberQRScreen: View {
     @State private var screenshotNoticeText = ""
     @State private var rotationInProgress = false
     @State private var pendingRotationCode: String?
+    // iOS may deliver the screenshot notification during a SwiftUI QR refresh,
+    // when 'qr' is momentarily nil. Keep the last issued protected code for
+    // this card, without ever persisting it or exposing it in diagnostics.
+    @State private var lastProtectedQRCode: String?
+    @State private var lastProtectedToken: String?
 
     private var selectedCard: MemberCard? {
         session.cards.first { $0.token == selectedToken }
@@ -84,8 +89,13 @@ struct MemberQRScreen: View {
         cardContentView
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.userDidTakeScreenshotNotification)) { _ in
                 guard isCardVisible && scenePhase == .active else { return }
-                if qr?.appRotationEnabled == true,
-                   let code = qr?.currentAppCode,
+                // A screenshot can overlap SwiftUI's scene/QR refresh. Use
+                // the last issued *protected* code if the visible state was
+                // briefly cleared; do not mistake that race for legacy mode.
+                guard !rotationInProgress && pendingRotationCode == nil else { return }
+                let lastCode = lastProtectedToken == selectedToken ? lastProtectedQRCode : nil
+                let code = qr?.currentAppCode ?? lastCode
+                if let code,
                    session.login?.sessionToken?.isEmpty == false {
                     pendingRotationCode = code
                     rotationInProgress = true
@@ -94,7 +104,9 @@ struct MemberQRScreen: View {
                     showScreenshotNotice = true
                     Task { await rotateQRFromScreenshot() }
                 } else {
-                    screenshotNoticeText = "Captura detectada. El QR actual puede seguir vigente hasta 15 minutos: evita compartirlo. El servidor todavía no tiene habilitada la invalidación automática en esta versión."
+                    // Never claim an invalidation happened when the app did
+                    // not have a protected code or a valid session.
+                    screenshotNoticeText = "Captura detectada. No se pudo iniciar la renovación segura del QR. La fotografía podría seguir siendo válida hasta su vencimiento. Verifica que diga «QR protegido» e inicia sesión nuevamente si es necesario."
                     showScreenshotNotice = true
                 }
             }
@@ -114,6 +126,8 @@ struct MemberQRScreen: View {
                 rotationInProgress = false
                 failure = nil
                 qr = nil
+                lastProtectedQRCode = nil
+                lastProtectedToken = nil
             }
             .onChange(of: scenePhase) { _, newPhase in
                 if newPhase == .active { refreshID += 1 }
@@ -205,7 +219,10 @@ struct MemberQRScreen: View {
                                     .frame(height: 270)
                             }
 
-                            Text(qr != nil ? "Renovación automática · cada 15 minutos" : "QR no disponible en este momento")
+                            Text(qr?.appRotationEnabled == true
+                                 ? "QR protegido · renovación por captura y cada 15 minutos"
+                                 : qr != nil ? "QR de 15 minutos · captura no invalidada"
+                                 : "QR no disponible en este momento")
                                 .font(.caption)
                                 .foregroundStyle(ALIGNStyle.muted)
 
@@ -255,6 +272,8 @@ struct MemberQRScreen: View {
             guard selectedToken == card.token else { return }
             pendingRotationCode = nil
             qr = next
+            lastProtectedQRCode = next.currentAppCode
+            lastProtectedToken = card.token
             failure = nil
             screenshotNoticeText = "El servidor confirmó la renovación. La captura anterior ya no corresponde al QR activo."
             rotationInProgress = false
@@ -288,6 +307,8 @@ struct MemberQRScreen: View {
                 let next = try await ALIGNAPI.shared.qr(for: card, sessionToken: session.login?.sessionToken)
                 guard !Task.isCancelled else { return }
                 qr = next
+                lastProtectedQRCode = next.currentAppCode
+                lastProtectedToken = next.currentAppCode == nil ? nil : card.token
                 failure = nil
                 loading = false
                 // Wait until the backend's actual 15-minute window ends.
