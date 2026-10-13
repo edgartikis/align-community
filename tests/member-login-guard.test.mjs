@@ -28,6 +28,7 @@ function fakeEnv({ preview = true } = {}) {
         map.set(key, value);
       },
       async delete(key) { map.delete(key); },
+      async list() { return { keys: [], list_complete: true }; },
     },
     logs,
     map,
