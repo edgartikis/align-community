@@ -225,21 +225,9 @@ async function expandShortQr(env, rawQr) {
   const allowedHost = url.hostname === "api.alignmembers.com.mx" || url.hostname.endsWith(".workers.dev");
   if (!code || !allowedHost) return rawQr;
 
-  // iOS QR has an independent rotation/revocation track. Never turn an
-  // expired app code into a legacy URL by skipping its current-state check.
-  if (code.startsWith("A") && code.length === 32) {
-    const app = await currentAppQrMapping(env, code);
-    if (!app) return rawQr;
-    const signature = await legacySignature(env, app.token, app.period, app.slot);
-    const expanded = new URL("/api/validate-member", url.origin);
-    expanded.searchParams.set("token", app.token);
-    expanded.searchParams.set("from", app.period.validFrom);
-    expanded.searchParams.set("until", app.period.validUntil);
-    expanded.searchParams.set("slot", String(app.slot));
-    expanded.searchParams.set("sig", signature);
-    expanded.searchParams.set("appCode", code);
-    return expanded.toString();
-  }
+  // Native-app QR is checked directly by the ally validator against the
+  // Durable Object; NEVER convert it into a revocable-bypassable legacy HMAC.
+  if (code.startsWith("A") && code.length === 32) return rawQr;
 
   const raw = await env.PAYMENT_STATE.get(`qr-short:${code}`);
   if (!raw) return rawQr;
