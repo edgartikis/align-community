@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify QR expiry, app privacy, and owner-only Wallet safeguards
-        run: node --test ios/ALIGN/Tests/release-readiness.test.mjs
+        run: node --test ios/ALIGN/Tests/release-readiness.test.mjs tests/app-qr-capture.test.mjs
       - name: Xcode version
         run: xcodebuild -version
       - name: Install XcodeGen
