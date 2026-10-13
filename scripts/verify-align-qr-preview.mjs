@@ -16,8 +16,10 @@ const PREVIEW_KV = "4b23fffb26264609b9f18f110baea954";
 const PRODUCTION_KV = "4504d6bcead74cdfa7e3a76599f641fc";
 const PREVIEW_URL = "https://align-qr-pilot-align-payments.alignservice18.workers.dev";
 const TOKEN = randomBytes(32).toString("hex");
+const FOREIGN_TOKEN = randomBytes(32).toString("hex");
 const SESSION = randomBytes(32).toString("hex");
 const GROUP = "grp_synthetic_preview_" + randomBytes(6).toString("hex");
+const FOREIGN_GROUP = "grp_other_preview_" + randomBytes(6).toString("hex");
 const TTL = 3600;
 const keys = [];
 function checkPreviewBinding() {
@@ -109,6 +111,66 @@ async function partnerVisitAttempt(allyToken, qrUrl) {
     body: JSON.stringify({ qr: qrUrl, allyKey: "global", gross: 0, spent: 0 }),
   });
 }
+async function privateMemberRequest(path, memberToken = TOKEN, sessionToken = SESSION) {
+  // Only POST JSON to Preview. Do not place membership tokens in external URLs.
+  return fakeRequest(path, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(sessionToken ? { authorization: "Bearer " + sessionToken } : {}),
+    },
+    body: JSON.stringify({ token: memberToken }),
+  });
+}
+async function privateMemberChecks() {
+  const cardPath = "/api/app-member-card";
+  const activityPath = "/api/app-member-activity";
+  assert.equal((await privateMemberRequest(cardPath, TOKEN, "")).status, 401,
+    "Anonymous callers must not read membership details");
+  assert.equal((await privateMemberRequest(activityPath, TOKEN, "")).status, 401,
+    "Anonymous callers must not read activity");
+  console.log("✓ Sin sesión: tarjeta e historial rechazados (401).");
+
+  // Wait for Preview KV propagation; avoid false negatives caused by eventual KV reads.
+  let status;
+  for (let attempt = 0; attempt < 12; attempt++) {
+    status = await privateMemberRequest(cardPath);
+    if (status.status === 200) break;
+    if (status.status !== 403 && status.status !== 404) break;
+    await sleep(3000);
+  }
+  assert.equal(status.status, 200, "Valid group session must access its own card");
+  const card = await status.json();
+  assert.equal(card.memberCode, "TEST-NO-REAL");
+  assert.equal(card.active, true);
+
+  const activityRes = await privateMemberRequest(activityPath);
+  assert.equal(activityRes.status, 200, "Valid group session must access its activity");
+  const activity = await activityRes.json();
+  assert.equal(activity.ok, true);
+  assert.equal(activity.member.memberCode, "TEST-NO-REAL");
+  console.log("✓ Socio autenticado puede consultar únicamente su tarjeta e historial (200).");
+
+  let foreign;
+  for (let attempt = 0; attempt < 12; attempt++) {
+    foreign = await privateMemberRequest(cardPath, FOREIGN_TOKEN);
+    if (foreign.status === 403) break;
+    if (foreign.status !== 404) break;
+    await sleep(3000);
+  }
+  assert.equal(foreign.status, 403,
+    "Group A must not read a card owned by group B");
+  assert.equal((await privateMemberRequest(activityPath, FOREIGN_TOKEN)).status, 403,
+    "Group A must not read the activity owned by group B");
+  console.log("✓ Intento de consultar tarjeta e historial de otro grupo rechazado (403).");
+
+  const noGet = await fakeRequest(cardPath + "?token=" + TOKEN, {
+    headers: { authorization: "Bearer " + SESSION },
+  });
+  assert.equal(noGet.status, 405, "Member-specific native GET must be disabled");
+  console.log("✓ Ruta nativa no admite consultas GET con tokens en la URL (405).");
+}
+
 function shortCode(qrUrl) {
   const url = new URL(qrUrl);
   assert.equal(url.host, new URL(PREVIEW_URL).host);
@@ -128,12 +190,17 @@ try {
     position: 1, joinedAt: start, validFrom: start, validUntil: end,
     savings: 0, photoUrl: "",
   };
+  const group = { groupId: GROUP, tokens: [TOKEN] };
+  const foreignMember = { ...member, token: FOREIGN_TOKEN, groupId: FOREIGN_GROUP,
+    integranteId: "ALIGN-FOREIGN-PREVIEW", memberCode: "TEST-FOREIGN-NO-REAL" };
   const session = {
     username: "align.preview.test", groupId: GROUP, primaryToken: TOKEN,
     createdAt: new Date().toISOString(), expiresAt: Date.now() + TTL * 1000,
   };
   for (const [key, value] of [
     ["member:" + TOKEN, JSON.stringify(member)],
+    ["member:" + FOREIGN_TOKEN, JSON.stringify(foreignMember)],
+    ["group:" + GROUP, JSON.stringify(group)],
     ["member-session:" + SESSION, JSON.stringify(session)],
   ]) {
     wrangler("put", key, value);
@@ -142,6 +209,7 @@ try {
   console.log("✓ Socio y sesión ficticios creados exclusivamente en KV Preview.");
   const original = await waitForMember();
   console.log("✓ Emisión autenticada del primer QR.");
+  await privateMemberChecks();
   const originalCode = shortCode(original.validationUrl);
   const firstStatus = await fakeRequest("/q/" + originalCode);
   assert.equal(firstStatus.status, 200, "First QR must initially validate");
