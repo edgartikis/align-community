@@ -33,7 +33,16 @@ Actualizado: 13 de octubre de 2026. **No autoriza publicar, desplegar backend ni
 
 ## Decisión antes de crear un nuevo TestFlight
 
-**A. Beta privada con backend de pruebas:** requiere una identidad de app TestFlight separada (bundle ID y ficha App Store Connect) para no mezclar membresías reales con Preview. Crear esa identidad y cargar una compilación requiere autorización expresa.
+**A. Beta privada con backend de pruebas:** preparada en el código con el esquema **ALIGN Private TestFlight**, configuración Release optimizada **PreviewRelease** y bundle ID separado `mx.com.alignmembers.app.preview`. La compilación usa exclusivamente `https://align-qr-pilot-align-payments.alignservice18.workers.dev` y muestra **ALIGN Preview**. El esquema original **ALIGN** conserva el backend de producción en Release. **Preparar esta configuración fue autorizado por el propietario el 13/oct/2026; crear una ficha de App Store Connect, subirla o invitar probadores sigue pendiente de una acción/confirmación explícita por separado.**
+
+Pasos pendientes del propietario (no hechos automáticamente):
+1. Abrir [Apple Developer → Identifiers](https://developer.apple.com/account/resources/identifiers/list) y confirmar que existe un App ID explícito para `mx.com.alignmembers.app.preview` en su cuenta. Si no existe, registrarlo, solo para pruebas.
+2. En [App Store Connect](https://appstoreconnect.apple.com/) crear una ficha **nueva y separada**, por ejemplo «ALIGN Preview Privado», plataforma iOS, idioma Español, Bundle ID `mx.com.alignmembers.app.preview`, SKU interno único. No usar la ficha de ALIGN que ya existe.
+3. En Mac, actualizar GitHub, regenerar XcodeGen, verificar el esquema **ALIGN Private TestFlight** y seleccionar destino **Any iOS Device (arm64)**. Antes de pulsar Archive, verificar en **Edit Scheme → Archive → Build Configuration = PreviewRelease** y en Build Settings que el Bundle ID es el de Preview.
+4. Solo cuando el propietario autorice el siguiente paso, crear archivo firmado y subir como **TestFlight Internal Only**; asignar exclusivamente el usuario interno del propietario sin auto-distribución. Nunca seleccionar **Submit for Review** ni invitar externos.
+5. Para entrar, usar solamente socios ficticios en la KV de Preview; `node scripts/prepare-align-ios-preview.mjs setup` genera una cuenta temporal que se limpia con `cleanup`. No enviar contraseñas por chat ni usar login real. Las cuentas expiran y no son cuentas permanentes.
+
+**Advertencia:** en el iPhone, TestFlight puede sustituir la instalación Debug **ALIGN Preview** anterior al compartir el mismo Bundle ID. No toca ni sustituye **ALIGN** real (`mx.com.alignmembers.app`).
 
 **B. TestFlight con backend de producción:** el bundle original ya apunta a producción; antes debe quedar claro qué funciones están activas. La invalidación por captura **no está activada allí**. No subir ni habilitar de forma automática.
 
