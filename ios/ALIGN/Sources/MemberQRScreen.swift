@@ -44,6 +44,85 @@ struct MemberQRScreen: View {
                         .tint(ALIGNStyle.ivory)
                     }
 
+                    membershipCard
+
+                    if let failure {
+                        Text(failure)
+                            .font(.subheadline)
+                            .foregroundStyle(.orange)
+                    }
+
+                    Label("La grabación y duplicación de pantalla ocultan el QR. iOS no permite impedir capturas de pantalla: no compartas fotografías del código. El aliado siempre debe validar al titular.", systemImage: "shield.lefthalf.filled")
+                        .font(.footnote)
+                        .foregroundStyle(ALIGNStyle.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if selectedCard?.isOwner == true {
+                        Text("Tu tarjeta Apple Wallet permanece independiente y exclusiva para el propietario. No se emiten pases Wallet para otros socios.")
+                            .font(.caption)
+                            .foregroundStyle(ALIGNStyle.gold)
+                    }
+                }
+                .padding(22)
+                .padding(.bottom, 88)
+            }
+            .background(ALIGNStyle.night.ignoresSafeArea())
+            .navigationTitle("Mi tarjeta")
+            .onAppear {
+                isCardVisible = true
+                if selectedToken.isEmpty { selectedToken = session.primary?.token ?? "" }
+            }
+            .onDisappear {
+                isCardVisible = false
+                showScreenshotNotice = false
+            }
+            // Apple reports screenshots AFTER the capture. Only the separately
+            // enabled app-QR backend can invalidate the previous image.
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.userDidTakeScreenshotNotification)) { _ in
+                guard isCardVisible && scenePhase == .active else { return }
+                if qr?.appRotationEnabled == true,
+                   let code = qr?.currentAppCode,
+                   session.login?.sessionToken?.isEmpty == false {
+                    pendingRotationCode = code
+                    rotationInProgress = true
+                    qr = nil
+                    screenshotNoticeText = "Se detectó una captura. ALIGN está solicitando un QR nuevo al servidor. No compartas la imagen guardada."
+                    showScreenshotNotice = true
+                    Task { await rotateQRFromScreenshot() }
+                } else {
+                    screenshotNoticeText = "Captura detectada. El QR actual puede seguir vigente hasta 15 minutos: evita compartirlo. El servidor todavía no tiene habilitada la invalidación automática en esta versión."
+                    showScreenshotNotice = true
+                }
+            }
+            .alert("Captura de pantalla detectada", isPresented: $showScreenshotNotice) {
+                Button("Entendido", role: .cancel) {}
+            } message: {
+                Text(screenshotNoticeText)
+            }
+            .onChange(of: selectedToken) { _, _ in
+                // A pending screenshot rotation belongs to one specific card.
+                // Switching Duo/Circle members must never block the next card.
+                pendingRotationCode = nil
+                rotationInProgress = false
+                failure = nil
+                qr = nil
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                if newPhase == .active { refreshID += 1 }
+            }
+            .onChange(of: isSceneCaptured) { _, captured in
+                if !captured { refreshID += 1 }
+            }
+            .task(id: selectedToken + ":" + String(refreshID) + ":" + String(describing: scenePhase) + ":" + String(rotationInProgress)) {
+                await continuallyRefreshQR()
+            }
+        }
+    }
+
+    // Isolate the large, stateful card from the navigation/notification
+    // modifiers so SwiftUI can type-check each expression independently.
+    @ViewBuilder
+    private var membershipCard: some View {
                     if let selectedCard {
                         VStack(spacing: 17) {
                             Text("ALIGN")
@@ -145,77 +224,6 @@ struct MemberQRScreen: View {
                         .clipShape(RoundedRectangle(cornerRadius: 18))
                     }
 
-                    if let failure {
-                        Text(failure)
-                            .font(.subheadline)
-                            .foregroundStyle(.orange)
-                    }
-
-                    Label("La grabación y duplicación de pantalla ocultan el QR. iOS no permite impedir capturas de pantalla: no compartas fotografías del código. El aliado siempre debe validar al titular.", systemImage: "shield.lefthalf.filled")
-                        .font(.footnote)
-                        .foregroundStyle(ALIGNStyle.muted)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    if selectedCard?.isOwner == true {
-                        Text("Tu tarjeta Apple Wallet permanece independiente y exclusiva para el propietario. No se emiten pases Wallet para otros socios.")
-                            .font(.caption)
-                            .foregroundStyle(ALIGNStyle.gold)
-                    }
-                }
-                .padding(22)
-                .padding(.bottom, 88)
-            }
-            .background(ALIGNStyle.night.ignoresSafeArea())
-            .navigationTitle("Mi tarjeta")
-            .onAppear {
-                isCardVisible = true
-                if selectedToken.isEmpty { selectedToken = session.primary?.token ?? "" }
-            }
-            .onDisappear {
-                isCardVisible = false
-                showScreenshotNotice = false
-            }
-            // Apple reports screenshots AFTER the capture. Only the separately
-            // enabled app-QR backend can invalidate the previous image.
-            .onReceive(NotificationCenter.default.publisher(for: UIApplication.userDidTakeScreenshotNotification)) { _ in
-                guard isCardVisible && scenePhase == .active else { return }
-                if qr?.appRotationEnabled == true,
-                   let code = qr?.currentAppCode,
-                   session.login?.sessionToken?.isEmpty == false {
-                    pendingRotationCode = code
-                    rotationInProgress = true
-                    qr = nil
-                    screenshotNoticeText = "Se detectó una captura. ALIGN está solicitando un QR nuevo al servidor. No compartas la imagen guardada."
-                    showScreenshotNotice = true
-                    Task { await rotateQRFromScreenshot() }
-                } else {
-                    screenshotNoticeText = "Captura detectada. El QR actual puede seguir vigente hasta 15 minutos: evita compartirlo. El servidor todavía no tiene habilitada la invalidación automática en esta versión."
-                    showScreenshotNotice = true
-                }
-            }
-            .alert("Captura de pantalla detectada", isPresented: $showScreenshotNotice) {
-                Button("Entendido", role: .cancel) {}
-            } message: {
-                Text(screenshotNoticeText)
-            }
-            .onChange(of: selectedToken) { _, _ in
-                // A pending screenshot rotation belongs to one specific card.
-                // Switching Duo/Circle members must never block the next card.
-                pendingRotationCode = nil
-                rotationInProgress = false
-                failure = nil
-                qr = nil
-            }
-            .onChange(of: scenePhase) { _, newPhase in
-                if newPhase == .active { refreshID += 1 }
-            }
-            .onChange(of: isSceneCaptured) { _, captured in
-                if !captured { refreshID += 1 }
-            }
-            .task(id: selectedToken + ":" + String(refreshID) + ":" + String(describing: scenePhase) + ":" + String(rotationInProgress)) {
-                await continuallyRefreshQR()
-            }
-        }
     }
 
     private func expiryDate(_ text: String) -> Date? {
