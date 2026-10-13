@@ -123,3 +123,17 @@ test("Removed member card presents re-login action, not an endless error loop", 
   assert.match(screen, /session\.signOut\(\)/);
   assert.match(screen, /A deleted card requires a fresh sign-in/);
 });
+
+test("Release uses production, Debug is isolated Preview, production QR flag remains disabled", () => {
+  const api = read("ios/ALIGN/Sources/ALIGNAPI.swift");
+  const project = read("ios/ALIGN/project.yml");
+  const config = read("cloudflare/payments-worker/wrangler.toml");
+  const workflow = read(".github/workflows/ios-native-check.yml");
+  assert.match(api, /#if DEBUG\s+private let base = URL\(string: "https:\/\/align-qr-pilot-align-payments\.alignservice18\.workers\.dev"\)!/);
+  assert.match(api, /#else\s+private let base = URL\(string: "https:\/\/api\.alignmembers\.com\.mx"\)!/);
+  assert.match(project, /configs:\s+Debug:\s+PRODUCT_BUNDLE_IDENTIFIER: mx\.com\.alignmembers\.app\.preview/);
+  const prod = config.split("[vars]")[1].split("[previews]")[0];
+  assert.match(prod, /ALIGN_APP_QR_ROTATION_ENABLED = "false"/);
+  assert.match(workflow, /-configuration Release/);
+  assert.match(workflow, /CODE_SIGNING_ALLOWED=NO build/);
+});
