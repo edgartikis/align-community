@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createHmac, webcrypto } from "node:crypto";
 import shortQrWorker from "../cloudflare/payments-worker/src/entry-short-qr.js";
 import { currentAppQrMapping } from "../cloudflare/payments-worker/src/entry-app-qr.js";
+import { AlignAppQrAuthority } from "../cloudflare/payments-worker/src/app-qr-authority.js";
 
 globalThis.crypto ??= webcrypto;
 const API = "https://api.alignmembers.com.mx";
@@ -29,8 +30,31 @@ function setup(enabled = true) {
   records.set("member-session:" + SESSION_TOKEN, JSON.stringify({
     groupId: "GRP-A", primaryToken: MEMBER_TOKEN, expiresAt: Date.now() + 3600_000
   }));
+  // A single DO instance per id provides the same logical authoritative
+  // record to callers from different PoPs; unlike the PAYMENT_STATE KV cache.
+  const objects = new Map();
+  const namespace = {
+    idFromName: (name) => name,
+    get: (id) => {
+      if (!objects.has(id)) {
+        const storage = new Map();
+        const ctx = { storage: {
+          get: async (key) => storage.get(key),
+          put: async (key, value) => { storage.set(key, value); },
+          transaction: async (fn) => fn({
+            get: async (key) => storage.get(key),
+            put: async (key, value) => { storage.set(key, value); },
+          }),
+        } };
+        objects.set(id, new AlignAppQrAuthority(ctx));
+      }
+      return { fetch: (url, init) => objects.get(id).fetch(new Request(url, init)) };
+    },
+  };
   const env = {
     PAYMENT_STATE: kv,
+    APP_QR_AUTHORITY: namespace,
+    ALIGN_APP_QR_SECRET: "private-test-only-app-qr-key-not-for-deployment-12345",
     ALIGN_APP_QR_ROTATION_ENABLED: String(enabled),
     STRIPE_MODE: "test", STRIPE_SECRET_KEY: SECRET,
   };
@@ -115,4 +139,23 @@ test("Old app QR also fails if someone replays previously expanded validation UR
   assert.equal((await scan(env, expanded.toString())).status, 200);
   await rotate(code(first.validationUrl));
   assert.equal((await scan(env, expanded.toString())).status, 400);
+});
+
+test("App QR fails closed without its Durable Object binding or private HMAC key", async () => {
+  const { env, get } = setup(true);
+  delete env.APP_QR_AUTHORITY;
+  assert.equal((await get()).status, 503);
+  env.APP_QR_AUTHORITY = setup(true).env.APP_QR_AUTHORITY;
+  delete env.ALIGN_APP_QR_SECRET;
+  assert.equal((await get()).status, 503);
+});
+test("App and web QRs remain independent when a screenshot rotates the app QR", async () => {
+  const { env, get, rotate } = setup(true);
+  const web = await (await shortQrWorker.fetch(
+    new Request(API + "/api/monthly-qr?token=" + MEMBER_TOKEN), env)).json();
+  const first = await (await get()).json();
+  await rotate(code(first.validationUrl));
+  assert.equal((await shortQrWorker.fetch(new Request(web.validationUrl), env)).status, 200);
+  assert.equal((await scan(env, web.validationUrl)).status, 200);
+  assert.equal((await shortQrWorker.fetch(new Request(first.validationUrl), env)).status, 403);
 });
