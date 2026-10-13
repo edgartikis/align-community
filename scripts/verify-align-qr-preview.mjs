@@ -30,6 +30,8 @@ function checkPreviewBinding() {
     "Production app QR flag must remain OFF");
   assert.match(toml, /STRIPE_MODE = "test"/,
     "Preview must use Stripe TEST mode");
+  assert.match(toml, /QR_SIGNING_CUTOVER = "true"/,
+    "Preview ally-scanner signing must use its own private key");
 }
 function wrangler(command, key, value) {
   const args = ["wrangler", "kv", "key", command, key];
@@ -71,6 +73,42 @@ async function waitForMember() {
   }
   throw new Error("El socio ficticio aún no se propagó a la KV de Preview.");
 }
+async function loginPreviewAlly() {
+  // Existing static ally fixture, exercised only against the Preview URL.
+  // Do not print credentials, authorization headers or QR values.
+  const name = "Global Gym";
+  const username = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const password = username.replace(/[aeiou]/g, "");
+  const response = await fakeRequest("/api/ally/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+  if (response.status !== 200) {
+    throw new Error("El inicio de sesión del aliado en Preview no está preparado: HTTP "
+      + response.status + ". Verifica la firma QR_SIGNING_SECRET y la configuración de Preview.");
+  }
+  const result = await response.json();
+  assert.equal(result.ok, true);
+  assert.equal(result.ally?.key, "global");
+  assert.ok(result.token);
+  return result.token;
+}
+async function partnerScan(allyToken, qrUrl) {
+  return fakeRequest("/api/ally/scan", {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: "Bearer " + allyToken },
+    body: JSON.stringify({ qr: qrUrl, allyKey: "global" }),
+  });
+}
+async function partnerVisitAttempt(allyToken, qrUrl) {
+  // Only send a revoked code; must be rejected BEFORE any visit can be recorded.
+  return fakeRequest("/api/ally/visit", {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: "Bearer " + allyToken },
+    body: JSON.stringify({ qr: qrUrl, allyKey: "global", gross: 0, spent: 0 }),
+  });
+}
 function shortCode(qrUrl) {
   const url = new URL(qrUrl);
   assert.equal(url.host, new URL(PREVIEW_URL).host);
@@ -108,6 +146,10 @@ try {
   const firstStatus = await fakeRequest("/q/" + originalCode);
   assert.equal(firstStatus.status, 200, "First QR must initially validate");
   console.log("✓ Primer QR válido antes de renovar.");
+  const allyToken = await loginPreviewAlly();
+  assert.equal((await partnerScan(allyToken, original.validationUrl)).status, 200,
+    "El portal del aliado debe aceptar el primer QR vigente");
+  console.log("✓ Escáner de aliado acepta el QR vigente.");
   const rotate = await fakeRequest("/api/app-qr", {
     method: "POST",
     headers: { "content-type": "application/json", authorization: "Bearer " + SESSION },
@@ -123,6 +165,13 @@ try {
   assert.equal((await fakeRequest("/q/" + renewedCode)).status, 200,
     "Only the new QR must validate");
   console.log("✓ QR anterior rechazado (403) y QR nuevo aceptado (200).");
+  assert.equal((await partnerScan(allyToken, original.validationUrl)).status, 400,
+    "El escáner debe rechazar el QR anterior a la captura");
+  assert.equal((await partnerScan(allyToken, renewed.validationUrl)).status, 200,
+    "El escáner debe aceptar el QR renovado");
+  assert.equal((await partnerVisitAttempt(allyToken, original.validationUrl)).status, 400,
+    "Registrar una visita con el QR viejo debe rechazarse antes de escribir datos");
+  console.log("✓ Escáner y registro de visita rechazan el QR anterior; escáner acepta el nuevo.");
   const replay = await fakeRequest("/api/app-qr", {
     method: "POST",
     headers: { "content-type": "application/json", authorization: "Bearer " + SESSION },
