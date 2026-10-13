@@ -3,6 +3,15 @@ main = "src/main.js"
 compatibility_date = "2026-09-01"
 compatibility_flags = ["nodejs_compat"]
 
+# QR revision authority; production remains disabled by feature flag.
+[[durable_objects.bindings]]
+name = "APP_QR_AUTHORITY"
+class_name = "AlignAppQrAuthority"
+
+[[migrations]]
+tag = "align-app-qr-sqlite-v1"
+new_sqlite_classes = ["AlignAppQrAuthority"]
+
 [[kv_namespaces]]
 binding = "PAYMENT_STATE"
 id = "4504d6bcead74cdfa7e3a76599f641fc"
@@ -42,7 +51,8 @@ STRIPE_PRICE_CIRCLE_LIVE = "price_1UHAjxE2qRZRC8p2odXD4Bc5"
 # QR_SIGNING_SECRET (opcional; si falta, usa la clave Stripe del modo activo)
 # ALIGN_DB_URL / ALIGN_DB_SECRET (solo sincronización secundaria de reportes)
 
-# Preview-only screenshot QR rotation for native iOS; never enable on production before strong-consistency audit.
+# Preview-only screenshot QR rotation for native iOS; do not enable production without approval.
+# ALIGN_APP_QR_SECRET is a private Cloudflare secret of at least 32 characters.
 ALIGN_APP_QR_ROTATION_ENABLED = "false"
 
 # Official Apple Wallet pass: disabled until signed, approved and tested on iPhone.
