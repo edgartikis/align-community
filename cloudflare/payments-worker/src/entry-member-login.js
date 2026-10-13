@@ -1,5 +1,6 @@
 import { stripeSecret } from "./stripe-runtime.js";
 import memberActivityWorker from "./entry-member-activity.js";
+import { checkPreviewLoginAttempts, recordPreviewLoginFailure, clearPreviewLoginFailures } from "./member-login-guard.js";
 
 const ALLOWED_ORIGINS = new Set([
   "https://alignmembers.com.mx",
@@ -540,10 +541,18 @@ async function handleLogin(request, env) {
     return json({ error: "Usuario o contraseña incorrectos." }, 401, origin);
   }
 
+  // Only in isolated Preview; the official member-login stays unchanged.
+  const attempts = await checkPreviewLoginAttempts(env, request, username);
+  if (attempts.blocked) {
+    return json({ error: "Demasiados intentos. Espera 15 minutos antes de intentar de nuevo." }, 429, origin);
+  }
+
   const account = await migrateAccount(env, username);
   if (!account || !constantTimeEqual(clean(account.passwordHash, 64).toLowerCase(), passwordHash)) {
+    await recordPreviewLoginFailure(env, attempts);
     return json({ error: "Usuario o contraseña incorrectos." }, 401, origin);
   }
+  await clearPreviewLoginFailures(env, attempts);
 
   const cards = await cardsForAccount(env, account);
   if (!cards.length) return json({ error: "La membresía no tiene tarjetas disponibles." }, 404, origin);
