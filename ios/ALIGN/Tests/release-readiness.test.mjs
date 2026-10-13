@@ -150,3 +150,17 @@ test("Private TestFlight has its own production-optimized Preview archive scheme
   assert.match(workflow, /-configuration PreviewRelease/);
   assert.match(workflow, /-scheme ['"]ALIGN Private TestFlight['"]/);
 });
+
+test("Preview member card/activity requests use authenticated POST while public Release retains legacy website compatibility", () => {
+  const ios = read("ios/ALIGN/Sources/ALIGNAPI.swift");
+  const privateApi = read("cloudflare/payments-worker/src/entry-app-member-private.js");
+  const worker = read("cloudflare/payments-worker/src/main.js");
+  assert.match(ios, /authorizedMemberRequest\(path: "\/api\/app-member-card"/);
+  assert.match(ios, /authorizedMemberRequest\(path: "\/api\/app-member-activity"/);
+  assert.match(ios, /call\.httpMethod = "POST"/);
+  assert.match(ios, /call\.setValue\("Bearer " \+ bearer, forHTTPHeaderField: "Authorization"\)/);
+  assert.match(ios, /#else\s+let request = request\(\s+path: "\/api\/member-card"/);
+  assert.match(privateApi, /if \(!appQrEnabled\(env\)\)/);
+  assert.match(privateApi, /member\.groupId !== record\.groupId/);
+  assert.match(worker, /handleAppMemberPrivate\(request, env\)/);
+});
