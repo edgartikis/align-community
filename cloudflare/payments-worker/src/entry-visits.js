@@ -1,5 +1,6 @@
 import { qrSigningSecret, verifyQrHmac } from "./stripe-runtime.js";
 import billingWorker from "./entry.js";
+import { verifyAppQrRevision } from "./entry-app-qr.js";
 
 const QR_ROTATION_MS = 15 * 60 * 1000;
 
@@ -197,6 +198,7 @@ function parseQr(raw) {
     validUntil: clean(url.searchParams.get("until"), 60),
     slot: Number(url.searchParams.get("slot")),
     sig: clean(url.searchParams.get("sig"), 200),
+    appCode: clean(url.searchParams.get("appCode"), 70),
   };
 }
 
@@ -213,6 +215,10 @@ async function verifiedMemberFromQr(env, rawQr) {
   if (!Number.isInteger(supplied.slot) || supplied.slot !== currentWindow.slot) throw new Error("El QR venció. Solicita al miembro abrir su tarjeta digital actual.");
   const validSignature = await verifyQrHmac(env, `${supplied.token}:${cycleKey(current)}:${supplied.slot}`, supplied.sig);
   if (!validSignature) throw new Error("Firma de QR inválida.");
+  if (supplied.appCode &&
+      !await verifyAppQrRevision(env, supplied.token, supplied.appCode, supplied.slot)) {
+    throw new Error("Este QR fue reemplazado tras una captura. Solicita el QR nuevo del socio.");
+  }
   if (member.status !== "Activa" || !isWithinPeriod(current)) throw new Error("La membresía no está vigente.");
   return { token: supplied.token, member, period: current, qrWindow: currentWindow };
 }
