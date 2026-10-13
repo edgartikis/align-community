@@ -21,7 +21,7 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate app icon from ALIGN's official logo
-        run: swift ios/ALIGN/scripts/generate-app-icon.swift assets/align-primary.png ios/ALIGN/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png
+        run: swift ios/ALIGN/scripts/generate-app-icon.swift ios/ALIGN/assets/approved-icon.b64 ios/ALIGN/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png
       - name: Generate Xcode project
         run: cd ios/ALIGN && xcodegen generate
       - name: Compile for iPhone Simulator without signing or publishing
