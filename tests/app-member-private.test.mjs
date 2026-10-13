@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { handleAppMemberPrivate } from "../cloudflare/payments-worker/src/entry-app-member-private.js";
+import mainWorker from "../cloudflare/payments-worker/src/main.js";
 
 const preview = "https://align-qr-pilot-align-payments.alignservice18.workers.dev";
 const sessionToken = "s".repeat(64);
@@ -91,4 +92,11 @@ test("authorized preview activity requires same bearer and member group", async 
   assert.equal(json.ok, true);
   assert.equal(json.member.memberCode, "PREVIEW-TEST-001");
   assert.equal(json.activity.visits, 0);
+});
+
+test("Cloudflare main router exposes session-protected Preview reads", async () => {
+  const response = await mainWorker.fetch(request("/api/app-member-card"), mockEnv());
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.memberCode, "PREVIEW-TEST-001");
 });
