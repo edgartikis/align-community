@@ -23,7 +23,7 @@ Desde la raíz del repositorio:
 git switch feature/align-ios-native-app-20261012
 git pull --ff-only origin feature/align-ios-native-app-20261012
 brew install xcodegen
-swift ios/ALIGN/scripts/generate-app-icon.swift assets/align-primary.png ios/ALIGN/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png
+swift ios/ALIGN/scripts/generate-app-icon.swift ios/ALIGN/assets/approved-icon.b64 ios/ALIGN/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png
 cd ios/ALIGN
 xcodegen generate
 open ALIGN.xcodeproj
