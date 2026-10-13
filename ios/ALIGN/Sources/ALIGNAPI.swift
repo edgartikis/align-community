@@ -2,10 +2,11 @@ import Foundation
 import CryptoKit
 
 /// Network client does not process payments or hold Stripe credentials.
-/// Xcode Debug installs a separate Preview-only app, never sends login to production.
+/// Xcode Debug and the separate internal TestFlight scheme use isolated Preview.
+/// The original Release scheme continues to use the official production backend.
 final class ALIGNAPI {
     static let shared = ALIGNAPI()
-    #if DEBUG
+    #if DEBUG || ALIGN_PREVIEW
     private let base = URL(string: "https://align-qr-pilot-align-payments.alignservice18.workers.dev")!
     #else
     private let base = URL(string: "https://api.alignmembers.com.mx")!
@@ -94,7 +95,7 @@ final class ALIGNAPI {
                 return try JSONDecoder().decode(QRResponse.self, from: data)
             }
             if response.statusCode == 404 {
-                #if DEBUG
+                #if DEBUG || ALIGN_PREVIEW
                 // A preview build must never silently render a legacy QR:
                 // screenshots would remain usable for the entire 15-minute slot.
                 throw AppFailure.server("ALIGN Preview no tiene habilitado el QR protegido. Verifica el servidor de pruebas.")
@@ -104,7 +105,7 @@ final class ALIGNAPI {
                 throw AppFailure.server(message?.error ?? "No se pudo abrir el QR protegido.")
             }
         } else {
-            #if DEBUG
+            #if DEBUG || ALIGN_PREVIEW
             throw AppFailure.server("La sesión de ALIGN Preview no está disponible. Inicia sesión nuevamente.")
             #endif
         }
