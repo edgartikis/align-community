@@ -35,7 +35,7 @@ guard let logo = NSImage(data: sourceData) else {
 let size = 1024
 guard let bitmap = NSBitmapImageRep(
     bitmapDataPlanes: nil, pixelsWide: size, pixelsHigh: size,
-    bitsPerSample: 8, samplesPerPixel: 3, hasAlpha: false, isPlanar: false,
+    bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
     colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
 ), let context = NSGraphicsContext(bitmapImageRep: bitmap) else {
     fatalError("No se pudo preparar el ícono.")
