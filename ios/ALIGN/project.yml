@@ -4,6 +4,11 @@ options:
   deploymentTarget:
     iOS: "17.0"
   xcodeVersion: "16.0"
+# Separate Release-optimized, preview-connected app. The public Release is unchanged.
+configs:
+  Debug: debug
+  Release: release
+  PreviewRelease: release
 settings:
   base:
     SWIFT_VERSION: "5.9"
@@ -35,4 +40,27 @@ targets:
         Debug:
           PRODUCT_BUNDLE_IDENTIFIER: mx.com.alignmembers.app.preview
           INFOPLIST_KEY_CFBundleDisplayName: ALIGN Preview
+        PreviewRelease:
+          PRODUCT_BUNDLE_IDENTIFIER: mx.com.alignmembers.app.preview
+          INFOPLIST_KEY_CFBundleDisplayName: ALIGN Preview
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: ALIGN_PREVIEW
 
+# Explicit scheme selection makes accidental production archives less likely.
+# Always select «ALIGN Private TestFlight» before archiving the isolated app.
+schemes:
+  ALIGN:
+    build:
+      targets:
+        ALIGN: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+  ALIGN Private TestFlight:
+    build:
+      targets:
+        ALIGN: all
+    run:
+      config: PreviewRelease
+    archive:
+      config: PreviewRelease
