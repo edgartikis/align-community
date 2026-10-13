@@ -82,6 +82,9 @@ class_name = "AlignAppQrAuthority"
 [previews.vars]
 SITE_ORIGIN = "https://alignmembers.com.mx"
 STRIPE_MODE = "test"
+# Preview-only: ally session signatures use a distinct private QR_SIGNING_SECRET.
+# Production remains on its original signing configuration.
+QR_SIGNING_CUTOVER = "true"
 # Preview KV is segregated from production. Only preview can exercise this feature.
 ALIGN_APP_QR_ROTATION_ENABLED = "true"
 WALLET_ENABLED = "false"
