@@ -72,12 +72,31 @@ final class ALIGNAPI {
         return result
     }
 
+    /// Preview-only: account session in Authorization, member token in POST body.
+    /// No membership token enters the external URL used by the iPhone.
+    private func authorizedMemberRequest(path: String, for card: MemberCard) throws -> URLRequest {
+        guard let bearer = SecureSession.load()?.sessionToken, !bearer.isEmpty else {
+            throw AppFailure.server("Tu sesión expiró. Inicia sesión nuevamente.")
+        }
+        var call = request(path: path)
+        call.httpMethod = "POST"
+        call.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        call.setValue("Bearer " + bearer, forHTTPHeaderField: "Authorization")
+        call.httpBody = try JSONSerialization.data(withJSONObject: ["token": card.token])
+        return call
+    }
+
     func status(for card: MemberCard) async throws -> CardStatus {
+        #if DEBUG || ALIGN_PREVIEW
+        let secured = try authorizedMemberRequest(path: "/api/app-member-card", for: card)
+        return try await fetch(secured, missingCardIsGone: true)
+        #else
         let request = request(
             path: "/api/member-card",
             query: [.init(name: "token", value: card.token)]
         )
         return try await fetch(request, missingCardIsGone: true)
+        #endif
     }
 
     /// The protected iOS QR is preview-gated. A 404 means it is not enabled;
@@ -130,11 +149,16 @@ final class ALIGNAPI {
     }
 
     func activity(for card: MemberCard) async throws -> MemberActivity {
+        #if DEBUG || ALIGN_PREVIEW
+        let secured = try authorizedMemberRequest(path: "/api/app-member-activity", for: card)
+        let value: MemberActivityResponse = try await fetch(secured)
+        #else
         let request = request(
             path: "/api/member-activity",
             query: [.init(name: "token", value: card.token)]
         )
         let value: MemberActivityResponse = try await fetch(request)
+        #endif
         return value.activity
     }
 }
