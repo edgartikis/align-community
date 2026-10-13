@@ -1,10 +1,15 @@
 import Foundation
 import CryptoKit
 
-/// Existing production backend. This client never sends payments or Stripe keys.
+/// Network client does not process payments or hold Stripe credentials.
+/// Xcode Debug installs a separate Preview-only app, never sends login to production.
 final class ALIGNAPI {
     static let shared = ALIGNAPI()
+    #if DEBUG
+    private let base = URL(string: "https://align-qr-pilot-align-payments.alignservice18.workers.dev")!
+    #else
     private let base = URL(string: "https://api.alignmembers.com.mx")!
+    #endif
     private let session: URLSession
 
     private init() {
