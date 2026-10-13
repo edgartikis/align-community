@@ -42,6 +42,17 @@ struct QRResponse: Decodable {
     let validationUrl: String
     let qrValidUntil: String
     let refreshAfterMs: Double
+    let appRotationEnabled: Bool?
+
+    var currentAppCode: String? {
+        guard appRotationEnabled == true,
+              let components = URLComponents(string: validationUrl),
+              components.path.hasPrefix("/q/") else { return nil }
+        let code = String(components.path.dropFirst(3))
+        guard code.range(of: #"^A[A-Za-z0-9_-]{31}$"#, options: .regularExpression) != nil
+        else { return nil }
+        return code
+    }
 }
 
 struct MemberActivityResponse: Decodable {
