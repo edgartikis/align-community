@@ -90,10 +90,20 @@ final class ALIGNAPI {
             if response.statusCode == 200 {
                 return try JSONDecoder().decode(QRResponse.self, from: data)
             }
-            if response.statusCode != 404 {
+            if response.statusCode == 404 {
+                #if DEBUG
+                // A preview build must never silently render a legacy QR:
+                // screenshots would remain usable for the entire 15-minute slot.
+                throw AppFailure.server("ALIGN Preview no tiene habilitado el QR protegido. Verifica el servidor de pruebas.")
+                #endif
+            } else {
                 let message = try? JSONDecoder().decode(APIErrorMessage.self, from: data)
                 throw AppFailure.server(message?.error ?? "No se pudo abrir el QR protegido.")
             }
+        } else {
+            #if DEBUG
+            throw AppFailure.server("La sesión de ALIGN Preview no está disponible. Inicia sesión nuevamente.")
+            #endif
         }
         return try await fetch(request(
             path: "/api/monthly-qr",
