@@ -5,7 +5,9 @@ import SwiftUI
 /// Member tokens and the temporary billing session belong in iOS Keychain,
 /// never UserDefaults, URLs, source control, crash logs or analytics.
 enum SecureSession {
-    private static let service = "mx.com.alignmembers.app"
+    // The Debug Preview bundle ID gets its own isolated Keychain namespace;
+    // never load existing production membership tokens in a Preview build.
+    private static let service = Bundle.main.bundleIdentifier ?? "mx.com.alignmembers.app"
     private static let account = "member-login"
 
     static func load() -> LoginResponse? {
