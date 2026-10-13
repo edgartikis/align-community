@@ -54,6 +54,8 @@ STRIPE_PRICE_CIRCLE_LIVE = "price_1UHAjxE2qRZRC8p2odXD4Bc5"
 # Preview-only screenshot QR rotation for native iOS; do not enable production without approval.
 # ALIGN_APP_QR_SECRET is a private Cloudflare secret of at least 32 characters.
 ALIGN_APP_QR_ROTATION_ENABLED = "false"
+# Native login throttling is disabled in production. Preview tests only.
+MEMBER_LOGIN_GUARD = "false"
 
 # Official Apple Wallet pass: disabled until signed, approved and tested on iPhone.
 WALLET_ENABLED = "false"
@@ -87,6 +89,8 @@ STRIPE_MODE = "test"
 QR_SIGNING_CUTOVER = "true"
 # Preview KV is segregated from production. Only preview can exercise this feature.
 ALIGN_APP_QR_ROTATION_ENABLED = "true"
+# Isolated smoke tests: limit repeated failed logins per username and source IP.
+MEMBER_LOGIN_GUARD = "true"
 WALLET_ENABLED = "false"
 # Single-member test is OFF by default. Activate only by separate approval and
 # expiring SHA-256 allowlist in Cloudflare secrets. Does not enable general issue.
