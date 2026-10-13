@@ -27,4 +27,8 @@ jobs:
       - name: Compile for iPhone Simulator without signing or publishing
         run: |
           set -o pipefail
-          xcodebuild -project ios/ALIGN/ALIGN.xcodeproj -scheme ALIGN -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build 2>&1 | tee /tmp/align-ios-build.log | tail -n 80
+          xcodebuild -project ios/ALIGN/ALIGN.xcodeproj -scheme ALIGN -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build 2>&1 | tee /tmp/align-ios-build.log | tail -n 80 || {
+            echo "==== Swift compiler diagnostics ===="
+            grep -n -E -C 3 'error:|fatal error:|BUILD FAILED' /tmp/align-ios-build.log | tail -n 120 || true
+            exit 1
+          }
