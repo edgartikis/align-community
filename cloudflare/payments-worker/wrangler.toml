@@ -42,6 +42,9 @@ STRIPE_PRICE_CIRCLE_LIVE = "price_1UHAjxE2qRZRC8p2odXD4Bc5"
 # QR_SIGNING_SECRET (opcional; si falta, usa la clave Stripe del modo activo)
 # ALIGN_DB_URL / ALIGN_DB_SECRET (solo sincronización secundaria de reportes)
 
+# Preview-only screenshot QR rotation for native iOS; never enable on production before strong-consistency audit.
+ALIGN_APP_QR_ROTATION_ENABLED = "false"
+
 # Official Apple Wallet pass: disabled until signed, approved and tested on iPhone.
 WALLET_ENABLED = "false"
 # Single-member test is OFF by default. Activate only by separate approval and
@@ -61,6 +64,8 @@ WALLET_TEAM_ID = "2WG8DN922L"
 [previews]
 [previews.vars]
 SITE_ORIGIN = "https://alignmembers.com.mx"
+# Preview KV is segregated from production. Only preview can exercise this feature.
+ALIGN_APP_QR_ROTATION_ENABLED = "true"
 WALLET_ENABLED = "false"
 # Single-member test is OFF by default. Activate only by separate approval and
 # expiring SHA-256 allowlist in Cloudflare secrets. Does not enable general issue.
