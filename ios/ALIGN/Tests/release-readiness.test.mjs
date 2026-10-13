@@ -97,3 +97,16 @@ test("Production Owner Wallet remains exclusive; beta must not switch on issuanc
     assert.match(env, /WALLET_PILOT_ENABLED\s*=\s*"false"/);
   }
 });
+
+test("Preview-only screenshots rotate the last protected QR even during SwiftUI refresh", () => {
+  const qr = read("ios/ALIGN/Sources/MemberQRScreen.swift");
+  const api = read("ios/ALIGN/Sources/ALIGNAPI.swift");
+  const config = read("ios/ALIGN/project.yml");
+  assert.match(qr, /lastProtectedQRCode/);
+  assert.match(qr, /qr\?\.currentAppCode \?\? lastCode/);
+  assert.match(qr, /lastProtectedQRCode = next\.currentAppCode/);
+  assert.match(qr, /QR protegido · renovación por captura/);
+  assert.match(api, /ALIGN Preview no tiene habilitado el QR protegido/);
+  assert.match(api, /https:\/\/align-qr-pilot-align-payments\.alignservice18\.workers\.dev/);
+  assert.match(config, /PRODUCT_BUNDLE_IDENTIFIER: mx\.com\.alignmembers\.app\.preview/);
+});
