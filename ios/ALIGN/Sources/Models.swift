@@ -85,6 +85,7 @@ enum AppFailure: LocalizedError {
     case invalidResponse
     case server(String)
     case missingMembership
+    case cardUnavailable
     case cannotSaveSession
 
     var errorDescription: String? {
@@ -92,6 +93,7 @@ enum AppFailure: LocalizedError {
         case .invalidResponse: "El servicio ALIGN respondió de forma inesperada."
         case .server(let message): message
         case .missingMembership: "No encontramos una tarjeta activa para esta cuenta."
+        case .cardUnavailable: "Esta tarjeta ya no está disponible. Vuelve a iniciar sesión para actualizar tu membresía."
         case .cannotSaveSession: "No fue posible guardar la sesión de forma segura."
         }
     }
