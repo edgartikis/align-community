@@ -9,7 +9,7 @@ test("iOS build is named ALIGN, with an increased TestFlight candidate build num
   const project = read("ios/ALIGN/project.yml");
   assert.match(project, /INFOPLIST_KEY_CFBundleDisplayName: ALIGN/);
   assert.match(project, /MARKETING_VERSION: "0\.2\.0"/);
-  assert.match(project, /CURRENT_PROJECT_VERSION: "3"/);
+  assert.match(project, /CURRENT_PROJECT_VERSION: "4"/);
   assert.match(project, /PRODUCT_BUNDLE_IDENTIFIER: mx\.com\.alignmembers\.app/);
 });
 
