@@ -2,7 +2,10 @@
 // without an explicit migration plan. Raw passwords are accepted over HTTPS
 // only for /api/member-login-v2; they are never persisted or logged.
 // Existing V1 records are upgraded after a successful plaintext login.
-const ITERATIONS = 600_000;
+// Cloudflare Workers enforces a 100,000-iteration ceiling for one PBKDF2
+// operation. This weaker workerd-compatible setting is PREVIEW-ONLY;
+// do not enable V2 in production before an Argon2id/password KDF review.
+const ITERATIONS = 100_000;
 const SCHEME = "pbkdf2-sha256";
 const encoder = new TextEncoder();
 
