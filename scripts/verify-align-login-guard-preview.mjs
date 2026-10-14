@@ -16,16 +16,20 @@ assert.match(production, /MEMBER_LOGIN_GUARD = "false"/);
 assert.match(production, /ALIGN_APP_QR_ROTATION_ENABLED = "false"/);
 assert.match(preview, /MEMBER_LOGIN_GUARD = "true"/);
 assert.match(preview, /ALIGN_APP_QR_ROTATION_ENABLED = "true"/);
+assert.match(production, /MEMBER_PASSWORD_V2 = "false"/);
+assert.match(preview, /MEMBER_PASSWORD_V2 = "true"/);
+const useV2 = /MEMBER_PASSWORD_V2 = "true"/.test(preview);
 
 const hostname = "align-qr-pilot-align-payments.alignservice18.workers.dev";
 const username = "testguard" + randomBytes(5).toString("hex");
 const passwordHash = randomBytes(32).toString("hex");
+const invalidPassword = "Incorrecta!" + randomBytes(12).toString("hex");
 const results = [];
 for (let n = 0; n < 6; n++) {
-  const res = await fetch("https://" + hostname + "/api/member-login", {
+  const res = await fetch("https://" + hostname + (useV2 ? "/api/member-login-v2" : "/api/member-login"), {
     method: "POST",
     headers: { "content-type": "application/json", "cache-control": "no-store" },
-    body: JSON.stringify({ username, passwordHash }),
+    body: JSON.stringify(useV2 ? { username, password: invalidPassword } : { username, passwordHash }),
     signal: AbortSignal.timeout(25000),
   });
   results.push(res.status);
