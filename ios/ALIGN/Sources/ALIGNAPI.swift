@@ -133,10 +133,13 @@ final class ALIGNAPI {
             throw AppFailure.server("La sesión de ALIGN Preview no está disponible. Inicia sesión nuevamente.")
             #endif
         }
+        #if !DEBUG && !ALIGN_PREVIEW
+        // Legacy QR fallback exists only in the unchanged production Release.
         return try await fetch(request(
             path: "/api/monthly-qr",
             query: [.init(name: "token", value: card.token)]
         ))
+        #endif
     }
 
     /// Requires a valid login session AND the previous code. The backend
