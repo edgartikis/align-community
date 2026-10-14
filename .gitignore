@@ -1,2 +1,5 @@
 # Local temporary member metadata for iPhone Preview-only tests
 .align-ios-preview-fixture.json
+
+# Ephemeral synthetic visit marker for isolated Preview-only activity test
+.align-ios-preview-visit-fixture.json
