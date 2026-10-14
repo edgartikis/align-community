@@ -19,7 +19,7 @@ struct ALIGNApp: App {
         WindowGroup {
             Group {
                 if session.login == nil {
-                    LoginScreen()
+                    WelcomeScreen()
                 } else {
                     MemberTabs()
                 }
@@ -55,6 +55,117 @@ private struct ALIGNPrivacyCover: View {
             .foregroundStyle(ALIGNStyle.ivory)
         }
         .accessibilityLabel("ALIGN protegida mientras no está activa")
+    }
+}
+
+/// Public entry point: new customers purchase physical/local benefits on
+/// ALIGN's official website; existing members use native sign-in.
+/// No card data, Stripe credentials, or payment processing enters the app.
+private struct WelcomeScreen: View {
+    @State private var showLogin = false
+
+    private let membershipURL = URL(string: "https://alignmembers.com.mx/#membresias")!
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                LinearGradient(
+                    colors: [ALIGNStyle.night, ALIGNStyle.navy, ALIGNStyle.blue],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("ALIGN")
+                                .font(.system(size: 54, weight: .thin, design: .serif))
+                                .tracking(7)
+                                .foregroundStyle(ALIGNStyle.ivory)
+
+                            Text("BELONG TO SOMETHING")
+                                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                .tracking(3)
+                                .foregroundStyle(ALIGNStyle.gold)
+                        }
+                        .accessibilityElement(children: .combine)
+
+                        Spacer(minLength: 80)
+
+                        Text("La misma ciudad.\nDistinta experiencia.")
+                            .font(.system(size: 43, weight: .regular, design: .serif))
+                            .minimumScaleFactor(0.75)
+                            .foregroundStyle(ALIGNStyle.ivory)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Text("Beneficios seleccionados, experiencias y una comunidad para vivir tu ciudad de otra manera.")
+                            .font(.system(size: 16))
+                            .foregroundStyle(ALIGNStyle.muted)
+                            .padding(.top, 18)
+                            .padding(.bottom, 36)
+
+                        Link(destination: membershipURL) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "sparkles")
+                                Text("CONOCER Y COMPRAR MEMBRESÍA")
+                                    .lineLimit(2)
+                                Spacer(minLength: 0)
+                                Image(systemName: "arrow.up.right")
+                            }
+                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            .tracking(0.7)
+                            .foregroundStyle(ALIGNStyle.night)
+                            .padding(18)
+                            .frame(maxWidth: .infinity, minHeight: 58)
+                            .background(ALIGNStyle.ivory)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                        .accessibilityIdentifier("welcome.buy")
+
+                        Text("Elige tu plan y realiza el pago en alignmembers.com.mx.")
+                            .font(.footnote)
+                            .foregroundStyle(ALIGNStyle.muted)
+                            .padding(.top, 12)
+                            .padding(.bottom, 24)
+
+                        Button {
+                            showLogin = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "person.crop.circle")
+                                Spacer()
+                                Text("YA SOY MIEMBRO · INICIAR SESIÓN")
+                                Spacer()
+                                Image(systemName: "arrow.right")
+                            }
+                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(ALIGNStyle.ivory)
+                            .padding(18)
+                            .frame(maxWidth: .infinity, minHeight: 58)
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .strokeBorder(ALIGNStyle.muted.opacity(0.65), lineWidth: 1)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("welcome.login")
+
+                        Text("¿Acabas de contratar? Regresa a ALIGN e inicia sesión cuando tu membresía esté activa.")
+                            .font(.footnote)
+                            .foregroundStyle(ALIGNStyle.muted)
+                            .padding(.top, 23)
+                    }
+                    .frame(maxWidth: 480, alignment: .leading)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 28)
+                    .padding(.vertical, 46)
+                }
+            }
+            .navigationDestination(isPresented: $showLogin) {
+                LoginScreen()
+            }
+        }
     }
 }
 
