@@ -55,11 +55,11 @@ jobs:
         run: |
           set -euo pipefail
           preview_settings="$(xcodebuild -project ios/ALIGN/ALIGN.xcodeproj -scheme 'ALIGN Private TestFlight' -configuration PreviewRelease -showBuildSettings 2>/dev/null)"
-          printf '%s\n' "$preview_settings" | grep -Eq '^ *PRODUCT_BUNDLE_IDENTIFIER = mx\.com\.alignmembers\.app\.preview$'
-          printf '%s\n' "$preview_settings" | grep -Eq '^ *SWIFT_ACTIVE_COMPILATION_CONDITIONS = .*ALIGN_PREVIEW'
-          printf '%s\n' "$preview_settings" | grep -Eq '^ *INFOPLIST_KEY_CFBundleDisplayName = ALIGN Preview$'
+          grep -Eq '^ *PRODUCT_BUNDLE_IDENTIFIER = mx\.com\.alignmembers\.app\.preview$' <<< "$preview_settings"
+          grep -Eq '^ *SWIFT_ACTIVE_COMPILATION_CONDITIONS = .*ALIGN_PREVIEW' <<< "$preview_settings"
+          grep -Eq '^ *INFOPLIST_KEY_CFBundleDisplayName = ALIGN Preview$' <<< "$preview_settings"
           prod_settings="$(xcodebuild -project ios/ALIGN/ALIGN.xcodeproj -scheme ALIGN -configuration Release -showBuildSettings 2>/dev/null)"
-          printf '%s\n' "$prod_settings" | grep -Eq '^ *PRODUCT_BUNDLE_IDENTIFIER = mx\.com\.alignmembers\.app$'
+          grep -Eq '^ *PRODUCT_BUNDLE_IDENTIFIER = mx\.com\.alignmembers\.app$' <<< "$prod_settings"
           echo "Verified: private TestFlight bundle and Swift flag stay isolated from production Release."
       - name: Compile private TestFlight scheme for iPhone Simulator without signing or upload
         run: |
