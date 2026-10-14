@@ -24,6 +24,10 @@ function assertSafe() {
   assert.match(toml, /ALIGN_APP_QR_ROTATION_ENABLED = "false"/);
   assert.match(toml, /STRIPE_MODE = "test"/);
   assert.match(toml, /QR_SIGNING_CUTOVER = "true"/);
+  const prod = toml.split("[vars]")[1]?.split("[previews]")[0] || "";
+  const preview = toml.split("[previews.vars]")[1]?.split("[[previews.kv_namespaces]]")[0] || "";
+  assert.match(prod, /MEMBER_PASSWORD_V2 = "false"/);
+  assert.match(preview, /MEMBER_PASSWORD_V2 = "true"/);
   assert.equal(new URL(previewUrl).hostname.endsWith(".workers.dev"), true);
 }
 function kv(command, key, value = null) {
@@ -73,9 +77,10 @@ async function setup() {
       keys.push(key);
     }
     // Test the real login endpoint without printing or storing the bearer.
-    const response = await fetch(previewUrl + "/api/member-login", {
+    // Preview V2 migrates the synthetic V1 SHA-256 record after its first successful login.
+    const response = await fetch(previewUrl + "/api/member-login-v2", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ username, passwordHash }),
+      body: JSON.stringify({ username, password }),
       signal: AbortSignal.timeout(25000),
     });
     if (response.status !== 200) {
