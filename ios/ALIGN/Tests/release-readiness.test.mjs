@@ -171,3 +171,22 @@ test("Preview TestFlight build 7 is isolated; official Release build remains 5",
   assert.match(project, /PreviewRelease:[\s\S]*?CURRENT_PROJECT_VERSION: "7"/);
   assert.match(project, /PreviewRelease:[\s\S]*?PRODUCT_BUNDLE_IDENTIFIER: mx\.com\.alignmembers\.app\.preview/);
 });
+
+test("Public first screen offers website membership signup and native sign-in without handling payments", () => {
+  const app = read("ios/ALIGN/Sources/ALIGNApp.swift");
+  const site = read("index.html");
+  assert.match(app, /if session\.login == nil \{\s+WelcomeScreen\(\)/);
+  assert.match(app, /private struct WelcomeScreen: View/);
+  assert.match(app, /https:\/\/alignmembers\.com\.mx\/#membresias/);
+  assert.match(app, /Link\(destination: membershipURL\)/);
+  assert.match(app, /welcome\.buy/);
+  assert.match(app, /welcome\.login/);
+  assert.match(app, /showLogin = true/);
+  assert.match(app, /navigationDestination\(isPresented: \$showLogin\)/);
+  assert.match(app, /LoginScreen\(\)/);
+  assert.match(site, /<section id="membresias"/);
+  for (const plan of ["brotherhood", "girls", "ranch", "duo", "circle"]) {
+    assert.ok(site.includes('signup.html?plan=' + plan), "Missing website purchase plan: " + plan);
+  }
+  assert.doesNotMatch(app, /StripeAPI|StripeCheckout|PaymentSheet|STPPayment/);
+});
