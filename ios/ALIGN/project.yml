@@ -44,7 +44,7 @@ targets:
           PRODUCT_BUNDLE_IDENTIFIER: mx.com.alignmembers.app.preview
           INFOPLIST_KEY_CFBundleDisplayName: ALIGN Preview
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: ALIGN_PREVIEW
-          CURRENT_PROJECT_VERSION: "7"
+          CURRENT_PROJECT_VERSION: "8"
 
 # Explicit scheme selection makes accidental production archives less likely.
 # Always select «ALIGN Private TestFlight» before archiving the isolated app.
