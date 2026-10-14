@@ -25,9 +25,9 @@ function assertSafe() {
   assert.match(toml, /STRIPE_MODE = "test"/);
   assert.match(toml, /QR_SIGNING_CUTOVER = "true"/);
   const prod = toml.split("[vars]")[1]?.split("[previews]")[0] || "";
-  const preview = toml.split("[previews.vars]")[1]?.split("[[previews.kv_namespaces]]")[0] || "";
+  const previewVars = toml.split("[previews.vars]")[1]?.split("[[previews.kv_namespaces]]")[0] || "";
   assert.match(prod, /MEMBER_PASSWORD_V2 = "false"/);
-  assert.match(preview, /MEMBER_PASSWORD_V2 = "true"/);
+  assert.match(previewVars, /MEMBER_PASSWORD_V2 = "true"/);
   assert.equal(new URL(previewUrl).hostname.endsWith(".workers.dev"), true);
 }
 function kv(command, key, value = null) {
