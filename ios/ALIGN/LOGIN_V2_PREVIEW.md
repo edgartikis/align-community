@@ -24,7 +24,10 @@ antes de actualizar siquiera el Worker Preview.
 1. El usuario ficticio se crea inicialmente con el formato V1 de las pruebas.
 2. Al iniciar sesión por HTTPS con la contraseña correcta y V2, el servidor
    verifica una única vez el SHA-256 heredado y crea un verificador PBKDF2-HMAC-SHA256
-   con sal aleatoria de 128 bits y 600 000 iteraciones.
+   con sal aleatoria de 128 bits y 100 000 iteraciones (límite de Cloudflare Workers para una operación PBKDF2).
+   **Es una configuración provisional sólo para pruebas, no un parámetro de seguridad aprobado
+   para producción**; reemplazar con una solución KDF resistente a ataques offline
+   (preferentemente Argon2id) antes de habilitar cuentas reales.
 3. El registro `account:<username>` pasa a `version: 2` y deja de guardar
    `passwordHash`. Los accesos siguientes verifican PBKDF2 y nunca retroceden
    al hash V1; un nuevo intento de activación no sobrescribe el verificador.
