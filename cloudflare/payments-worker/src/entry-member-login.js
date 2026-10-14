@@ -1,7 +1,7 @@
 import { stripeSecret } from "./stripe-runtime.js";
 import memberActivityWorker from "./entry-member-activity.js";
 import { checkPreviewLoginAttempts, recordPreviewLoginFailure, clearPreviewLoginFailures } from "./member-login-guard.js";
-import { previewPasswordV2Enabled, validPlaintextPassword, authenticatePreviewPassword, isV2Verifier } from "./member-password-v2.js";
+import { previewPasswordV2Enabled, validPlaintextPassword, authenticatePreviewPassword } from "./member-password-v2.js";
 
 const ALLOWED_ORIGINS = new Set([
   "https://alignmembers.com.mx",
