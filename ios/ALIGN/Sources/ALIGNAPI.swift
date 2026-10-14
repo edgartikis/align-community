@@ -56,18 +56,23 @@ final class ALIGNAPI {
         guard normalized.range(of: #"^[a-z0-9._-]{4,24}$"#, options: .regularExpression) != nil
         else { throw AppFailure.server("Escribe un nombre de usuario válido.") }
 
-        // Compatibility with ALIGN's existing member-login endpoint.
-        // A future release should use a short-lived server session for all APIs.
+        #if DEBUG || ALIGN_PREVIEW
+        // V2 Preview only: HTTPS sends the actual password to the server once.
+        // Never persist the password; the server derives a salted verifier.
+        // Old TestFlight builds cannot sign in once this Preview gate is deployed.
+        var loginRequest = request(path: "/api/member-login-v2")
+        let credentials: [String: String] = ["username": normalized, "password": password]
+        #else
+        // Unchanged production Release behavior until an approved migration.
         let digest = SHA256.hash(data: Data(password.utf8))
         let passwordHash = digest.map { String(format: "%02x", $0) }.joined()
-
-        var request = request(path: "/api/member-login")
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: [
-            "username": normalized, "passwordHash": passwordHash
-        ])
-        let result: LoginResponse = try await fetch(request)
+        var loginRequest = request(path: "/api/member-login")
+        let credentials: [String: String] = ["username": normalized, "passwordHash": passwordHash]
+        #endif
+        loginRequest.httpMethod = "POST"
+        loginRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        loginRequest.httpBody = try JSONSerialization.data(withJSONObject: credentials)
+        let result: LoginResponse = try await fetch(loginRequest)
         guard !result.cards.isEmpty else { throw AppFailure.missingMembership }
         return result
     }
