@@ -43,7 +43,7 @@ struct AccountScreen: View {
                 .listRowBackground(ALIGNStyle.navy)
 
                 Section {
-                    Text("ALIGN para iPhone · Versión de prueba 0.1\nLos pagos y cambios de membresía no están disponibles en esta versión de la app.")
+                    Text("ALIGN para iPhone\nPuedes conocer las membresías y contratar en alignmembers.com.mx. Los pagos no se procesan dentro de esta aplicación.")
                         .font(.caption)
                         .foregroundStyle(ALIGNStyle.muted)
                 }
