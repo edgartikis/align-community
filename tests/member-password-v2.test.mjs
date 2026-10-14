@@ -111,6 +111,9 @@ test("each new PBKDF2 record has a distinct 128-bit salt", async () => {
   const second = await makeV2Verifier(password);
   assert.equal(isV2Verifier(first), true);
   assert.equal(isV2Verifier(second), true);
+  // Cloudflare Workers rejects PBKDF2 calls with more than 100000 iterations.
+  assert.equal(first.iterations, 100_000);
+  assert.equal(second.iterations, 100_000);
   assert.notEqual(first.salt, second.salt);
   assert.notEqual(first.hash, second.hash);
 });
