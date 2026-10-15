@@ -3,6 +3,15 @@ main = "src/main.js"
 compatibility_date = "2026-09-01"
 compatibility_flags = ["nodejs_compat"]
 
+# QR revision authority; production remains disabled by feature flag.
+[[durable_objects.bindings]]
+name = "APP_QR_AUTHORITY"
+class_name = "AlignAppQrAuthority"
+
+[[migrations]]
+tag = "align-app-qr-sqlite-v1"
+new_sqlite_classes = ["AlignAppQrAuthority"]
+
 [[kv_namespaces]]
 binding = "PAYMENT_STATE"
 id = "4504d6bcead74cdfa7e3a76599f641fc"
@@ -42,6 +51,14 @@ STRIPE_PRICE_CIRCLE_LIVE = "price_1UHAjxE2qRZRC8p2odXD4Bc5"
 # QR_SIGNING_SECRET (opcional; si falta, usa la clave Stripe del modo activo)
 # ALIGN_DB_URL / ALIGN_DB_SECRET (solo sincronización secundaria de reportes)
 
+# Preview-only screenshot QR rotation for native iOS; do not enable production without approval.
+# ALIGN_APP_QR_SECRET is a private Cloudflare secret of at least 32 characters.
+ALIGN_APP_QR_ROTATION_ENABLED = "false"
+# Native login throttling is disabled in production. Preview tests only.
+MEMBER_LOGIN_GUARD = "false"
+# V2 plaintext-over-HTTPS / salted PBKDF2 sign-in: NEVER enable in production without approval.
+MEMBER_PASSWORD_V2 = "false"
+
 # Official Apple Wallet pass: disabled until signed, approved and tested on iPhone.
 WALLET_ENABLED = "false"
 # Single-member test is OFF by default. Activate only by separate approval and
@@ -59,8 +76,25 @@ WALLET_TEAM_ID = "2WG8DN922L"
 # Worker previews must NEVER inherit the production membership KV.
 # Preview issuance remains disabled until a separate approved staging test.
 [previews]
+
+# Cloudflare creates a separate DO namespace for EACH Preview. Without this
+# explicit env binding, APP_QR_AUTHORITY is unavailable at runtime.
+[[previews.durable_objects.bindings]]
+name = "APP_QR_AUTHORITY"
+class_name = "AlignAppQrAuthority"
+
 [previews.vars]
 SITE_ORIGIN = "https://alignmembers.com.mx"
+STRIPE_MODE = "test"
+# Preview-only: ally session signatures use a distinct private QR_SIGNING_SECRET.
+# Production remains on its original signing configuration.
+QR_SIGNING_CUTOVER = "true"
+# Preview KV is segregated from production. Only preview can exercise this feature.
+ALIGN_APP_QR_ROTATION_ENABLED = "true"
+# Isolated smoke tests: limit repeated failed logins per username and source IP.
+MEMBER_LOGIN_GUARD = "true"
+# Native Preview beta exclusively; the legacy SHA-256 login route is blocked while enabled.
+MEMBER_PASSWORD_V2 = "true"
 WALLET_ENABLED = "false"
 # Single-member test is OFF by default. Activate only by separate approval and
 # expiring SHA-256 allowlist in Cloudflare secrets. Does not enable general issue.

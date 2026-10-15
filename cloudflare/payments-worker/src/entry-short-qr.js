@@ -1,5 +1,6 @@
 import { qrSigningSecret, verifyQrHmac } from "./stripe-runtime.js";
 import syncWorker from "./entry-sync.js";
+import { handleAppQr, currentAppQrMapping } from "./entry-app-qr.js";
 
 const QR_ROTATION_MS = 15 * 60 * 1000;
 
@@ -224,6 +225,10 @@ async function expandShortQr(env, rawQr) {
   const allowedHost = url.hostname === "api.alignmembers.com.mx" || url.hostname.endsWith(".workers.dev");
   if (!code || !allowedHost) return rawQr;
 
+  // Native-app QR is checked directly by the ally validator against the
+  // Durable Object; NEVER convert it into a revocable-bypassable legacy HMAC.
+  if (code.startsWith("A") && code.length === 32) return rawQr;
+
   const raw = await env.PAYMENT_STATE.get(`qr-short:${code}`);
   if (!raw) return rawQr;
   let mapping;
@@ -266,12 +271,23 @@ export default {
     const url = new URL(request.url);
 
     try {
+      // Preview-only native QR. This never changes the web/Wallet routes.
+      if (url.pathname === "/api/app-qr") {
+        return await handleAppQr(request, env);
+      }
       if (request.method === "GET" && url.pathname === "/api/monthly-qr") {
         return await handleShortQr(request, env);
       }
 
       const code = request.method === "GET" ? shortPathCode(url.pathname) : "";
       if (code) {
+        if (code.startsWith("A") && code.length === 32) {
+          const app = await currentAppQrMapping(env, code);
+          return validationPage(app ? {
+            ok: true, member: app.member, period: app.period,
+            qrWindow: { validUntil: app.qrValidUntil }
+          } : { ok: false });
+        }
         return validationPage(await resolveShortCode(env, code));
       }
 
