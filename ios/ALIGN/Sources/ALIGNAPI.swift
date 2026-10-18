@@ -156,6 +156,33 @@ final class ALIGNAPI {
         return try await fetch(rotation)
     }
 
+
+    /// Billing changes are authenticated by the member's short-lived session.
+    /// The Stripe secret and the subscription ID never enter the device.
+    private func billingRequest(action: String? = nil) throws -> URLRequest {
+        guard let token = SecureSession.load()?.sessionToken, !token.isEmpty else {
+            throw AppFailure.server("Tu sesión expiró. Inicia sesión nuevamente.")
+        }
+        var call = request(path: "/api/member-billing")
+        call.httpMethod = action == nil ? "GET" : "POST"
+        call.setValue("Bearer " + token, forHTTPHeaderField: "Authorization")
+        if let action {
+            call.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            call.httpBody = try JSONSerialization.data(withJSONObject: ["action": action])
+        }
+        return call
+    }
+
+    func billingStatus() async throws -> BillingStatus {
+        return try await fetch(billingRequest())
+    }
+
+    /// Schedules Stripe cancellation at the end of the already-paid period.
+    /// Nothing is canceled unless the member explicitly confirms in the UI.
+    func cancelMembershipRenewal() async throws -> BillingStatus {
+        return try await fetch(billingRequest(action: "cancel"))
+    }
+
     func activity(for card: MemberCard) async throws -> MemberActivity {
         #if DEBUG || ALIGN_PREVIEW
         let secured = try authorizedMemberRequest(path: "/api/app-member-activity", for: card)
