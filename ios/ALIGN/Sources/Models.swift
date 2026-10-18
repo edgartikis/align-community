@@ -38,6 +38,34 @@ struct CardStatus: Decodable {
     let validUntil: String?
 }
 
+
+struct BillingStatus: Decodable {
+    let ok: Bool
+    let status: String
+    let lifetime: Bool?
+    let cancelAtPeriodEnd: Bool
+    let periodEnd: Double?
+    let canCancel: Bool
+
+    var statusLabel: String {
+        if lifetime == true { return "Permanente · sin pagos mensuales" }
+        if cancelAtPeriodEnd { return "Cancelación programada" }
+        switch status.lowercased() {
+        case "active", "trialing": return "Activa"
+        case "past_due", "unpaid": return "Pago pendiente"
+        case "canceled", "incomplete_expired": return "Cancelada"
+        case "incomplete": return "Pendiente de activación"
+        default: return "Sin suscripción activa"
+        }
+    }
+
+    var periodEndLabel: String? {
+        guard let periodEnd, periodEnd > 0 else { return nil }
+        return Date(timeIntervalSince1970: periodEnd)
+            .formatted(.dateTime.day().month(.wide).year())
+    }
+}
+
 struct QRResponse: Decodable {
     let validationUrl: String
     let qrValidUntil: String
