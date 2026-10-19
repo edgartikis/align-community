@@ -21,6 +21,7 @@ const BASE="https://align-qr-pilot-align-payments.alignservice18.workers.dev";
 const USERNAME="qa.delete.fixture2";
 const createdKeys=[];
 let groupId="";
+let issuedSessionToken="";
 
 function assertPreviewOnly(){
   const production=text.split("[vars]")[1]?.split("[previews]")[0] || "";
@@ -43,7 +44,8 @@ function kvRun(action,key,value){
   assert.ok(key.startsWith("account:"+USERNAME) ||
     (groupId && key.startsWith("group:"+groupId)) ||
     (groupId && key.startsWith("member:")) ||
-    (groupId && key.startsWith("deleted-group:"+groupId)));
+    (groupId && key.startsWith("deleted-group:"+groupId)) ||
+    (issuedSessionToken && key==="member-session:"+issuedSessionToken));
   const args=["wrangler","kv","key",action,key];
   if(action==="put")args.push(value);
   args.push("--namespace-id",PREVIEW_KV,"--remote","--config",config);
@@ -116,6 +118,8 @@ async function main(){
   assert.equal(login.data.primary?.status,"Activa");
   const bearer=login.data.sessionToken;
   assert.ok(typeof bearer==="string" && bearer.length>=40);
+  issuedSessionToken=bearer;
+  createdKeys.push("member-session:"+issuedSessionToken);
   // Session token is stored in another KV key: let it propagate before using
   // it, otherwise a valid session may yield an unrelated 401 response.
   console.log("⌛ Esperando 65 segundos para verificar la sesión contra KV remota...");
