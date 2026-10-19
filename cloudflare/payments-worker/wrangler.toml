@@ -58,6 +58,8 @@ ALIGN_APP_QR_ROTATION_ENABLED = "false"
 MEMBER_LOGIN_GUARD = "false"
 # V2 plaintext-over-HTTPS / salted PBKDF2 sign-in: NEVER enable in production without approval.
 MEMBER_PASSWORD_V2 = "false"
+# Secure account deletion is gated OFF for production until reviewed and tested.
+MEMBER_ACCOUNT_DELETION_ENABLED = "false"
 
 # Official Apple Wallet pass: disabled until signed, approved and tested on iPhone.
 WALLET_ENABLED = "false"
@@ -95,6 +97,8 @@ ALIGN_APP_QR_ROTATION_ENABLED = "true"
 MEMBER_LOGIN_GUARD = "true"
 # Native Preview beta exclusively; the legacy SHA-256 login route is blocked while enabled.
 MEMBER_PASSWORD_V2 = "true"
+# Preview also remains OFF by default. Enable only for a controlled staging test.
+MEMBER_ACCOUNT_DELETION_ENABLED = "false"
 WALLET_ENABLED = "false"
 # Single-member test is OFF by default. Activate only by separate approval and
 # expiring SHA-256 allowlist in Cloudflare secrets. Does not enable general issue.
