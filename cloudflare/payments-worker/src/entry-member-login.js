@@ -1,4 +1,5 @@
 import { stripeSecret } from "./stripe-runtime.js";
+import { handleMemberAccountDeletion } from "./member-account-deletion.js";
 import memberActivityWorker from "./entry-member-activity.js";
 import { checkPreviewLoginAttempts, recordPreviewLoginFailure, clearPreviewLoginFailures } from "./member-login-guard.js";
 import { previewPasswordV2Enabled, validPlaintextPassword, authenticatePreviewPassword } from "./member-password-v2.js";
@@ -107,7 +108,8 @@ async function requireMemberSession(request, env) {
   const token = bearerToken(request);
   if (!token) throw new Error("Tu sesión de miembro expiró. Inicia sesión nuevamente.");
   const record = await readJson(env, `member-session:${token}`);
-  if (!record?.groupId || Number(record.expiresAt || 0) <= Date.now()) {
+  if (!record?.groupId || Number(record.expiresAt || 0) <= Date.now() ||
+      await env.PAYMENT_STATE.get(`deleted-group:${record.groupId}`)) {
     if (token) await env.PAYMENT_STATE.delete(`member-session:${token}`);
     throw new Error("Tu sesión de miembro expiró. Inicia sesión nuevamente.");
   }
@@ -423,7 +425,7 @@ async function draftIdForSession(env, sessionId) {
 async function accountFromSession(env, sessionId, expectedUsername = "") {
   if (!sessionId) return null;
   const activation = await readJson(env, `activation:${sessionId}`);
-  if (!activation?.groupId) return null;
+  if (!activation?.groupId || await env.PAYMENT_STATE.get(`deleted-group:${activation.groupId}`)) return null;
 
   const draftId = await draftIdForSession(env, sessionId);
   if (!draftId) return null;
@@ -477,7 +479,8 @@ async function findSessionForDraft(env, draftId) {
 
 async function migrateAccount(env, username) {
   const direct = await readJson(env, `account:${username}`);
-  if (direct) return direct;
+  if (direct && !await env.PAYMENT_STATE.get(`deleted-group:${direct.groupId}`)) return direct;
+  if (direct) return null;
 
   let cursor = undefined;
   let inspected = 0;
@@ -571,6 +574,9 @@ async function handleLogin(request, env, useV2 = false) {
     // Unmodified legacy production behavior while MEMBER_PASSWORD_V2 is disabled.
     authenticated = Boolean(account && constantTimeEqual(clean(account.passwordHash, 64).toLowerCase(), passwordHash));
   }
+  if (authenticated && await env.PAYMENT_STATE.get(`deleted-group:${account.groupId}`)) {
+    return json({ error: "Esta cuenta fue eliminada." }, 410, origin);
+  }
   if (!authenticated) {
     await recordPreviewLoginFailure(env, attempts);
     return json({ error: "Usuario o contraseña incorrectos." }, 401, origin);
@@ -614,7 +620,7 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    if (["/api/member-login", "/api/member-login-v2", "/api/member-billing"].includes(url.pathname) && request.method === "OPTIONS") {
+    if (["/api/member-login", "/api/member-login-v2", "/api/member-billing", "/api/member-account/delete"].includes(url.pathname) && request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: cors(request.headers.get("origin") || "") });
     }
 
@@ -625,6 +631,10 @@ export default {
         console.error("ALIGN member login", error);
         return json({ error: "No pudimos iniciar sesión." }, 500, request.headers.get("origin") || "");
       }
+    }
+
+    if (url.pathname === "/api/member-account/delete") {
+      return handleMemberAccountDeletion(request, env, { readJson, requireMemberSession, stripeRequest });
     }
 
     if (url.pathname === "/api/member-billing" && ["GET", "POST"].includes(request.method)) {
