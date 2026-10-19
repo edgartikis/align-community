@@ -217,3 +217,11 @@ test("Official App Review recording shows only the Founder QR without removing e
   assert.match(qr, /guard status\.active else/);
   assert.match(qr, /\.privacySensitive\(\)/);
 });
+
+test("Official ALIGN App Store archive uses 1.0 (8), leaving Preview isolated", () => {
+  const project = read("ios/ALIGN/project.yml");
+  assert.match(project, /schemes:\s+ALIGN:[\s\S]*?archive:\s+config: Release/);
+  assert.match(project, /Release:\s+MARKETING_VERSION: "1\.0"\s+CURRENT_PROJECT_VERSION: "8"/);
+  assert.match(project, /PreviewRelease:\s+PRODUCT_BUNDLE_IDENTIFIER: mx\.com\.alignmembers\.app\.preview/);
+  assert.match(project, /PreviewRelease:[\s\S]*?CURRENT_PROJECT_VERSION: "8"/);
+});
