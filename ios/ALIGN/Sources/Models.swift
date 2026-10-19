@@ -132,3 +132,8 @@ extension Double {
         formatted(.currency(code: "MXN").locale(Locale(identifier: "es_MX")))
     }
 }
+
+struct AccountDeletionResponse: Decodable {
+    let ok: Bool
+    let status: String
+}
