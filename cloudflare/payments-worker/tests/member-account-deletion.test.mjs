@@ -202,6 +202,10 @@ test("Founder Lifetime wallet revocation needs explicit flag, owner identity and
   t.env.MEMBER_ACCOUNT_DELETION_TEST_USERNAME=ownerName;
   const marker={username:ownerName,groupId:t.groupId,memberCode:"AL-FOUNDER-001"};
   t.records.set("owner-lifetime:primary",JSON.stringify(marker));
+  t.records.set("member:"+t.token,JSON.stringify({
+    groupId:t.groupId,token:t.token,memberCode:"AL-FOUNDER-001",
+    membershipType:"owner_lifetime",ownerComplimentary:true,status:"Activa"
+  }));
   t.records.set("wallet:member:AL-FOUNDER-001",JSON.stringify({memberCode:"AL-FOUNDER-001"}));
 
   let response=await handleMemberAccountDeletion(t.request({confirmation:"ELIMINAR",password:t.pass}),t.env,t.deps);
