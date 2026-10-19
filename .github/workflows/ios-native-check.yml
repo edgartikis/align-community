@@ -26,6 +26,8 @@ jobs:
           node --check scripts/verify-align-login-guard-preview.mjs
           node --check scripts/verify-align-preview-activity.mjs
           node --test ios/ALIGN/Tests/release-readiness.test.mjs tests/app-qr-capture.test.mjs tests/app-member-private.test.mjs tests/member-login-guard.test.mjs tests/member-password-v2.test.mjs
+      - name: Verify official release preparation script syntax
+        run: bash -n ios/ALIGN/scripts/prepare-official-release.sh
       - name: Xcode version
         run: xcodebuild -version
       - name: Install XcodeGen
