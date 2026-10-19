@@ -33,6 +33,13 @@ struct AccountScreen: View {
                 .listRowBackground(ALIGNStyle.navy)
 
                 Section("Seguridad y privacidad") {
+                    NavigationLink {
+                        DeleteAccountScreen()
+                    } label: {
+                        Label("Eliminar cuenta", systemImage: "person.crop.circle.badge.xmark")
+                            .foregroundStyle(.red)
+                    }
+                    .accessibilityIdentifier("account.delete.entry")
                     Link(destination: URL(string: "https://alignmembers.com.mx/aviso-privacidad.html")!) {
                         Label("Aviso de privacidad", systemImage: "lock.shield")
                     }
@@ -188,6 +195,104 @@ private struct SubscriptionManagementScreen: View {
             guard updated.cancelAtPeriodEnd else { throw AppFailure.invalidResponse }
             billing = updated
             confirmationMessage = "Cancelación confirmada. No se renovará automáticamente tu membresía."
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+
+/// Member-initiated erasure is separate from Stripe renewal cancellation.
+/// The backend re-authenticates the password and disables every card in a
+/// Duo/Circle account. This never runs merely by opening the screen.
+private struct DeleteAccountScreen: View {
+    @EnvironmentObject private var session: MemberSession
+    @State private var password = ""
+    @State private var confirmation = ""
+    @State private var showFinalConfirmation = false
+    @State private var isDeleting = false
+    @State private var errorMessage: String?
+
+    private var canConfirm: Bool {
+        !isDeleting && !password.isEmpty && confirmation == "ELIMINAR"
+    }
+
+    var body: some View {
+        Form {
+            Section("Eliminar cuenta de ALIGN") {
+                Text("Esta acción es irreversible. Se cerrará tu acceso, se desactivarán las tarjetas de todos los integrantes de esta cuenta y se detendrán las suscripciones y cobros futuros asociados.")
+                    .foregroundStyle(ALIGNStyle.ivory)
+                Text("La eliminación de cuenta es distinta de cancelar la renovación mensual. Algunos comprobantes fiscales y registros exigidos por la ley pueden conservarse.")
+                    .font(.footnote)
+                    .foregroundStyle(ALIGNStyle.muted)
+            }
+            .listRowBackground(ALIGNStyle.navy)
+
+            Section("Confirmación de seguridad") {
+                SecureField("Confirma tu contraseña", text: $password)
+                    .textContentType(.password)
+                    .privacySensitive()
+                    .accessibilityIdentifier("account.delete.password")
+                TextField("Escribe ELIMINAR", text: $confirmation)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .accessibilityIdentifier("account.delete.confirmText")
+            }
+            .listRowBackground(ALIGNStyle.navy)
+
+            if let errorMessage {
+                Section {
+                    Text(errorMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                }
+                .listRowBackground(ALIGNStyle.navy)
+            }
+
+            Section {
+                Button(role: .destructive) {
+                    showFinalConfirmation = true
+                } label: {
+                    if isDeleting {
+                        ProgressView("Procesando la eliminación…")
+                    } else {
+                        Label("Eliminar definitivamente mi cuenta", systemImage: "trash")
+                    }
+                }
+                .disabled(!canConfirm)
+                .accessibilityIdentifier("account.delete.submit")
+            }
+            .listRowBackground(ALIGNStyle.navy)
+        }
+        .scrollContentBackground(.hidden)
+        .background(ALIGNStyle.night)
+        .navigationTitle("Eliminar cuenta")
+        .navigationBarTitleDisplayMode(.inline)
+        .confirmationDialog(
+            "¿Eliminar definitivamente tu cuenta y todas las tarjetas asociadas?",
+            isPresented: $showFinalConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Sí, eliminar mi cuenta", role: .destructive) {
+                Task { await performDeletion() }
+            }
+            Button("Conservar mi cuenta", role: .cancel) {}
+        } message: {
+            Text("Perderás acceso a tus beneficios, QR e historial. Se cancelarán las suscripciones que todavía generen cobros. Esta acción no se puede deshacer.")
+        }
+    }
+
+    @MainActor private func performDeletion() async {
+        guard canConfirm else { return }
+        isDeleting = true
+        errorMessage = nil
+        let enteredPassword = password
+        password = ""
+        defer { isDeleting = false }
+        do {
+            try await ALIGNAPI.shared.deleteMemberAccount(password: enteredPassword)
+            confirmation = ""
+            session.signOut()
         } catch {
             errorMessage = error.localizedDescription
         }
