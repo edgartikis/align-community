@@ -60,6 +60,7 @@ MEMBER_LOGIN_GUARD = "false"
 MEMBER_PASSWORD_V2 = "false"
 # Secure account deletion is gated OFF for production until reviewed and tested.
 MEMBER_ACCOUNT_DELETION_ENABLED = "false"
+MEMBER_ACCOUNT_DELETION_FOUNDER_ENABLED = "false"
 
 # Official Apple Wallet pass: disabled until signed, approved and tested on iPhone.
 WALLET_ENABLED = "false"
@@ -100,6 +101,7 @@ MEMBER_PASSWORD_V2 = "true"
 # Isolated one-account account-deletion acceptance test; production remains OFF.
 # Only this disposable QA username can ever reach the destructive handler here.
 MEMBER_ACCOUNT_DELETION_ENABLED = "true"
+MEMBER_ACCOUNT_DELETION_FOUNDER_ENABLED = "false"
 MEMBER_ACCOUNT_DELETION_TEST_USERNAME = "qa.delete.fixture2"
 WALLET_ENABLED = "false"
 # Single-member test is OFF by default. Activate only by separate approval and
