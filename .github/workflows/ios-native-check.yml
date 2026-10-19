@@ -26,7 +26,7 @@ jobs:
           node --check cloudflare/payments-worker/src/entry-member-login.js
           node --check scripts/verify-align-login-guard-preview.mjs
           node --check scripts/verify-align-preview-activity.mjs
-          node --test ios/ALIGN/Tests/release-readiness.test.mjs cloudflare/payments-worker/tests/member-account-deletion.test.mjs cloudflare/payments-worker/tests/member-account-deletion-http.test.mjs cloudflare/payments-worker/tests/reporting-account-erasure.test.mjs tests/app-qr-capture.test.mjs tests/app-member-private.test.mjs tests/member-login-guard.test.mjs tests/member-password-v2.test.mjs
+          node --test ios/ALIGN/Tests/release-readiness.test.mjs cloudflare/payments-worker/tests/member-account-deletion.test.mjs cloudflare/payments-worker/tests/member-account-deletion-http.test.mjs cloudflare/payments-worker/tests/reporting-account-erasure.test.mjs cloudflare/payments-worker/tests/account-deletion-reporting.test.mjs tests/app-qr-capture.test.mjs tests/app-member-private.test.mjs tests/member-login-guard.test.mjs tests/member-password-v2.test.mjs
       - name: Verify official release preparation script syntax
         run: bash -n ios/ALIGN/scripts/prepare-official-release.sh
       - name: Xcode version
