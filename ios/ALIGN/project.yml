@@ -47,7 +47,7 @@ targets:
           PRODUCT_BUNDLE_IDENTIFIER: mx.com.alignmembers.app.preview
           INFOPLIST_KEY_CFBundleDisplayName: ALIGN Preview
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: ALIGN_PREVIEW
-          CURRENT_PROJECT_VERSION: "8"
+          CURRENT_PROJECT_VERSION: "9"
 
 # Choose scheme ALIGN (archive Release) for the official App Store build.
 # Choose ALIGN Private TestFlight only for the isolated Preview app.
