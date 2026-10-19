@@ -95,6 +95,7 @@ async function deletionPlan(env, account, group) {
     `group:${account.groupId}`,
     `legal-consent:${account.groupId}`,
     ...tokens.map((t) => `member:${t}`),
+    ...(isOwner(group, account) ? ["owner-lifetime:primary", "wallet:member:AL-FOUNDER-001"] : []),
   ]);
   const subIds = new Set();
   for (const id of [group.subscriptionId, ...(group.subscriptionIds || [])]) {
@@ -224,7 +225,19 @@ export async function handleMemberAccountDeletion(request, env, deps) {
     return reply({ error: "La cuenta ya fue desactivada." }, 410, origin);
   }
   if (isOwner(group, account)) {
-    return reply({ error: "La cuenta fundadora requiere un procedimiento especial de eliminación. Contacta a soporte." }, 403, origin);
+    // Revoking this marker disables the independently provisioned permanent
+    // Founder Wallet pass. Never grant deletion based only on an arbitrary
+    // memberCode or a request body boolean.
+    const marker = await deps.readJson(env, "owner-lifetime:primary");
+    const validFounder = account.username === "edgar.cordero" &&
+      group.membershipType === "owner_lifetime" &&
+      group.ownerComplimentary === true &&
+      marker?.groupId === account.groupId &&
+      marker?.username === account.username &&
+      marker?.memberCode === "AL-FOUNDER-001";
+    if (env.MEMBER_ACCOUNT_DELETION_FOUNDER_ENABLED !== "true" || !validFounder) {
+      return reply({ error: "La eliminación de Founder Lifetime requiere una validación especial que aún no está habilitada." }, 403, origin);
+    }
   }
 
   // Per-account rate limit for destructive reauthentication; no password logs.
