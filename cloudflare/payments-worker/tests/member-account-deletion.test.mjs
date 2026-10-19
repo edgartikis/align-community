@@ -134,3 +134,34 @@ test("native UI always provides a separate account deletion path, not just cance
   assert.match(router, /handleMemberAccountDeletion\(request, env/);
   assert.match(router, /deleted-group:/);
 });
+
+test("Duo/Circle deletion revokes every card in the shared account, not unrelated members", async () => {
+  const t = fixture({ subStatus: "canceled" });
+  const second = "B".repeat(32);
+  const g = JSON.parse(t.records.get("group:" + t.groupId));
+  const a = JSON.parse(t.records.get("account:" + t.username));
+  g.tokens.push(second);
+  a.tokens.push(second);
+  t.records.set("group:" + t.groupId, JSON.stringify(g));
+  t.records.set("account:" + t.username, JSON.stringify(a));
+  t.records.set("member:" + second, JSON.stringify({ groupId: t.groupId, status: "Activa", memberCode: "REVIEW-SECOND" }));
+  const r = await handleMemberAccountDeletion(t.request({ confirmation: "ELIMINAR", password: t.pass }), t.env, t.deps);
+  assert.equal(r.status, 200);
+  assert.equal(t.records.has("member:" + second), false);
+  assert.equal(t.records.has("member:" + t.token), false);
+  assert.equal(t.records.has("visit:visit_other"), true);
+});
+
+test("five incorrect re-authentication attempts block the sixth attempt without cancelling Stripe", async () => {
+  const t = fixture();
+  for (let i = 0; i < 5; i++) {
+    const response = await handleMemberAccountDeletion(
+      t.request({confirmation: "ELIMINAR", password: "invalid" }), t.env, t.deps);
+    assert.equal(response.status, 401);
+  }
+  const sixth = await handleMemberAccountDeletion(
+    t.request({ confirmation: "ELIMINAR", password: t.pass }), t.env, t.deps);
+  assert.equal(sixth.status, 429);
+  assert.equal(t.stripeCalls.length, 0);
+  assert.ok(t.records.has("account:" + t.username));
+});
