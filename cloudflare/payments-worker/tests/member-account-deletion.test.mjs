@@ -27,7 +27,7 @@ function fixture({ owner = false, subStatus = "active", enabled = "true" } = {})
     ["legal-consent:" + groupId, JSON.stringify({ accepted: true, ip: "203.0.113.21", userAgent: "Tester" })],
     ["pending:invoice-paid:sub_review123", JSON.stringify({ invoiceId: "in_test123", customerId: "cus_test123" })],
     ["visit-client:qa_test_1", "visit_1"],
-    ["visit:visit_1", JSON.stringify({ memberCode: "REVIEW-APPLE", visitorName: "Apple Review", saved: 20 })],
+    ["visit:visit_1", JSON.stringify({ visitId: "visit_1", memberCode: "REVIEW-APPLE", visitorName: "Apple Review", saved: 20 })],
     ["visit:visit_other", JSON.stringify({ memberCode: "OTHER", visitorName: "Another Member", saved: 20 })],
   ]);
   const kv = {
