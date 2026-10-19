@@ -165,10 +165,10 @@ test("Preview member card/activity requests use authenticated POST while public 
   assert.match(worker, /handleAppMemberPrivate\(request, env\)/);
 });
 
-test("Preview TestFlight build 8 is isolated; official Release build remains 5", () => {
+test("Preview TestFlight build 9 is isolated; base Debug build remains 5", () => {
   const project = read("ios/ALIGN/project.yml");
   assert.match(project, /CURRENT_PROJECT_VERSION: "5"/);
-  assert.match(project, /PreviewRelease:[\s\S]*?CURRENT_PROJECT_VERSION: "8"/);
+  assert.match(project, /PreviewRelease:[\s\S]*?CURRENT_PROJECT_VERSION: "9"/);
   assert.match(project, /PreviewRelease:[\s\S]*?PRODUCT_BUNDLE_IDENTIFIER: mx\.com\.alignmembers\.app\.preview/);
 });
 
@@ -218,12 +218,12 @@ test("Official App Review recording shows only the Founder QR without removing e
   assert.match(qr, /\.privacySensitive\(\)/);
 });
 
-test("Official ALIGN App Store archive candidate uses 1.0 (9), leaving Preview 8 isolated", () => {
+test("Official ALIGN App Store archive candidate uses 1.0 (9), leaving Preview separately bundled", () => {
   const project = read("ios/ALIGN/project.yml");
   assert.match(project, /schemes:\s+ALIGN:[\s\S]*?archive:\s+config: Release/);
   assert.match(project, /Release:\s+MARKETING_VERSION: "1\.0"\s+CURRENT_PROJECT_VERSION: "9"/);
   assert.match(project, /PreviewRelease:\s+PRODUCT_BUNDLE_IDENTIFIER: mx\.com\.alignmembers\.app\.preview/);
-  assert.match(project, /PreviewRelease:[\s\S]*?CURRENT_PROJECT_VERSION: "8"/);
+  assert.match(project, /PreviewRelease:[\s\S]*?CURRENT_PROJECT_VERSION: "9"/);
 });
 
 test("Account deletion is present in the 1.0 (9) UI, but remains blocked in production", () => {
