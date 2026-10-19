@@ -97,8 +97,10 @@ ALIGN_APP_QR_ROTATION_ENABLED = "true"
 MEMBER_LOGIN_GUARD = "true"
 # Native Preview beta exclusively; the legacy SHA-256 login route is blocked while enabled.
 MEMBER_PASSWORD_V2 = "true"
-# Preview also remains OFF by default. Enable only for a controlled staging test.
-MEMBER_ACCOUNT_DELETION_ENABLED = "false"
+# Isolated one-account account-deletion acceptance test; production remains OFF.
+# Only this disposable QA username can ever reach the destructive handler here.
+MEMBER_ACCOUNT_DELETION_ENABLED = "true"
+MEMBER_ACCOUNT_DELETION_TEST_USERNAME = "qa.delete.fixture"
 WALLET_ENABLED = "false"
 # Single-member test is OFF by default. Activate only by separate approval and
 # expiring SHA-256 allowlist in Cloudflare secrets. Does not enable general issue.
