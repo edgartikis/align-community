@@ -6,7 +6,7 @@ Fecha: 19 octubre 2026 · PR #39 · Solo rama de desarrollo, NO fusionado.
 - Cloudflare Preview (KV de pruebas independiente): eliminación de una cuenta y tarjetas ficticias, inicio de sesión posterior rechazado.
 - Stripe Test real: cliente sin tarjeta y suscripción en prueba `sub_1USBcADMjEcJHlpUJsIkmzbt`, el Worker la consultó en estado `trialing` y la canceló; Stripe confirmó después `status=canceled`, `livemode=false`.
 - Pruebas locales simuladas para sesiones, Duo/Circle, intentos de contraseña, protección Founder, Stripe caído, rastros KV y hoja secundaria de reportes.
-- Compilación oficial candidata **ALIGN 1.0 (9)** configurada en `ios/ALIGN/project.yml`, bundle de producción `mx.com.alignmembers.app`. La compilación de Preview mantiene su bundle y build independientes.
+- Compilación oficial candidata **ALIGN 1.0 (9)** configurada en `ios/ALIGN/project.yml`, bundle de producción `mx.com.alignmembers.app`. La compilación de Preview mantiene su bundle independiente y fue elevada también al build 9 para pruebas privadas de la pantalla.
 
 ## Riesgos que BLOQUEAN despliegue y envío a revisión
 1. **La ruta Live sigue deshabilitada** en `cloudflare/payments-worker/wrangler.toml` y además el Worker tiene una segunda barrera que exige `STRIPE_MODE=test`, contraseña V2 y nombre de prueba autorizado. Nunca cambiar ambas barreras sin terminar revisión y aceptación.
