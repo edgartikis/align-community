@@ -53,7 +53,7 @@ test("Screenshot notice appears only on member card after iOS capture notificati
   assert.match(qr, /UIApplication\.userDidTakeScreenshotNotification/);
   assert.match(qr, /isCardVisible && scenePhase == \.active/);
   assert.match(qr, /\.alert\("Captura de pantalla detectada"/);
-  assert.match(qr, /if isSceneCaptured/);
+  assert.match(qr, /if shouldMaskScreenCapture/);
   assert.match(qr, /QR oculto durante grabación/);
 });
 
@@ -202,4 +202,18 @@ test("Cancellation is visible in the native account menu including Founder Lifet
   assert.match(account, /billing\.canCancel && !billing\.cancelAtPeriodEnd/);
   assert.match(account, /guard !isSaving, billing\?\.canCancel == true else \{ return \}/);
   assert.match(api, /billingRequest\(action: "cancel"\)/);
+});
+
+test("Official App Review recording shows only the Founder QR without removing expiry gates", () => {
+  const qr = read("ios/ALIGN/Sources/MemberQRScreen.swift");
+  const models = read("ios/ALIGN/Sources/Models.swift");
+  assert.match(qr, /private enum AppReviewCapturePolicy/);
+  assert.match(qr, /#if DEBUG \|\| ALIGN_PREVIEW\s+static let allowFounderRecording = false/);
+  assert.match(qr, /#else\s+static let allowFounderRecording = true/);
+  assert.match(qr, /isSceneCaptured && !\(AppReviewCapturePolicy\.allowFounderRecording && selectedCard\?\.isOwner == true\)/);
+  assert.match(models, /var isOwner: Bool \{ planKey == "owner" && memberCode == "AL-FOUNDER-001" \}/);
+  assert.match(qr, /context\.date < validUntil && scenePhase == \.active/);
+  assert.match(qr, /private func continuallyRefreshQR\(\) async/);
+  assert.match(qr, /guard status\.active else/);
+  assert.match(qr, /\.privacySensitive\(\)/);
 });
