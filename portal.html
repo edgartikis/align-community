@@ -45,14 +45,13 @@
 .billing-actions .danger{border-color:rgba(213,126,126,.7);color:#efb4b4}
 .billing-note{margin:14px 0 0;color:#9ca3ad;line-height:1.55;font-size:.86rem}
 .billing-message{margin-top:14px;min-height:1.2em;color:#d9c6a5;font-size:.82rem}
-.navlinks .nav-cancel{color:#efb4b4}.navlinks .nav-cancel[hidden]{display:none!important}.tabs .tab-cancel{border-color:rgba(213,126,126,.65);color:#efb4b4}#mensualidad{scroll-margin-top:80px}
 @media(max-width:800px){.billing-grid{grid-template-columns:1fr}.billing-actions{justify-content:flex-start}.billing-actions .btn{width:100%}}
 
 </style>
 <style>.digital-card [data-wallet-token][hidden]{display:none!important}</style>
 </head>
 <body>
-<nav class="nav"><a class="brand" href="/"><img src="assets/align-wordmark.png?v=transparent-5" alt="ALIGN — Belong to Something"></a><div class="navlinks"><a href="#resumen">Resumen</a><a href="#lugares">Lugares</a><a href="#tarjetas">Tarjetas</a><a href="#mensualidad" class="nav-cancel" id="navCancel" hidden>Cancelar membresía</a><button id="logout" class="logout">Cerrar sesión</button></div></nav>
+<nav class="nav"><a class="brand" href="/"><img src="assets/align-wordmark.png?v=transparent-5" alt="ALIGN — Belong to Something"></a><div class="navlinks"><a href="#resumen">Resumen</a><a href="#lugares">Lugares</a><a href="#tarjetas">Tarjetas</a><button id="logout" class="logout">Cerrar sesión</button></div></nav>
 <div id="app" class="loading"><div class="loading-box">Cargando tu portal ALIGN…</div></div>
 <script>
 const API='https://api.alignmembers.com.mx/api';
@@ -150,10 +149,10 @@ function billingSectionHtml(billing){
  const payment=billing.paymentMethod?.last4?`${String(billing.paymentMethod.brand||'Tarjeta').toUpperCase()} •••• ${billing.paymentMethod.last4}`:'Método administrado por Stripe';
  const actions=[];
  if(billing.canChangePayment)actions.push('<button class="btn gold" type="button" data-billing-action="change_payment">Cambiar tarjeta</button>');
- if(billing.canCancel)actions.push('<button class="btn danger" type="button" data-billing-action="cancel">Cancelar membresía</button>');
+ if(billing.canCancel)actions.push('<button class="btn danger" type="button" data-billing-action="cancel">Cancelar renovación</button>');
  if(billing.canResume)actions.push('<button class="btn gold" type="button" data-billing-action="resume">Reactivar renovación</button>');
  if(billing.canResubscribe)actions.push('<button class="btn primary" type="button" data-billing-action="resubscribe">Reactivar membresía</button>');
- const note=billing.cancelAtPeriodEnd?`Seguirás teniendo beneficios y QR activo hasta el ${renewal}. Puedes reactivar la renovación antes de esa fecha.`:billing.canResubscribe?'Tu membresía terminó. Puedes reactivarla conservando tu misma tarjeta ALIGN y tu historial.':'La renovación mensual se cobra automáticamente con Stripe. Puedes cancelar futuras renovaciones y conservar tus beneficios hasta finalizar el periodo pagado.';
+ const note=billing.cancelAtPeriodEnd?`Seguirás teniendo beneficios y QR activo hasta el ${renewal}. Puedes reactivar la renovación antes de esa fecha.`:billing.canResubscribe?'Tu membresía terminó. Puedes reactivarla conservando tu misma tarjeta ALIGN y tu historial.':'La renovación mensual se cobra automáticamente con Stripe. Puedes actualizar tu tarjeta en cualquier momento.';
  return `<section id="mensualidad" class="section"><div class="section-head"><div><p class="eyebrow">Mensualidad</p><h2>Administra tu membresía.</h2></div><p>Cambios protegidos por tu sesión de miembro. ALIGN nunca recibe ni almacena los datos completos de tu tarjeta.</p></div><div class="billing-panel"><div class="billing-grid"><div class="billing-status"><span>Estado</span><strong>${escapeHtml(statusLabel)}</strong><span>Próximo corte / vigencia · ${escapeHtml(renewal)}</span><span>Pago · ${escapeHtml(payment)}</span><p class="billing-note">${escapeHtml(note)}</p><div id="billingMessage" class="billing-message"></div></div><div class="billing-actions">${actions.join('')||'<span class="billing-note">Sin acciones pendientes.</span>'}</div></div></div></section>`;
 }
 function bindBillingActions(){
@@ -171,31 +170,16 @@ function bindBillingActions(){
   }catch(error){if(message)message.textContent=error.message;button.disabled=false;button.textContent=original}
  }));
 }
-function setupCancellationNavigation(member,billing){
- // Las membresias del propietario no tienen suscripcion cancelable.
- const canOpen=member?.membershipType!=='owner_lifetime' && billing?.lifetime!==true &&
-   (billing?.canCancel===true || !billingSession);
- const navLink=document.querySelector('#navCancel');
- if(navLink)navLink.hidden=!canOpen;
- const tabs=document.querySelector('.tabs');
- if(canOpen&&tabs&&!tabs.querySelector('.tab-cancel')){
-  const link='<a class="tab-cancel" href="#mensualidad">Cancelar membresía</a>';
-  const first=tabs.querySelector('a');
-  if(first)first.insertAdjacentHTML('afterend',link);else tabs.insertAdjacentHTML('afterbegin',link);
- }
-}
 function insertBillingSection(member,billing){
  const resumen=document.querySelector('#resumen');
  if(resumen&&!document.querySelector('#mensualidad'))resumen.insertAdjacentHTML('afterend',billingSectionHtml(billing));
  const tabs=document.querySelector('.tabs');
  if(tabs&&!tabs.querySelector('a[href="#mensualidad"]'))tabs.insertAdjacentHTML('beforeend','<a href="#mensualidad">Mensualidad</a>');
- setupCancellationNavigation(member,billing);
  bindBillingActions();
 }
 function renderInactive(member,billing){
  app.className='';
  app.innerHTML=`<header class="hero"><div class="hero-grid"><div><p class="eyebrow">Hola, ${escapeHtml(member.name)}</p><h1>Tu membresía puede volver.</h1><p class="hero-copy">Conservamos tu identidad ALIGN, tu tarjeta y tu historial. Reactiva tu mensualidad para volver a usar beneficios y QR.</p></div><aside class="member-card"><p class="eyebrow">Membresía inactiva</p><div class="member-level">${escapeHtml(member.level)}</div><div class="member-meta"><span>${escapeHtml(member.memberCode)}</span><span>Estado · ${escapeHtml(member.status||'Inactiva')}</span></div></aside></div></header><div class="tabs"><a href="#mensualidad">Mensualidad</a></div>${billingSectionHtml(billing)}<footer class="footer"><span>© 2026 ALIGN Membership</span><span>Tampico · Madero · Altamira</span></footer>`;
- setupCancellationNavigation(member,billing);
  bindBillingActions();
 }
 
