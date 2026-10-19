@@ -1,4 +1,5 @@
 import { authenticatePreviewPassword, validPlaintextPassword, previewPasswordV2Enabled } from "./member-password-v2.js";
+import { eraseAccountReporting } from "./account-deletion-reporting.js";
 
 // Isolated account-erasure workflow. Requires a valid member session, password
 // re-authentication and a second explicit phrase. No Stripe keys on the device.
@@ -98,6 +99,10 @@ async function deletionPlan(env, account, group) {
     ...(isOwner(group, account) ? ["owner-lifetime:primary", "wallet:member:AL-FOUNDER-001"] : []),
   ]);
   const subIds = new Set();
+  const customerIds = new Set();
+  for (const customerId of [group.customerId, account.customerId]) {
+    if (typeof customerId === "string" && /^cus_[A-Za-z0-9]+$/.test(customerId)) customerIds.add(customerId);
+  }
   for (const id of [group.subscriptionId, ...(group.subscriptionIds || [])]) {
     if (typeof id === "string" && /^sub_[A-Za-z0-9_]+$/.test(id)) subIds.add(id);
   }
@@ -114,6 +119,9 @@ async function deletionPlan(env, account, group) {
     if (activation?.groupId !== account.groupId) continue;
     deletions.add(key);
     if (typeof activation.subscriptionId === "string" && /^sub_/.test(activation.subscriptionId)) subIds.add(activation.subscriptionId);
+    if (typeof activation.customerId === "string" && /^cus_[A-Za-z0-9]+$/.test(activation.customerId)) {
+      customerIds.add(activation.customerId);
+    }
     if (activation.sessionId) linkedSessions.add(String(activation.sessionId));
   }
   for (const key of memberSessions) {
@@ -167,7 +175,7 @@ async function deletionPlan(env, account, group) {
     }
   }
   for (const id of linkedDrafts) deletions.add(`draft:${id}`);
-  return { deletions: [...deletions], redactions, subIds: [...subIds], tokens };
+  return { deletions: [...deletions], redactions, subIds: [...subIds], customerIds: [...customerIds], tokens };
 }
 
 async function endSubscription(env, id, stripeRequest) {
@@ -257,7 +265,20 @@ export async function handleMemberAccountDeletion(request, env, deps) {
 
   try {
     const plan = await deletionPlan(env, account, group);
+    // Stripe must be stopped before all sensitive records are erased.
     for (const id of plan.subIds) await endSubscription(env, id, deps.stripeRequest);
+    // An external reporting failure MUST NOT result in a successful deletion
+    // response or erased KV records. After Stripe cancellation, retrying the
+    // request is safe: the subscription is already canceled.
+    if (env.MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED === "true") {
+      if (plan.customerIds.length !== 1) {
+        throw new Error("No se pudo identificar inequívocamente al titular en los reportes.");
+      }
+      await eraseAccountReporting(env, {
+        username: account.username,
+        customerId: plan.customerIds[0],
+      }, deps.reportingFetch);
+    }
     // Tombstone prevents old checkout activation data from resurrecting a deleted
     // group, and makes sessions fail closed while KV cleanup is in progress.
     const tombstone = `deleted-group:${account.groupId}`;
