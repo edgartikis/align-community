@@ -21,7 +21,7 @@ Fecha: 19 octubre 2026 · PR #39 · Solo rama de desarrollo, NO fusionado.
 - Google Sheet creada en Drive: `ALIGN · QA eliminación de cuenta — datos ficticios — 19 oct 2026`
 - ID: `1SGcKQHHlmC3O1eM0PnWO_XQiKm_QDrNKTeBLiiYE2P8`
 - Pestañas de prueba: SOCIOS, AFILIADOS, PAGOS, VISITAS, ALIADOS; registros ficticios de dos cuentas sin correos, pagos o datos reales.
-- La nueva función `anonymize_account` está probada en simulación de Apps Script (Node). **Falta** ejecutarla desde un Apps Script de prueba conectado a esta hoja y confirmar que borra únicamente la primera cuenta sin afectar la segunda. **No** conectar este sheet con producción.
+- La función `anonymizeAccount_` fue ejecutada el 19-oct-2026 desde el proyecto aislado `ALIGN QA - Eliminación de cuenta`, usando `inspeccionarCuentaQA` y `ejecutarEliminacionQA` (archivo `integrations/align-test-db/QA_EliminacionCuenta.gs`). Registro: `QA FINALIZADA`, con 1 socio, 1 afiliado, 1 visita y 1 pago anonimizados. Una lectura independiente de Drive confirmó que la segunda cuenta ficticia y sus datos siguen intactos, mientras la visita del primer socio conserva solo datos económicos y el nombre genérico `Cuenta eliminada`. **No** conectar este script o Sheet a producción, ni desplegarlo como Web App.
 - El Google Sheets real de ALIGN no fue modificado.
 
 ## Secuencia responsable para terminar
