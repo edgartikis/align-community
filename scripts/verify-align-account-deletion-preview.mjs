@@ -33,7 +33,9 @@ function assertPreviewOnly(){
   assert.match(production,/MEMBER_ACCOUNT_DELETION_ENABLED = "false"/);
   assert.match(preview,/STRIPE_MODE = "test"/);
   assert.match(preview,/MEMBER_ACCOUNT_DELETION_ENABLED = "true"/);
-  assert.match(preview,/MEMBER_ACCOUNT_DELETION_TEST_USERNAME = "qa\.delete\.fixture"/);
+  // Keep the Preview allowlist assertion tied to the disposable account in this script.
+  assert.ok(preview.includes(`MEMBER_ACCOUNT_DELETION_TEST_USERNAME = "${USERNAME}"`),
+    "El usuario QA autorizado en Preview debe coincidir exactamente con el del script.");
   assert.match(preview,/MEMBER_LOGIN_GUARD = "true"/);
   assert.match(preview,/MEMBER_PASSWORD_V2 = "true"/);
   assert.match(preview,/ALIGN_APP_QR_ROTATION_ENABLED = "true"/);
