@@ -175,7 +175,20 @@ export async function handleMemberAccountDeletion(request, env, deps) {
     "access-control-allow-headers": "authorization,content-type",
   } });
   if (request.method !== "POST") return reply({ error: "Método no permitido." }, 405, origin);
-  if (env.MEMBER_ACCOUNT_DELETION_ENABLED !== "true") return reply({ error: "La eliminación de cuenta aún no está habilitada en este entorno." }, 503, origin);
+  // Staging-only deployment guard: even an accidental flag flip in Production
+  // must never enable a destructive endpoint. Revisit this gate after isolated
+  // E2E testing, billing reconciliation and full external-data erasure review.
+  const isolatedPreview = env.STRIPE_MODE === "test" &&
+    env.MEMBER_PASSWORD_V2 === "true" &&
+    env.MEMBER_LOGIN_GUARD === "true" &&
+    env.ALIGN_APP_QR_ROTATION_ENABLED === "true";
+  if (env.MEMBER_ACCOUNT_DELETION_ENABLED !== "true" || !isolatedPreview) {
+    return reply({ error: "La eliminación de cuenta aún no está habilitada en este entorno." }, 503, origin);
+  }
+  const permittedUsername = clean(env.MEMBER_ACCOUNT_DELETION_TEST_USERNAME, 24).toLowerCase();
+  if (!/^[a-z0-9._-]{4,24}$/.test(permittedUsername)) {
+    return reply({ error: "Falta configurar la cuenta ficticia autorizada para eliminación." }, 503, origin);
+  }
   if (!env.PAYMENT_STATE) return reply({ error: "Servicio no disponible." }, 503, origin);
 
   let session;
@@ -185,6 +198,9 @@ export async function handleMemberAccountDeletion(request, env, deps) {
   const body = await request.json().catch(() => ({}));
   if (body.confirmation !== "ELIMINAR" || !validPlaintextPassword(body.password)) {
     return reply({ error: "Escribe ELIMINAR y confirma tu contraseña." }, 400, origin);
+  }
+  if (session.username !== permittedUsername) {
+    return reply({ error: "Solo se permite eliminar la cuenta ficticia autorizada para esta prueba." }, 403, origin);
   }
   const account = await deps.readJson(env, `account:${session.username}`);
   if (!account || account.username !== session.username || account.groupId !== session.groupId ||
