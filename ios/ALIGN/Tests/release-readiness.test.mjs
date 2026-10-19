@@ -218,10 +218,24 @@ test("Official App Review recording shows only the Founder QR without removing e
   assert.match(qr, /\.privacySensitive\(\)/);
 });
 
-test("Official ALIGN App Store archive uses 1.0 (8), leaving Preview isolated", () => {
+test("Official ALIGN App Store archive candidate uses 1.0 (9), leaving Preview 8 isolated", () => {
   const project = read("ios/ALIGN/project.yml");
   assert.match(project, /schemes:\s+ALIGN:[\s\S]*?archive:\s+config: Release/);
-  assert.match(project, /Release:\s+MARKETING_VERSION: "1\.0"\s+CURRENT_PROJECT_VERSION: "8"/);
+  assert.match(project, /Release:\s+MARKETING_VERSION: "1\.0"\s+CURRENT_PROJECT_VERSION: "9"/);
   assert.match(project, /PreviewRelease:\s+PRODUCT_BUNDLE_IDENTIFIER: mx\.com\.alignmembers\.app\.preview/);
   assert.match(project, /PreviewRelease:[\s\S]*?CURRENT_PROJECT_VERSION: "8"/);
+});
+
+test("Account deletion is present in the 1.0 (9) UI, but remains blocked in production", () => {
+  const project = read("ios/ALIGN/project.yml");
+  const account = read("ios/ALIGN/Sources/AccountScreen.swift");
+  const worker = read("cloudflare/payments-worker/src/member-account-deletion.js");
+  const config = read("cloudflare/payments-worker/wrangler.toml");
+  assert.match(project, /Release:\s+MARKETING_VERSION: "1\.0"\s+CURRENT_PROJECT_VERSION: "9"/);
+  assert.match(account, /Label\("Eliminar cuenta", systemImage: "person\.crop\.circle\.badge\.xmark"\)/);
+  assert.match(account, /SecureField\("Confirma tu contraseña"/);
+  assert.match(account, /confirmationDialog\(/);
+  assert.match(worker, /const isolatedPreview = env\.STRIPE_MODE === "test"/);
+  assert.match(config.split("[vars]")[1].split("[previews]")[0],
+    /MEMBER_ACCOUNT_DELETION_ENABLED = "false"/);
 });
