@@ -229,12 +229,18 @@ export async function handleMemberAccountDeletion(request, env, deps) {
     // Founder Wallet pass. Never grant deletion based only on an arbitrary
     // memberCode or a request body boolean.
     const marker = await deps.readJson(env, "owner-lifetime:primary");
+    const ownerCard = await deps.readJson(env, `member:${account.primaryToken}`);
     const validFounder = account.username === "edgar.cordero" &&
       group.membershipType === "owner_lifetime" &&
       group.ownerComplimentary === true &&
       marker?.groupId === account.groupId &&
       marker?.username === account.username &&
-      marker?.memberCode === "AL-FOUNDER-001";
+      marker?.memberCode === "AL-FOUNDER-001" &&
+      ownerCard?.groupId === account.groupId &&
+      ownerCard?.token === account.primaryToken &&
+      ownerCard?.memberCode === "AL-FOUNDER-001" &&
+      ownerCard?.membershipType === "owner_lifetime" &&
+      ownerCard?.ownerComplimentary === true;
     if (env.MEMBER_ACCOUNT_DELETION_FOUNDER_ENABLED !== "true" || !validFounder) {
       return reply({ error: "La eliminación de Founder Lifetime requiere una validación especial que aún no está habilitada." }, 403, origin);
     }
