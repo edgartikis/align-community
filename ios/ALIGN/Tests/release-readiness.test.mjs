@@ -190,3 +190,16 @@ test("Public first screen offers website membership signup and native sign-in wi
   }
   assert.doesNotMatch(app, /StripeAPI|StripeCheckout|PaymentSheet|STPPayment/);
 });
+
+test("Cancellation is visible in the native account menu including Founder Lifetime", () => {
+  const account = read("ios/ALIGN/Sources/AccountScreen.swift");
+  const api = read("ios/ALIGN/Sources/ALIGNAPI.swift");
+  assert.match(account, /SubscriptionManagementScreen\(focusCancellation: true\)/);
+  assert.match(account, /account\.membership\.cancel\.entry/);
+  assert.match(account, /Label\("Cancelar membresía", systemImage: "calendar\.badge\.minus"\)/);
+  assert.match(account, /billing\.lifetime == true/);
+  assert.match(account, /no hay una suscripción que cancelar en esta cuenta/);
+  assert.match(account, /billing\.canCancel && !billing\.cancelAtPeriodEnd/);
+  assert.match(account, /guard !isSaving, billing\?\.canCancel == true else \{ return \}/);
+  assert.match(api, /billingRequest\(action: "cancel"\)/);
+});
