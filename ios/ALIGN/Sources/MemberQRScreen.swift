@@ -2,6 +2,17 @@ import SwiftUI
 import CoreImage.CIFilterBuiltins
 import UIKit
 
+// TEMPORARY App Review exception for the owner's card in official Release.
+// Flip to false in the first post-review iOS update. Preview and Debug
+// remain capture-protected, as do all paying members in every build.
+private enum AppReviewCapturePolicy {
+    #if DEBUG || ALIGN_PREVIEW
+    static let allowFounderRecording = false
+    #else
+    static let allowFounderRecording = true
+    #endif
+}
+
 struct MemberQRScreen: View {
     @EnvironmentObject private var session: MemberSession
     @Environment(\.scenePhase) private var scenePhase
@@ -25,6 +36,13 @@ struct MemberQRScreen: View {
 
     private var selectedCard: MemberCard? {
         session.cards.first { $0.token == selectedToken }
+    }
+
+    // Only the known Founder Lifetime card may remain visible during
+    // iOS screen recording in the official release review build.
+    // Expiration, account validation and inactive-scene shielding still apply.
+    private var shouldMaskScreenCapture: Bool {
+        isSceneCaptured && !(AppReviewCapturePolicy.allowFounderRecording && selectedCard?.isOwner == true)
     }
 
     var body: some View {
@@ -71,7 +89,10 @@ struct MemberQRScreen: View {
                         }
                     }
 
-                    Label("La grabación y duplicación de pantalla ocultan el QR. iOS no permite impedir capturas de pantalla: no compartas fotografías del código. El aliado siempre debe validar al titular.", systemImage: "shield.lefthalf.filled")
+                    Label(shouldMaskScreenCapture
+                          ? "La grabación o duplicación de pantalla oculta el QR. No compartas imágenes del código; el aliado debe validar al titular."
+                          : "Tu QR es temporal. No compartas grabaciones ni capturas que muestren el código; el aliado siempre debe validar al titular.",
+                          systemImage: "shield.lefthalf.filled")
                         .font(.footnote)
                         .foregroundStyle(ALIGNStyle.muted)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -175,7 +196,7 @@ struct MemberQRScreen: View {
                                 .font(.system(size: 11, design: .monospaced))
                                 .foregroundStyle(ALIGNStyle.muted)
 
-                            if isSceneCaptured {
+                            if shouldMaskScreenCapture {
                                 Label("QR oculto durante grabación o duplicación de pantalla",
                                       systemImage: "eye.slash")
                                     .font(.subheadline)
