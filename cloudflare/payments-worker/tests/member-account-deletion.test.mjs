@@ -46,7 +46,8 @@ function fixture({ owner = false, subStatus = "active", enabled = "true" } = {})
   const requireMemberSession = async () => JSON.parse(records.get("member-session:" + sessionToken));
   const deps = { stripeRequest, readJson, requireMemberSession };
   const env = { PAYMENT_STATE: kv, MEMBER_ACCOUNT_DELETION_ENABLED: enabled,
-    MEMBER_PASSWORD_V2: "false", STRIPE_MODE: "test" };
+    MEMBER_PASSWORD_V2: "true", MEMBER_LOGIN_GUARD: "true", ALIGN_APP_QR_ROTATION_ENABLED: "true",
+    MEMBER_ACCOUNT_DELETION_TEST_USERNAME: username, STRIPE_MODE: "test" };
   const request = (body) => new Request("https://api.alignmembers.com.mx/api/member-account/delete", {
     method: "POST", headers: { authorization: "Bearer " + sessionToken,
       "content-type": "application/json" }, body: JSON.stringify(body),
@@ -163,5 +164,23 @@ test("five incorrect re-authentication attempts block the sixth attempt without 
     t.request({ confirmation: "ELIMINAR", password: t.pass }), t.env, t.deps);
   assert.equal(sixth.status, 429);
   assert.equal(t.stripeCalls.length, 0);
+  assert.ok(t.records.has("account:" + t.username));
+});
+
+test("cannot enable deletion in production even if feature flag was accidentally turned on", async () => {
+  const t = fixture();
+  t.env.STRIPE_MODE = "live";
+  const r = await handleMemberAccountDeletion(t.request({confirmation:"ELIMINAR",password:t.pass}),t.env,t.deps);
+  assert.equal(r.status,503);
+  assert.equal(t.stripeCalls.length,0);
+  assert.ok(t.records.has("account:" + t.username));
+});
+
+test("Preview deletion is restricted to the explicitly authorized disposable account", async () => {
+  const t = fixture();
+  t.env.MEMBER_ACCOUNT_DELETION_TEST_USERNAME = "qa.delete.other";
+  const r = await handleMemberAccountDeletion(t.request({confirmation:"ELIMINAR",password:t.pass}),t.env,t.deps);
+  assert.equal(r.status,403);
+  assert.equal(t.stripeCalls.length,0);
   assert.ok(t.records.has("account:" + t.username));
 });
