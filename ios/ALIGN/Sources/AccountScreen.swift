@@ -23,6 +23,12 @@ struct AccountScreen: View {
                         Label("Administrar membresía", systemImage: "gearshape")
                     }
                     .accessibilityIdentifier("account.membership.manage")
+                    NavigationLink {
+                        SubscriptionManagementScreen(focusCancellation: true)
+                    } label: {
+                        Label("Cancelar membresía", systemImage: "calendar.badge.minus")
+                    }
+                    .accessibilityIdentifier("account.membership.cancel.entry")
                 }
                 .listRowBackground(ALIGNStyle.navy)
 
@@ -71,6 +77,7 @@ struct AccountScreen: View {
 
 /// A secondary account/settings screen: visible to members, not on the main tab.
 private struct SubscriptionManagementScreen: View {
+    var focusCancellation: Bool = false
     @State private var billing: BillingStatus?
     @State private var isLoading = false
     @State private var isSaving = false
@@ -91,7 +98,7 @@ private struct SubscriptionManagementScreen: View {
                         LabeledContent("Vigencia", value: validUntil)
                     }
                     if billing.lifetime == true {
-                        Text("Tu membresía permanente no tiene cobros ni renovaciones automáticas.")
+                        Text("Tu membresía Founder Lifetime es permanente y no tiene cobros ni renovaciones automáticas. La opción de cancelación está disponible en el menú, pero no hay una suscripción que cancelar en esta cuenta.")
                             .font(.footnote)
                             .foregroundStyle(ALIGNStyle.muted)
                     } else if billing.cancelAtPeriodEnd {
@@ -120,7 +127,7 @@ private struct SubscriptionManagementScreen: View {
                     Button(role: .destructive) {
                         showCancellationConfirmation = true
                     } label: {
-                        Label("Cancelar renovación mensual", systemImage: "calendar.badge.minus")
+                        Label("Cancelar membresía", systemImage: "calendar.badge.minus")
                     }
                     .disabled(isSaving)
                     .accessibilityIdentifier("account.membership.cancel")
@@ -141,7 +148,7 @@ private struct SubscriptionManagementScreen: View {
         }
         .scrollContentBackground(.hidden)
         .background(ALIGNStyle.night)
-        .navigationTitle("Administrar membresía")
+        .navigationTitle(focusCancellation ? "Cancelar membresía" : "Administrar membresía")
         .navigationBarTitleDisplayMode(.inline)
         .task { await refresh() }
         .confirmationDialog(
