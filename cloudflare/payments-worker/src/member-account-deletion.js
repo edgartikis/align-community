@@ -106,12 +106,13 @@ async function deletionPlan(env, account, group) {
     }
   }
   const linkedDrafts = new Set();
+  const linkedSessions = new Set();
   for (const key of activations) {
     const activation = await fromKey(env, key);
     if (activation?.groupId !== account.groupId) continue;
     deletions.add(key);
     if (typeof activation.subscriptionId === "string" && /^sub_/.test(activation.subscriptionId)) subIds.add(activation.subscriptionId);
-    if (activation.sessionId) linkedDrafts.add(String(activation.sessionId));
+    if (activation.sessionId) linkedSessions.add(String(activation.sessionId));
   }
   for (const key of memberSessions) {
     if ((await fromKey(env, key))?.groupId === account.groupId) deletions.add(key);
@@ -140,15 +141,19 @@ async function deletionPlan(env, account, group) {
   }
   for (const key of drafts) {
     const draft = await fromKey(env, key);
-    if (draft?.groupId === account.groupId || (draft?.username === account.username && !draft?.groupId)) {
-      deletions.add(key);
-      if (draft.draftId) linkedDrafts.add(String(draft.draftId));
+    if (draft?.groupId === account.groupId) {
       linkedDrafts.add(key.slice("draft:".length));
     }
   }
   for (const key of [...sessionMappings, ...alternateMappings]) {
-    if (linkedDrafts.has(clean(await env.PAYMENT_STATE.get(key), 180))) deletions.add(key);
+    const sid = key.slice(key.indexOf(":") + 1);
+    if (linkedSessions.has(sid)) {
+      deletions.add(key);
+      const id = clean(await env.PAYMENT_STATE.get(key), 180);
+      if (id) linkedDrafts.add(id);
+    }
   }
+  for (const id of linkedDrafts) deletions.add(`draft:${id}`);
   return { deletions: [...deletions], redactions, subIds: [...subIds], tokens };
 }
 
@@ -212,9 +217,15 @@ export async function handleMemberAccountDeletion(request, env, deps) {
     await env.PAYMENT_STATE.put(tombstone, JSON.stringify({
       status: "processing", requestedAt: new Date().toISOString(),
     }));
+    for (const token of plan.tokens) {
+      const member = await fromKey(env, `member:${token}`);
+      if (member) await env.PAYMENT_STATE.put(`member:${token}`, JSON.stringify({
+        ...member, status: "Cancelada", validUntil: new Date(0).toISOString(),
+      }));
+    }
     for (const { key, record } of plan.redactions) {
       const cleaned = { ...record, visitorName: "Cuenta eliminada", memberCode: "",
-        integranteId: "", socioId: "", photoUrl: "", operatorName: record.operatorName };
+        integranteId: "", socioId: "", photoUrl: "" };
       await env.PAYMENT_STATE.put(key, JSON.stringify(cleaned));
     }
     for (const key of plan.deletions) await env.PAYMENT_STATE.delete(key);
