@@ -226,3 +226,62 @@ test("Founder Lifetime wallet revocation needs explicit flag, owner identity and
   assert.equal(t.records.has("account:"+ownerName),false);
   assert.equal(t.records.has("member:"+t.token),false);
 });
+
+
+test("Preview deletion requires Google reporting confirmation before erasing member data", async () => {
+  const t=fixture();
+  const activation=JSON.parse(t.records.get("activation:cs_test_one"));
+  activation.customerId="cus_fakeqa1";
+  t.records.set("activation:cs_test_one",JSON.stringify(activation));
+  t.env.MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED="true";
+  t.env.MEMBER_ACCOUNT_DELETION_REPORTING_URL="https://script.google.com/macros/s/qa-fixture/exec";
+  t.env.MEMBER_ACCOUNT_DELETION_REPORTING_SECRET="qa-only-secret";
+  const calls=[];
+  t.deps.reportingFetch=async(_,init)=>{
+    calls.push(JSON.parse(init.body));
+    assert.ok(t.records.has("account:"+t.username));
+    return Response.json({ok:true,anonymized:true,counts:{socios:1,afiliados:1,visitas:1,pagos:1}});
+  };
+  const res=await handleMemberAccountDeletion(
+    t.request({confirmation:"ELIMINAR",password:t.pass}),t.env,t.deps);
+  assert.equal(res.status,200);
+  assert.equal(calls.length,1);
+  assert.equal(calls[0].username,t.username);
+  assert.equal(calls[0].stripeCustomerId,"cus_fakeqa1");
+  assert.equal(t.records.has("account:"+t.username),false);
+});
+
+test("Google reporting timeout fails closed and does not erase account KV", async () => {
+  const t=fixture();
+  const activation=JSON.parse(t.records.get("activation:cs_test_one"));
+  activation.customerId="cus_fakeqa1";
+  t.records.set("activation:cs_test_one",JSON.stringify(activation));
+  t.env.MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED="true";
+  t.env.MEMBER_ACCOUNT_DELETION_REPORTING_URL="https://script.google.com/macros/s/qa-fixture/exec";
+  t.env.MEMBER_ACCOUNT_DELETION_REPORTING_SECRET="qa-only-secret";
+  t.deps.reportingFetch=async()=>{throw Error("Apps Script temporarily down")};
+  const res=await handleMemberAccountDeletion(
+    t.request({confirmation:"ELIMINAR",password:t.pass}),t.env,t.deps);
+  assert.equal(res.status,503);
+  assert.ok(t.records.has("account:"+t.username));
+  assert.ok(t.records.has("member:"+t.token));
+  assert.equal(t.records.has("deleted-group:"+t.groupId),false);
+});
+
+test("Google reporting rejects ambiguous Stripe ownership without sending account identifiers", async () => {
+  const t=fixture();
+  const activation=JSON.parse(t.records.get("activation:cs_test_one"));
+  activation.customerId="cus_ambiguous1";
+  t.records.set("activation:cs_test_one",JSON.stringify(activation));
+  const group=JSON.parse(t.records.get("group:"+t.groupId));
+  group.customerId="cus_ambiguous2";
+  t.records.set("group:"+t.groupId,JSON.stringify(group));
+  t.env.MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED="true";
+  let contacted=false;
+  t.deps.reportingFetch=async()=>{contacted=true;throw Error("wrong account")};
+  const res=await handleMemberAccountDeletion(
+    t.request({confirmation:"ELIMINAR",password:t.pass}),t.env,t.deps);
+  assert.equal(res.status,503);
+  assert.equal(contacted,false);
+  assert.ok(t.records.has("account:"+t.username));
+});
