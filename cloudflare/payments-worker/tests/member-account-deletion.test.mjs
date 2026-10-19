@@ -24,6 +24,9 @@ function fixture({ owner = false, subStatus = "active", enabled = "true" } = {})
     ["activation:cs_test_one", JSON.stringify({ groupId, subscriptionId: "sub_review123", sessionId: "cs_test_one" })],
     ["session:cs_test_one", "draft_example"],
     ["draft:draft_example", JSON.stringify({ username, groupId, draftId: "draft_example" })],
+    ["legal-consent:" + groupId, JSON.stringify({ accepted: true, ip: "203.0.113.21", userAgent: "Tester" })],
+    ["pending:invoice-paid:sub_review123", JSON.stringify({ invoiceId: "in_test123", customerId: "cus_test123" })],
+    ["visit-client:qa_test_1", "visit_1"],
     ["visit:visit_1", JSON.stringify({ memberCode: "REVIEW-APPLE", visitorName: "Apple Review", saved: 20 })],
     ["visit:visit_other", JSON.stringify({ memberCode: "OTHER", visitorName: "Another Member", saved: 20 })],
   ]);
@@ -95,7 +98,8 @@ test("deleting active review account cancels Stripe, wipes login/cards/activatio
   for (const key of [
     "account:" + t.username, "group:" + t.groupId, "member:" + t.token,
     "subscription:sub_review123", "activation:cs_test_one", "member-session:" + "S".repeat(64),
-    "session:cs_test_one", "draft:draft_example",
+    "session:cs_test_one", "draft:draft_example", "legal-consent:" + t.groupId,
+    "pending:invoice-paid:sub_review123", "visit-client:qa_test_1",
   ]) assert.equal(t.records.has(key), false, "not deleted: " + key);
   const visit = JSON.parse(t.records.get("visit:visit_1"));
   assert.equal(visit.visitorName, "Cuenta eliminada");
