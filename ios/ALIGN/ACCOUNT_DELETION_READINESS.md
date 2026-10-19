@@ -17,6 +17,13 @@ Fecha: 19 octubre 2026 · PR #39 · Solo rama de desarrollo, NO fusionado.
 6. No se ha preparado un archivo firmado ni subido **1.0 (9)** a TestFlight. La app **1.0 (8)** no tiene la nueva pantalla. Requiere Mac/Xcode del titular.
 7. El mensaje de la app promete eliminación final; **no debe enviarse esta build a App Review con el endpoint Live devolviendo 503**.
 
+## Hoja de validación completamente ficticia
+- Google Sheet creada en Drive: `ALIGN · QA eliminación de cuenta — datos ficticios — 19 oct 2026`
+- ID: `1SGcKQHHlmC3O1eM0PnWO_XQiKm_QDrNKTeBLiiYE2P8`
+- Pestañas de prueba: SOCIOS, AFILIADOS, PAGOS, VISITAS, ALIADOS; registros ficticios de dos cuentas sin correos, pagos o datos reales.
+- La nueva función `anonymize_account` está probada en simulación de Apps Script (Node). **Falta** ejecutarla desde un Apps Script de prueba conectado a esta hoja y confirmar que borra únicamente la primera cuenta sin afectar la segunda. **No** conectar este sheet con producción.
+- El Google Sheets real de ALIGN no fue modificado.
+
 ## Secuencia responsable para terminar
 1. En copia de Sheets, desplegar el `Code.gs` de pruebas y verificar anonimización exclusiva, retención fiscal y reintento idempotente.
 2. Integrar desde el Worker un contrato de anonimización con respuesta confirmada. Exigir disponibilidad externa ANTES de marcar la cuenta como eliminada.
