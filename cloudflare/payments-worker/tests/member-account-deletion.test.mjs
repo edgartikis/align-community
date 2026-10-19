@@ -188,3 +188,37 @@ test("Preview deletion is restricted to the explicitly authorized disposable acc
   assert.equal(t.stripeCalls.length,0);
   assert.ok(t.records.has("account:" + t.username));
 });
+
+test("Founder Lifetime wallet revocation needs explicit flag, owner identity and canonical marker", async () => {
+  const t = fixture({ owner:true,subStatus:"canceled" });
+  const ownerName = "edgar.cordero";
+  const oldAccount = JSON.parse(t.records.get("account:" + t.username));
+  t.records.delete("account:" + t.username);
+  t.records.set("account:" + ownerName, JSON.stringify({...oldAccount,username:ownerName}));
+  const sessionKey="member-session:"+"S".repeat(64);
+  t.records.set(sessionKey,JSON.stringify({
+    groupId:t.groupId,username:ownerName,primaryToken:t.token,expiresAt:Date.now()+3600000
+  }));
+  t.env.MEMBER_ACCOUNT_DELETION_TEST_USERNAME=ownerName;
+  const marker={username:ownerName,groupId:t.groupId,memberCode:"AL-FOUNDER-001"};
+  t.records.set("owner-lifetime:primary",JSON.stringify(marker));
+  t.records.set("wallet:member:AL-FOUNDER-001",JSON.stringify({memberCode:"AL-FOUNDER-001"}));
+
+  let response=await handleMemberAccountDeletion(t.request({confirmation:"ELIMINAR",password:t.pass}),t.env,t.deps);
+  assert.equal(response.status,403);
+  assert.equal(t.records.has("owner-lifetime:primary"),true);
+
+  t.env.MEMBER_ACCOUNT_DELETION_FOUNDER_ENABLED="true";
+  t.records.set("owner-lifetime:primary",JSON.stringify({...marker,username:"attacker"}));
+  response=await handleMemberAccountDeletion(t.request({confirmation:"ELIMINAR",password:t.pass}),t.env,t.deps);
+  assert.equal(response.status,403);
+  assert.equal(t.records.has("owner-lifetime:primary"),true);
+
+  t.records.set("owner-lifetime:primary",JSON.stringify(marker));
+  response=await handleMemberAccountDeletion(t.request({confirmation:"ELIMINAR",password:t.pass}),t.env,t.deps);
+  assert.equal(response.status,200);
+  assert.equal(t.records.has("owner-lifetime:primary"),false);
+  assert.equal(t.records.has("wallet:member:AL-FOUNDER-001"),false);
+  assert.equal(t.records.has("account:"+ownerName),false);
+  assert.equal(t.records.has("member:"+t.token),false);
+});
