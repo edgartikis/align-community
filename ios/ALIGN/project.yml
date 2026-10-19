@@ -42,7 +42,7 @@ targets:
           INFOPLIST_KEY_CFBundleDisplayName: ALIGN Preview
         Release:
           MARKETING_VERSION: "1.0"
-          CURRENT_PROJECT_VERSION: "8"
+          CURRENT_PROJECT_VERSION: "9"
         PreviewRelease:
           PRODUCT_BUNDLE_IDENTIFIER: mx.com.alignmembers.app.preview
           INFOPLIST_KEY_CFBundleDisplayName: ALIGN Preview
