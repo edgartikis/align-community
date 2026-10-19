@@ -19,6 +19,13 @@ const PREVIEW_KV="4b23fffb26264609b9f18f110baea954";
 const LIVE_KV="4504d6bcead74cdfa7e3a76599f641fc";
 const BASE="https://align-qr-pilot-align-payments.alignservice18.workers.dev";
 const USERNAME="qa.delete.fixture2";
+// Stage 2 only: link a disposable Stripe TEST trial subscription ID, never live.
+const args=process.argv.slice(2);
+const subscriptionIndex=args.indexOf("--stripe-test-sub");
+const subId=subscriptionIndex>=0?String(args[subscriptionIndex+1]||""):"";
+if(subscriptionIndex>=0 && !/^sub_[A-Za-z0-9]+$/.test(subId))
+  throw Error("Especifica un ID sub_... válido de una suscripción Stripe Test.");
+if(args.length!==(subscriptionIndex>=0?2:0))throw Error("Argumentos inesperados.");
 const createdKeys=[];
 let groupId="";
 let issuedSessionToken="";
@@ -47,15 +54,16 @@ function kvRun(action,key,value){
     (groupId && key.startsWith("group:"+groupId)) ||
     (groupId && key.startsWith("member:")) ||
     (groupId && key.startsWith("deleted-group:"+groupId)) ||
-    (issuedSessionToken && key==="member-session:"+issuedSessionToken));
+    (issuedSessionToken && key==="member-session:"+issuedSessionToken) ||
+    (subId && key==="subscription:"+subId));
   const args=["wrangler","kv","key",action,key];
   if(action==="put")args.push(value);
   args.push("--namespace-id",PREVIEW_KV,"--remote","--config",config);
   if(action==="put") args.push("--ttl","3600");
   return spawnSync("npx",args,{cwd:root,encoding:"utf8",timeout:90000,maxBuffer:512*1024});
 }
-function kvPut(key,record){
-  const result=kvRun("put",key,JSON.stringify(record));
+function kvPut(key,record,{raw=false}={}){
+  const result=kvRun("put",key,raw?String(record):JSON.stringify(record));
   if(result.status!==0)throw Error("Cloudflare KV Preview no aceptó el registro ficticio ("+key.split(":")[0]+").");
   createdKeys.push(key);
 }
@@ -87,6 +95,9 @@ async function main(){
   if(kvRead("account:"+USERNAME)){
     throw Error("La cuenta QA ya existe en Preview. No se sobrescribió.");
   }
+  if(subId && kvRead("subscription:"+subId)){
+    throw Error("La suscripción ya está vinculada a otra cuenta Preview. No se sobrescribió.");
+  }
   groupId="grp_delete_preview_"+randomBytes(8).toString("hex");
   const token=randomBytes(32).toString("hex");
   const password="QA-"+randomBytes(20).toString("hex")+"!";
@@ -102,7 +113,10 @@ async function main(){
     version:1,username:USERNAME,passwordHash:createHash("sha256").update(password).digest("hex"),
     groupId,primaryToken:token,tokens:[token],createdAt:now,
   });
-  console.log("✓ Cuenta ficticia creada exclusivamente en KV Preview; sin suscripción Stripe.");
+  if(subId)kvPut("subscription:"+subId,groupId,{raw:true});
+  console.log(subId
+    ? "✓ Cuenta ficticia de Preview vinculada a Stripe Test."
+    : "✓ Cuenta ficticia creada exclusivamente en KV Preview; sin suscripción Stripe.");
   // Workers KV is eventually consistent across regions. A rapid retry loop
   // causes the Preview 5-attempt lockout even when the credentials are valid.
   console.log("⌛ Esperando 90 segundos a que la cuenta se propague en Cloudflare KV...");
@@ -126,6 +140,17 @@ async function main(){
   // it, otherwise a valid session may yield an unrelated 401 response.
   console.log("⌛ Esperando 65 segundos para verificar la sesión contra KV remota...");
   await sleep(65000);
+  if(subId){
+    const response=await fetch(BASE+"/api/member-billing",{
+      headers:{authorization:"Bearer "+bearer},signal:AbortSignal.timeout(25000),
+    });
+    const billing=await response.json().catch(()=>({}));
+    assert.equal(response.status,200,"Cloudflare no pudo consultar Stripe Test: HTTP "+response.status);
+    assert.equal(billing.status,"trialing",
+      "Stripe Test no reconoce la suscripción trialing vinculada; estado="+billing.status);
+    assert.equal(billing.canCancel,true,"La suscripción Stripe Test debe permitir cancelación.");
+    console.log("✓ Cloudflare consultó la suscripción trialing de Stripe Test.");
+  }
   const wrong=await api("/api/member-account/delete",{confirmation:"ELIMINAR",password:"incorrecta"},bearer);
   assert.equal(wrong.status,401,"Una contraseña equivocada no debe permitir borrar (HTTP "+wrong.status+").");
   assert.match(String(wrong.data.error||""),/Contraseña incorrecta/,
@@ -148,6 +173,8 @@ async function main(){
     await sleep(12000);
   }
   assert.ok(cleared,"Cloudflare KV aún conserva datos de la cuenta tras esperar la propagación.");
+  if(subId)assert.equal(kvRead("subscription:"+subId),null,
+    "Cloudflare KV aún conserva la vinculación de Stripe Test.");
   let second=await api("/api/member-login-v2",{username:USERNAME,password});
   if(second.status===200){
     // Account and tombstone visibility to the Worker can lag remote KV readers.
@@ -158,7 +185,9 @@ async function main(){
   console.log("✓ Cuenta, tarjetas y acceso revocados; segundo login rechazado.");
   // Discard only the synthetic QA tombstone; no activation was created.
   kvDelete("deleted-group:"+groupId);
-  console.log("✓ PRUEBA PREVIEW COMPLETADA. Stripe Live y los socios reales permanecen intactos.");
+  console.log(subId
+    ? "✓ PRUEBA PREVIEW + STRIPE TEST COMPLETADA. Verifica status=canceled en Stripe Test."
+    : "✓ PRUEBA PREVIEW COMPLETADA. Stripe Live y los socios reales permanecen intactos.");
 }
 let ok=false;
 try{
