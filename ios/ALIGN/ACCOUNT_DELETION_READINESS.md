@@ -24,6 +24,12 @@ Fecha: 19 octubre 2026 · PR #39 · Solo rama de desarrollo, NO fusionado.
 - La función `anonymizeAccount_` fue ejecutada el 19-oct-2026 desde el proyecto aislado `ALIGN QA - Eliminación de cuenta`, usando `inspeccionarCuentaQA` y `ejecutarEliminacionQA` (archivo `integrations/align-test-db/QA_EliminacionCuenta.gs`). Registro: `QA FINALIZADA`, con 1 socio, 1 afiliado, 1 visita y 1 pago anonimizados. Una lectura independiente de Drive confirmó que la segunda cuenta ficticia y sus datos siguen intactos, mientras la visita del primer socio conserva solo datos económicos y el nombre genérico `Cuenta eliminada`. **No** conectar este script o Sheet a producción, ni desplegarlo como Web App.
 - El Google Sheets real de ALIGN no fue modificado.
 
+## Integración Apps Script ↔ Cloudflare Preview (preparada, no publicada)
+- Worker: `cloudflare/payments-worker/src/account-deletion-reporting.js`, llamado desde `member-account-deletion.js` solamente al habilitar `MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED=true`. Exige exactamente un Stripe Customer identificable y confirmación `ok:true,anonymized:true` de Google antes de borrar datos en KV. Si falla Google, conserva los registros y devuelve error; Stripe ya podría haber quedado cancelado, por lo que es imprescindible una reconciliación reanudable antes del lanzamiento.
+- El flag está explícitamente **false en producción y Preview**; no se han configurado secretos, cambiado el Worker desplegado ni enviado solicitudes HTTP a Google Apps Script.
+- Archivo QA para añadir como **segundo archivo** al proyecto aislado: `integrations/align-test-db/QA_EliminacionEndpoint.gs`. Su `doPost` exige una propiedad secreta `ALIGN_QA_DELETE_SECRET`, proyecto vinculado a la hoja sintética y exactamente `qa.delete.fixture2` / `cus_fakeqa1`.
+- Pendientes de aceptación explícita del titular: incorporar archivo al editor QA, configurar un secreto privado, desplegar una aplicación web solo de pruebas, resembrar la cuenta ficticia anonimizada y validar un nuevo flujo Preview→Apps Script→Stripe Test→KV. **No** usar el Apps Script ni la hoja de producción.
+
 ## Secuencia responsable para terminar
 1. En copia de Sheets, desplegar el `Code.gs` de pruebas y verificar anonimización exclusiva, retención fiscal y reintento idempotente.
 2. Integrar desde el Worker un contrato de anonimización con respuesta confirmada. Exigir disponibilidad externa ANTES de marcar la cuenta como eliminada.
