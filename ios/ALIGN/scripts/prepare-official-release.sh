@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prepare the official ALIGN 1.0 (8) iOS project on the owner's Mac.
+# Prepare the official ALIGN 1.0 (9) iOS project on the owner's Mac.
 # No GitHub mutation, App Store upload, certificate change or deployment.
 set -euo pipefail
 
@@ -30,8 +30,8 @@ grep -Fq 'PRODUCT_BUNDLE_IDENTIFIER: mx.com.alignmembers.app' "$PROJECT" || {
 grep -Fq 'MARKETING_VERSION: "1.0"' "$PROJECT" || {
   echo "La configuracion oficial no marca version 1.0."; exit 1;
 }
-grep -Fq 'CURRENT_PROJECT_VERSION: "8"' "$PROJECT" || {
-  echo "La configuracion oficial no contiene build 8."; exit 1;
+grep -Fq 'CURRENT_PROJECT_VERSION: "9"' "$PROJECT" || {
+  echo "La configuracion oficial no contiene build 9."; exit 1;
 }
 
 command -v xcodegen >/dev/null || {
@@ -60,5 +60,5 @@ echo "Generando proyecto Xcode..."
 echo "Abriendo ALIGN oficial en Xcode..."
 open ios/ALIGN/ALIGN.xcodeproj
 
-echo "Preparacion terminada. En Xcode: Scheme ALIGN; Archive Release; version 1.0; build 8."
+echo "Preparacion terminada. En Xcode: Scheme ALIGN; Archive Release; version 1.0; build 9."
 echo "No selecciones ALIGN Private TestFlight. El upload requiere firma Apple en Xcode."
