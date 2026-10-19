@@ -2,11 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
 import { makeV2Verifier } from "../src/member-password-v2.js";
-import worker from "../src/main.js";
+import worker from "../src/entry-member-login.js";
 
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 
-// Exercises real Cloudflare Worker routing, V2 sign-in, session issuance,
+// Exercises the member API Worker HTTP routing, V2 sign-in, session issuance,
 // reauthentication, billing cancellation and post-deletion access control.
 // Only in-memory KV and a Stripe HTTP mock: NEVER sends a network request.
 function fixture() {
