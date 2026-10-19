@@ -93,6 +93,7 @@ async function deletionPlan(env, account, group) {
   const deletions = new Set([
     `account:${account.username}`,
     `group:${account.groupId}`,
+    `legal-consent:${account.groupId}`,
     ...tokens.map((t) => `member:${t}`),
   ]);
   const subIds = new Set();
@@ -151,6 +152,17 @@ async function deletionPlan(env, account, group) {
       deletions.add(key);
       const id = clean(await env.PAYMENT_STATE.get(key), 180);
       if (id) linkedDrafts.add(id);
+    }
+  }
+  // Purge post-payment retry data and visit-client lookup indexes that still
+  // point to the erased group. Do not touch records belonging to other groups.
+  for (const subId of subIds) {
+    deletions.add(`pending:invoice-paid:${subId}`);
+  }
+  const ownVisitIds = new Set(redactions.map(({ record }) => clean(record.visitId, 120)).filter(Boolean));
+  if (ownVisitIds.size) {
+    for (const key of await keysWithPrefix(env, "visit-client:")) {
+      if (ownVisitIds.has(clean(await env.PAYMENT_STATE.get(key), 120))) deletions.add(key);
     }
   }
   for (const id of linkedDrafts) deletions.add(`draft:${id}`);
