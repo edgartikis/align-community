@@ -10,7 +10,7 @@
 - Las cuentas Founder Lifetime usan una infraestructura especial de Wallet y se rechazan por seguridad hasta diseñar su procedimiento de eliminación independiente.
 
 ## Seguridad y limitaciones pendientes
-1. **Producción permanece desactivada**: `MEMBER_ACCOUNT_DELETION_ENABLED = "false"`. En Preview está `true` exclusivamente para `qa.delete.fixture`, pero el Worker exige además `STRIPE_MODE=test`, autenticación V2 y controles de login Preview. Este cambio solo existe en la rama de GitHub; todavía requiere desplegarse a Cloudflare Preview y ejecutar `node scripts/verify-align-account-deletion-preview.mjs`. El primer smoke remoto prueba eliminación sin ninguna suscripción Stripe; en otra etapa se probará Stripe Test real.
+1. **Producción permanece desactivada**: `MEMBER_ACCOUNT_DELETION_ENABLED = "false"`. En Preview está `true` exclusivamente para `qa.delete.fixture2`, pero el Worker exige además `STRIPE_MODE=test`, autenticación V2 y controles de login Preview. Este cambio solo existe en la rama de GitHub; requiere volver a desplegarse a Cloudflare Preview tras el cambio de usuario QA y ejecutar `node scripts/verify-align-account-deletion-preview.mjs`. El primer smoke remoto prueba eliminación sin ninguna suscripción Stripe; en otra etapa se probará Stripe Test real.
 2. El backend financiero puede conservar comprobantes fiscales conforme a la ley. La base de datos secundaria para reportes y los sistemas externos (Stripe, fotografías externas, copias de seguridad) **no están incluidos** en el borrado automatizado. Establecer proceso verificable de borrado de datos personales allí antes de activar en Live. No afirmar borrado integral mientras esté pendiente.
 3. Para grupos grandes, el proceso examina índices KV con límites; un volumen grande puede provocar error y requerir intervención. Probar con KV Preview y su volumen esperado.
 4. Si un fallo ocurre después de crear la tombstone, la cuenta queda bloqueada por seguridad pero podría permanecer información pendiente de purga; hace falta un procedimiento administrativo seguro de reconciliación y auditoría.
@@ -22,4 +22,4 @@
 ## Comprobaciones automatizadas
 `node --test cloudflare/payments-worker/tests/member-account-deletion.test.mjs`
 
-**Estado**: integrado y comprobado con HTTP Worker/KV/Stripe simulados en GitHub. Preparado para despliegue aislado a Cloudflare Preview usando una única cuenta descartable. Aún sin deploy, cambios a cuentas reales, subida a TestFlight ni publicación App Store por este cambio.
+**Estado**: integrado y comprobado con HTTP Worker/KV/Stripe simulados en GitHub. Preparado para despliegue aislado a Cloudflare Preview usando una única cuenta descartable. Cloudflare Preview se desplegó una vez y una primera prueba falló por bloqueo temporal de intentos (HTTP 429); se corrigió el runner y rotó el usuario ficticio, pendientes redeploy y repetición. Sin cambios a cuentas reales, subida a TestFlight ni publicación App Store por este cambio.
