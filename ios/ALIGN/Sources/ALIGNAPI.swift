@@ -183,6 +183,27 @@ final class ALIGNAPI {
         return try await fetch(billingRequest(action: "cancel"))
     }
 
+    /// Account deletion requires fresh password confirmation and the current
+    /// short-lived login session. A successful response is returned only after
+    /// the backend confirms account shutdown and subscription cancellation.
+    func deleteMemberAccount(password: String) async throws {
+        guard let token = SecureSession.load()?.sessionToken, !token.isEmpty else {
+            throw AppFailure.server("Tu sesión expiró. Cierra sesión e inicia nuevamente.")
+        }
+        var call = request(path: "/api/member-account/delete")
+        call.httpMethod = "POST"
+        call.setValue("Bearer " + token, forHTTPHeaderField: "Authorization")
+        call.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        call.httpBody = try JSONSerialization.data(withJSONObject: [
+            "confirmation": "ELIMINAR",
+            "password": password,
+        ])
+        let response: AccountDeletionResponse = try await fetch(call)
+        guard response.ok && response.status == "deleted" else {
+            throw AppFailure.invalidResponse
+        }
+    }
+
     func activity(for card: MemberCard) async throws -> MemberActivity {
         #if DEBUG || ALIGN_PREVIEW
         let secured = try authorizedMemberRequest(path: "/api/app-member-activity", for: card)
