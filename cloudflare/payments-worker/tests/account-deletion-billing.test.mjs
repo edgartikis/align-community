@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { stopVerifiedSubscriptions } from "../src/account-deletion-billing.js";
 
 // No Stripe requests leave this process: all calls use an in-memory stub.
@@ -92,4 +93,18 @@ test("reject oversized Stripe subscription lists before side effects",async()=>{
   const ids=Array.from({length:26},(_,i)=>"sub_fixture"+i);
   await assert.rejects(stopVerifiedSubscriptions(env,ids,customer,request),/revisión asistida/);
   assert.equal(called,false);
+});
+
+test("safe branch keeps real deletions and Founder disabled in Wrangler production vars",()=>{
+  const toml=readFileSync(new URL("../wrangler.toml",import.meta.url),"utf8");
+  const prod=toml.split("[vars]")[1]?.split("[previews]")[0];
+  const staging=toml.split("[previews.vars]")[1]?.split("[[previews.kv_namespaces]]")[0];
+  assert.ok(prod,"Production vars must exist");
+  assert.match(prod,/STRIPE_MODE = "live"/);
+  assert.match(prod,/MEMBER_ACCOUNT_DELETION_ENABLED = "false"/);
+  assert.match(prod,/MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED = "false"/);
+  assert.match(prod,/MEMBER_ACCOUNT_DELETION_FOUNDER_ENABLED = "false"/);
+  assert.ok(staging,"Preview vars must exist");
+  assert.match(staging,/STRIPE_MODE = "test"/);
+  assert.match(staging,/MEMBER_ACCOUNT_DELETION_TEST_USERNAME = "qa\.delete\.fixture2"/);
 });
