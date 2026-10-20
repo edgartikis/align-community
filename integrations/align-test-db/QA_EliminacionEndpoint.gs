@@ -25,7 +25,7 @@ function doPost(e) {
       throw new Error("Solicitud QA no autorizada.");
     }
     if (payload.username!=="qa.delete.fixture2" ||
-        payload.stripeCustomerId!=="cus_fakeqa1") {
+        payload.stripeCustomerId!=="cus_VT7rpDV5GBjC6u") {
       throw new Error("Solo puede anonimizarse la cuenta ficticia QA autorizada.");
     }
     // spreadsheet_ validates the exact synthetic spreadsheet identifier.
