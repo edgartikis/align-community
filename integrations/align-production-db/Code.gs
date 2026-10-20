@@ -3,7 +3,8 @@
  *
  * Script Properties requeridas:
  * - SPREADSHEET_ID
- * - ALIGN_DB_SECRET
+ * - ALIGN_DB_SECRET (pagos, visitas, renovaciones)
+ * - ALIGN_DB_DELETION_SECRET (solo eliminación, distinto y >= 32 caracteres)
  *
  * El secreto nunca se escribe en el frontend ni en GitHub.
  */
@@ -21,7 +22,19 @@ function doPost(e) {
     lock.waitLock(20000);
     const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     const props = PropertiesService.getScriptProperties();
-    const expected = String(props.getProperty('ALIGN_DB_SECRET') || '');
+    const deletionAction = body.action === 'preflight_account_erasure' ||
+      body.action === 'anonymize_account';
+    const paymentSecret = String(props.getProperty('ALIGN_DB_SECRET') || '');
+    const erasureSecret = deletionAction
+      ? String(props.getProperty('ALIGN_DB_DELETION_SECRET') || '')
+      : '';
+    // Never allow the routine billing/reporting credential to perform erasure.
+    // Existing actions continue authenticating with the original secret.
+    if (deletionAction &&
+        (erasureSecret.length < 32 || erasureSecret === paymentSecret)) {
+      throw new Error('La credencial independiente de eliminación no está configurada.');
+    }
+    const expected = deletionAction ? erasureSecret : paymentSecret;
     if (body.mode !== MODE || !expected || String(body.secret || '') !== expected) {
       throw new Error('Solicitud no autorizada.');
     }
