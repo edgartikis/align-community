@@ -47,7 +47,7 @@ function fixture() {
     assert.ok(String(url).endsWith(subId), "Wrong subscription targeted");
     const method = String(options.method || "GET").toUpperCase();
     stripeCalls.push(method);
-    if (method === "GET") return Response.json({id: subId,status:"active"});
+    if (method === "GET") return Response.json({id: subId,status:"active",customer:"cus_httpfixture9"});
     if (method === "DELETE") return Response.json({id: subId,status:"canceled"});
     return Response.json({ error: { message:"Method rejected" } }, { status: 405 });
   };
@@ -72,7 +72,7 @@ async function seed(t) {
     version:2,
   };
   t.records.set("account:"+t.username, JSON.stringify(account));
-  t.records.set("group:"+t.groupId, JSON.stringify({groupId:t.groupId,tokens:[t.token]}));
+  t.records.set("group:"+t.groupId, JSON.stringify({groupId:t.groupId,tokens:[t.token],customerId:"cus_httpfixture9"}));
   t.records.set("member:"+t.token, JSON.stringify({
     token:t.token, groupId:t.groupId, memberCode:"QA-DELETE-001",
     name:"Account Deletion Fixture", status:"Activa", level:"The Brotherhood",
