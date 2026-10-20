@@ -103,7 +103,8 @@ MEMBER_PASSWORD_V2 = "true"
 # Only this disposable QA username can ever reach the destructive handler here.
 MEMBER_ACCOUNT_DELETION_ENABLED = "true"
 MEMBER_ACCOUNT_DELETION_FOUNDER_ENABLED = "false"
-MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED = "false"
+# QA-only: synthetic Sheets web app URL + secret are separate Preview secrets.
+MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED = "true"
 MEMBER_ACCOUNT_DELETION_TEST_USERNAME = "qa.delete.fixture2"
 WALLET_ENABLED = "false"
 # Single-member test is OFF by default. Activate only by separate approval and
