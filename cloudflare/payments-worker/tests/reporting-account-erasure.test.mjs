@@ -96,7 +96,7 @@ test("reporting sheet anonymizes only one member and affiliates while retaining 
 test("secondary report erasure rejects mismatched Stripe identity before clearing any rows",()=>{
   const s=setup();
   assert.throws(()=>s.anonymizeAccount({username:"qa.delete.fixture2",stripeCustomerId:"cus_wrong"}),
-    /Stripe no coincide/);
+    /Conflicto de identidad/);
   assert.equal(s.files.SOCIOS[0][1],"qa.delete.fixture2");
   assert.equal(s.files.AFILIADOS[0][7],"del@example.invalid");
   assert.equal(s.files.VISITAS[0][5],"Delete User");
