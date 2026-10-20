@@ -215,9 +215,14 @@ function preflightAccountErasure_(body) {
     sheet.getLastRow() - DATA_START_ROW + 1, 22).getValues();
   let found = 0;
   for (let i = 0; i < rows.length; i += 1) {
-    if (clean_(rows[i][1], 24).toLowerCase() !== username) continue;
-    if (clean_(rows[i][17], 100) !== customer) {
+    const rowUser = clean_(rows[i][1], 24).toLowerCase();
+    const rowCustomer = clean_(rows[i][17], 100);
+    if (rowUser !== username && rowCustomer !== customer) continue;
+    if (rowUser !== username || rowCustomer !== customer) {
       throw new Error('Conflicto de identidad de Stripe; no se eliminó nada.');
+    }
+    if (!clean_(rows[i][0], 80)) {
+      throw new Error('Falta identidad del grupo; no se detuvieron cobros.');
     }
     found += 1;
   }
@@ -237,7 +242,7 @@ function anonymizeAccount_(body) {
     throw new Error('Stripe Customer no válido.');
   }
   const db = sheets_();
-  const socioIds = {};
+  const socioIds = Object.create(null);
   const counts = { socios: 0, afiliados: 0, visitas: 0, pagos: 0 };
 
   function rows_(sheet, width) {
@@ -245,30 +250,64 @@ function anonymizeAccount_(body) {
     return count ? sheet.getRange(DATA_START_ROW, 1, count, width).getValues() : [];
   }
 
-  // Match the account username AND, when supplied, its Stripe customer. A
-  // mismatch fails CLOSED and does not anonymize a similarly named account.
+  // Account ownership is established ONLY by the unique SOCIOS record
+  // with the expected Stripe customer. Never take ownership of another group
+  // from a stale / duplicated username in an affiliate or visit row.
   const socios = rows_(db.socios, 22);
+  let ownerId = '';
+  let matchedSocios = 0;
   for (let i = 0; i < socios.length; i += 1) {
     const row = socios[i];
-    if (clean_(row[1], 24).toLowerCase() !== username) continue;
-    if (clean_(row[17], 100) !== expectedCustomer) {
-      throw new Error('La identidad de Stripe no coincide con el socio.');
+    const rowUser = clean_(row[1], 24).toLowerCase();
+    const rowCustomer = clean_(row[17], 100);
+    if (rowUser !== username && rowCustomer !== expectedCustomer) continue;
+    if (rowUser !== username || rowCustomer !== expectedCustomer) {
+      throw new Error('Conflicto de identidad de Stripe; no se eliminó nada.');
     }
-    if (row[0]) socioIds[clean_(row[0], 80)] = true;
+    matchedSocios++;
+    ownerId = clean_(row[0], 80);
   }
+  if (matchedSocios !== 1 || !ownerId) {
+    throw new Error('Falta una coincidencia única del socio y su grupo; requiere revisión.');
+  }
+  socioIds[ownerId] = true;
 
-  // Discover linked group records from the secondary affiliate table. This is
-  // needed for legacy accounts whose SOCIOS row was already removed.
+  // Snapshot ALL affected rows before any writes; a stray username, group ID
+  // or Stripe customer on any row is a conflict, never deletion authority.
   const affiliates = rows_(db.afiliados, 10);
+  const visits = rows_(db.visitas, 16);
+  const payments = rows_(db.pagos, 12);
+  const assertLinked_ = function(group, user, customer) {
+    if (group && group !== ownerId ||
+        user && user !== username ||
+        customer && customer !== expectedCustomer) {
+      throw new Error('Registros vinculados a otro socio; requiere revisión asistida.');
+    }
+  };
   for (let i = 0; i < affiliates.length; i += 1) {
     const row = affiliates[i];
-    if (clean_(row[2], 24).toLowerCase() === username && row[1]) {
-      socioIds[clean_(row[1], 80)] = true;
+    const group = clean_(row[1], 80);
+    const user = clean_(row[2], 24).toLowerCase();
+    if (group === ownerId || user === username) assertLinked_(group, user, '');
+  }
+  for (let i = 0; i < visits.length; i += 1) {
+    const row = visits[i];
+    const group = clean_(row[2], 80);
+    const user = clean_(row[4], 24).toLowerCase();
+    if (group === ownerId || user === username) assertLinked_(group, user, '');
+  }
+  for (let i = 0; i < payments.length; i += 1) {
+    const row = payments[i];
+    const group = clean_(row[2], 80);
+    const user = clean_(row[3], 24).toLowerCase();
+    const customer = clean_(row[10], 100);
+    if (group === ownerId || user === username || customer === expectedCustomer) {
+      assertLinked_(group, user, customer);
     }
   }
 
-  // Preflight complete before any mutation: reject conflicting Stripe owner ID.
-  // Payment rows may be preserved for statutory accounting obligations.
+  // Ownership preflight complete: only now may the requested rows be mutated.
+  // Payments keep accounting amounts without fabricated refunds.
   for (let i = 0; i < socios.length; i += 1) {
     if (clean_(socios[i][1], 24).toLowerCase() === username) {
       db.socios.getRange(DATA_START_ROW + i, 1, 1, 22).clearContent();
@@ -283,7 +322,6 @@ function anonymizeAccount_(body) {
       counts.afiliados++;
     }
   }
-  const visits = rows_(db.visitas, 16);
   for (let i = 0; i < visits.length; i += 1) {
     const row = visits[i];
     if (clean_(row[4], 24).toLowerCase() !== username &&
@@ -294,7 +332,6 @@ function anonymizeAccount_(body) {
     db.visitas.getRange(n, 16).clearContent(); // Free-text notes can contain PII
     counts.visitas++;
   }
-  const payments = rows_(db.pagos, 12);
   for (let i = 0; i < payments.length; i += 1) {
     const row = payments[i];
     if (clean_(row[3], 24).toLowerCase() !== username &&
