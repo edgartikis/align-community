@@ -1,5 +1,6 @@
 import { authenticatePreviewPassword, validPlaintextPassword, previewPasswordV2Enabled } from "./member-password-v2.js";
 import { eraseAccountReporting } from "./account-deletion-reporting.js";
+import { stopVerifiedSubscriptions } from "./account-deletion-billing.js";
 
 // Isolated account-erasure workflow. Requires a valid member session, password
 // re-authentication and a second explicit phrase. No Stripe keys on the device.
@@ -215,10 +216,26 @@ async function finalizeKvErasure(env, manifest) {
   for (const key of redactionKeys) {
     const record = await fromKey(env, key);
     if (!record) continue;
-    await env.PAYMENT_STATE.put(key, JSON.stringify({
-      ...record, visitorName: "Cuenta eliminada", memberCode: "",
-      integranteId: "", socioId: "", photoUrl: "",
-    }));
+    // Explicit allowlist: never carry over arbitrary free-text, contact data,
+    // tokens, photos or future profile fields into the retained visit history.
+    // A deleted visit must never be replayed to Sheets by sync retries.
+    const retained = {
+      visitId: clean(record.visitId, 120),
+      createdAt: clean(record.createdAt, 48),
+      visitorName: "Cuenta eliminada",
+      memberCode: "", integranteId: "", socioId: "",
+      planName: clean(record.planName, 60),
+      planKey: clean(record.planKey, 30),
+      allyId: clean(record.allyId, 80),
+      place: clean(record.place, 100),
+      category: clean(record.category, 60),
+      people: Number.isFinite(Number(record.people)) ? Number(record.people) : 0,
+      gross: Number.isFinite(Number(record.gross)) ? Number(record.gross) : 0,
+      spent: Number.isFinite(Number(record.spent)) ? Number(record.spent) : 0,
+      saved: Number.isFinite(Number(record.saved)) ? Number(record.saved) : 0,
+      dbSynced: true,
+    };
+    await env.PAYMENT_STATE.put(key, JSON.stringify(retained));
   }
   for (const key of deletions) await removeKvWithRetry(env, key);
   await removeKvWithRetry(env, attemptKey);
@@ -277,20 +294,6 @@ export async function recoverInterruptedDeletionPreview(env, {username, groupId}
   }
   await finalizeKvErasure(env, manifest);
   return {ok:true,status:"deleted"};
-}
-
-async function endSubscription(env, id, stripeRequest, expectedCustomerId = null) {
-  if (!/^sub_[a-zA-Z0-9_]+$/.test(id)) throw new Error("Identificador de suscripción inválido.");
-  // Fail closed if Stripe cannot verify or terminate billing; do not delete the
-  // account while future charges might continue.
-  const current = await stripeRequest(env, "GET", `subscriptions/${encodeURIComponent(id)}`);
-  const stripeCustomerId = typeof current.customer === "string" ? current.customer : current.customer?.id;
-  if (expectedCustomerId && stripeCustomerId !== expectedCustomerId) {
-    throw new Error("La suscripción no pertenece al cliente QA autorizado.");
-  }
-  if (!["canceled", "incomplete_expired"].includes(current.status)) {
-    await stripeRequest(env, "DELETE", `subscriptions/${encodeURIComponent(id)}`, { prorate: "false" });
-  }
 }
 
 export async function handleMemberAccountDeletion(request, env, deps) {
@@ -381,14 +384,14 @@ export async function handleMemberAccountDeletion(request, env, deps) {
     await setProgress("stopping-renewals");
     // Match the subscription's Stripe Customer with the QA reporting identity
     // BEFORE cancellation, not merely the KV mapping stored by the test.
-    const expectedCustomerId = env.MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED === "true"
-      ? (plan.customerIds.length === 1 ? plan.customerIds[0] : null)
-      : null;
-    if (env.MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED === "true" && !expectedCustomerId) {
-      throw new Error("No se pudo identificar inequívocamente al titular en los reportes.");
+    const expectedCustomerId = plan.customerIds.length === 1 ? plan.customerIds[0] : null;
+    if (plan.customerIds.length > 1 ||
+        (plan.subIds.length && !expectedCustomerId) ||
+        (env.MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED === "true" && !expectedCustomerId)) {
+      throw new Error("No se pudo identificar inequívocamente al titular en Stripe y los reportes.");
     }
-    // Stripe must be stopped before all sensitive records are erased.
-    for (const id of plan.subIds) await endSubscription(env, id, deps.stripeRequest, expectedCustomerId);
+    // Validate ownership of ALL subscriptions before stopping ANY of them.
+    await stopVerifiedSubscriptions(env, plan.subIds, expectedCustomerId, deps.stripeRequest);
     await setProgress("erasing-reporting");
     // An external reporting failure MUST NOT result in a successful deletion
     // response or erased KV records. After Stripe cancellation, retrying the
