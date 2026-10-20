@@ -11,7 +11,7 @@ function fixture({ owner = false, subStatus = "active", enabled = "true" } = {})
   const token = "A".repeat(32), sessionToken = "S".repeat(64);
   const pass = "review-example-Password123!";
   const passwordHash = createHash("sha256").update(pass).digest("hex");
-  const group = { groupId, tokens: [token], ...(owner
+  const group = { groupId, tokens: [token], customerId: "cus_test123", ...(owner
     ? { membershipType: "owner_lifetime", ownerComplimentary: true }
     : {}) };
   const account = { username, groupId, primaryToken: token, tokens: [token], passwordHash };
@@ -238,6 +238,9 @@ test("Preview deletion requires Google reporting confirmation before erasing mem
   const activation=JSON.parse(t.records.get("activation:cs_test_one"));
   activation.customerId="cus_fakeqa1";
   t.records.set("activation:cs_test_one",JSON.stringify(activation));
+  const accountGroup=JSON.parse(t.records.get("group:"+t.groupId));
+  accountGroup.customerId="cus_fakeqa1";
+  t.records.set("group:"+t.groupId,JSON.stringify(accountGroup));
   t.env.MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED="true";
   t.env.MEMBER_ACCOUNT_DELETION_REPORTING_URL="https://script.google.com/macros/s/qa-fixture/exec";
   t.env.MEMBER_ACCOUNT_DELETION_REPORTING_SECRET="qa-only-secret";
@@ -261,6 +264,9 @@ test("Google reporting timeout fails closed and does not erase account KV", asyn
   const activation=JSON.parse(t.records.get("activation:cs_test_one"));
   activation.customerId="cus_fakeqa1";
   t.records.set("activation:cs_test_one",JSON.stringify(activation));
+  const accountGroup=JSON.parse(t.records.get("group:"+t.groupId));
+  accountGroup.customerId="cus_fakeqa1";
+  t.records.set("group:"+t.groupId,JSON.stringify(accountGroup));
   t.env.MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED="true";
   t.env.MEMBER_ACCOUNT_DELETION_REPORTING_URL="https://script.google.com/macros/s/qa-fixture/exec";
   t.env.MEMBER_ACCOUNT_DELETION_REPORTING_SECRET="qa-only-secret";
@@ -297,6 +303,9 @@ test("Stripe canceled, Google temporarily fails, then authenticated retry finish
   const activation=JSON.parse(t.records.get("activation:cs_test_one"));
   activation.customerId="cus_fakeqa1";
   t.records.set("activation:cs_test_one",JSON.stringify(activation));
+  const accountGroup=JSON.parse(t.records.get("group:"+t.groupId));
+  accountGroup.customerId="cus_fakeqa1";
+  t.records.set("group:"+t.groupId,JSON.stringify(accountGroup));
   Object.assign(t.env,{
     MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
     MEMBER_ACCOUNT_DELETION_REPORTING_URL:"https://script.google.com/macros/s/qa-fixture/exec",
@@ -304,8 +313,8 @@ test("Stripe canceled, Google temporarily fails, then authenticated retry finish
   });
   let status="active", cancelCalls=0, reportCalls=0;
   t.deps.stripeRequest=async (_,method)=>{
-    if(method==="GET") return {status, customer:"cus_fakeqa1"};
-    if(method==="DELETE") { status="canceled";cancelCalls++;return {status}; }
+    if(method==="GET") return {id:"sub_review123",status, customer:"cus_fakeqa1"};
+    if(method==="DELETE") { status="canceled";cancelCalls++;return {id:"sub_review123",status}; }
     throw Error("unexpected Stripe operation");
   };
   t.deps.reportingFetch=async()=>{
@@ -443,6 +452,12 @@ test("Reporting QA refuses to cancel a subscription owned by another Stripe cust
   const activation=JSON.parse(t.records.get("activation:cs_test_one"));
   activation.customerId="cus_fakeqa1";
   t.records.set("activation:cs_test_one",JSON.stringify(activation));
+  const group=JSON.parse(t.records.get("group:"+t.groupId));
+  group.customerId="cus_fakeqa1";
+  t.records.set("group:"+t.groupId,JSON.stringify(group));
+  const accountGroup=JSON.parse(t.records.get("group:"+t.groupId));
+  accountGroup.customerId="cus_fakeqa1";
+  t.records.set("group:"+t.groupId,JSON.stringify(accountGroup));
   t.env.MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED="true";
   const attempts=[];
   t.deps.stripeRequest=async(_,method)=>{
