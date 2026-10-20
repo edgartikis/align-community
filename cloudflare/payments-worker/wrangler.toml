@@ -42,6 +42,16 @@ STRIPE_PRICE_CIRCLE_LIVE = "price_1UHAjxE2qRZRC8p2odXD4Bc5"
 # QR_SIGNING_SECRET (opcional; si falta, usa la clave Stripe del modo activo)
 # ALIGN_DB_URL / ALIGN_DB_SECRET (solo sincronización secundaria de reportes)
 
+# Isolated account deletion release: fail closed until verified Live rollout.
+# The initial backend deploy does not delete accounts or change Stripe billing.
+MEMBER_LOGIN_GUARD = "false"
+MEMBER_PASSWORD_V2 = "false"
+ALIGN_APP_QR_ROTATION_ENABLED = "false"
+MEMBER_ACCOUNT_DELETION_ENABLED = "false"
+MEMBER_ACCOUNT_DELETION_LIVE_ENABLED = "false"
+MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED = "false"
+MEMBER_ACCOUNT_DELETION_FOUNDER_ENABLED = "false"
+
 # Official Apple Wallet pass: disabled until signed, approved and tested on iPhone.
 WALLET_ENABLED = "false"
 # Single-member test is OFF by default. Activate only by separate approval and
