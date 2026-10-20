@@ -33,8 +33,10 @@ test("reports exactly one verified QA identity over HTTPS with private secret an
 
 test("disabled external reporting never contacts service",async()=>{
   const e=env();e.MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED="false";
-  const result=await eraseAccountReporting(e,member,()=>{throw Error("Unexpected network");});
-  assert.deepEqual(result,{skipped:true});
+  let calls=0;
+  await assert.rejects(eraseAccountReporting(e,member,()=>{calls++;throw Error("Unexpected network");}),
+    /anonimización externa es obligatoria/);
+  assert.equal(calls,0);
 });
 
 test("live mode, missing secrets, non-Apps-Script URLs and invalid accounts fail closed",async()=>{
