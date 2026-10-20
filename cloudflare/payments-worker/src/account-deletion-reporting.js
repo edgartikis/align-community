@@ -23,6 +23,9 @@ function destination(env) {
     // Separate deployment URL: never replace the billing/reporting web app.
     rawUrl = env.MEMBER_ACCOUNT_DELETION_LIVE_URL;
     secret = env.MEMBER_ACCOUNT_DELETION_LIVE_SECRET;
+    if (!rawUrl || !env.ALIGN_DB_URL || String(rawUrl).trim() === String(env.ALIGN_DB_URL).trim()) {
+      throw new Error("La URL de eliminación debe ser independiente de la de pagos.");
+    }
     if (String(secret || "").length < 32 ||
         String(secret) === String(env.ALIGN_DB_SECRET || "")) {
       throw new Error("Falta una credencial independiente para eliminación de cuentas.");
