@@ -84,6 +84,8 @@ test("Live reporting preflight must affirm ownership BEFORE Stripe cancellation"
   Object.assign(t.env,{
     STRIPE_MODE:"live",
     MEMBER_ACCOUNT_DELETION_LIVE_ENABLED:"true",
+    MEMBER_ACCOUNT_DELETION_LIVE_QA_ENABLED:"true",
+    MEMBER_LOGIN_GUARD:"false",
     MEMBER_ACCOUNT_DELETION_LIVE_TEST_USERNAME:t.username,
     MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
     ALIGN_DB_URL:"https://script.google.com/macros/s/test-fixture/exec",
@@ -127,6 +129,8 @@ test("Live preflight failure never calls Stripe or alters member data",async()=>
   Object.assign(t.env,{
     STRIPE_MODE:"live",
     MEMBER_ACCOUNT_DELETION_LIVE_ENABLED:"true",
+    MEMBER_ACCOUNT_DELETION_LIVE_QA_ENABLED:"true",
+    MEMBER_LOGIN_GUARD:"false",
     MEMBER_ACCOUNT_DELETION_LIVE_TEST_USERNAME:t.username,
     MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
     ALIGN_DB_URL:"https://script.google.com/macros/s/test-fixture/exec",
@@ -154,6 +158,8 @@ test("Live mode fails closed if Google integration secret is missing",async()=>{
   Object.assign(t.env,{
     STRIPE_MODE:"live",
     MEMBER_ACCOUNT_DELETION_LIVE_ENABLED:"true",
+    MEMBER_ACCOUNT_DELETION_LIVE_QA_ENABLED:"true",
+    MEMBER_LOGIN_GUARD:"false",
     MEMBER_ACCOUNT_DELETION_LIVE_TEST_USERNAME:t.username,
     MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
     ALIGN_DB_URL:"https://script.google.com/macros/s/test-fixture/exec",
@@ -174,6 +180,8 @@ test("Live mode refuses the billing Apps Script URL even with deletion gates on"
   Object.assign(t.env,{
     STRIPE_MODE:"live",
     MEMBER_ACCOUNT_DELETION_LIVE_ENABLED:"true",
+    MEMBER_ACCOUNT_DELETION_LIVE_QA_ENABLED:"true",
+    MEMBER_LOGIN_GUARD:"false",
     MEMBER_ACCOUNT_DELETION_LIVE_TEST_USERNAME:t.username,
     MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
     ALIGN_DB_URL:"https://script.google.com/macros/s/billing-production-fixture/exec",
@@ -197,6 +205,8 @@ test("Live rollout with no approved test username cannot cancel Stripe or touch 
   Object.assign(t.env,{
     STRIPE_MODE:"live",
     MEMBER_ACCOUNT_DELETION_LIVE_ENABLED:"true",
+    MEMBER_ACCOUNT_DELETION_LIVE_QA_ENABLED:"true",
+    MEMBER_LOGIN_GUARD:"false",
     MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
     MEMBER_ACCOUNT_DELETION_LIVE_TEST_USERNAME:"",
   });
@@ -216,6 +226,8 @@ test("Live rollout forbids another username even with valid session and deletion
   Object.assign(t.env,{
     STRIPE_MODE:"live",
     MEMBER_ACCOUNT_DELETION_LIVE_ENABLED:"true",
+    MEMBER_ACCOUNT_DELETION_LIVE_QA_ENABLED:"true",
+    MEMBER_LOGIN_GUARD:"false",
     MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
     MEMBER_ACCOUNT_DELETION_LIVE_TEST_USERNAME:"cordexin",
   });
@@ -235,6 +247,8 @@ test("Live rollout refuses Founder username as QA allowlist even when flags are 
   Object.assign(t.env,{
     STRIPE_MODE:"live",
     MEMBER_ACCOUNT_DELETION_LIVE_ENABLED:"true",
+    MEMBER_ACCOUNT_DELETION_LIVE_QA_ENABLED:"true",
+    MEMBER_LOGIN_GUARD:"false",
     MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
     MEMBER_ACCOUNT_DELETION_LIVE_TEST_USERNAME:"edgar.cordero",
   });
