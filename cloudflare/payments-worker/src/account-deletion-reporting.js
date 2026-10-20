@@ -1,55 +1,87 @@
 /**
- * Optional, fail-closed account erasure adapter for the existing ALIGN
- * reporting Google Apps Script. PREVIEW QA ONLY until the production workflow
- * has been accepted. Never export or log the shared secret.
- *
- * The Apps Script endpoint must implement:
- * POST {mode:"ALIGN_PROD_2026", secret, action:"anonymize_account",
- *       username, stripeCustomerId}
- * -> {ok:true, anonymized:true, counts:{socios,afiliados,visitas,pagos}}
+ * Fail-closed Google Apps Script adapter for account deletion.
+ * Preview uses separate QA credentials. Live uses the existing database
+ * integration and can run ONLY behind independent explicit live gates.
+ * No secrets or personal data are logged. Never call this from a browser.
  */
-const QA_ACTION = "anonymize_account";
 const MODE = "ALIGN_PROD_2026";
+const VALID_USER = /^[a-z0-9._-]{4,24}$/;
+const VALID_CUSTOMER = /^cus_[A-Za-z0-9]+$/;
 
-export async function eraseAccountReporting(env, {username,customerId}, fetcher=fetch) {
+function destination(env) {
   if (env.MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED !== "true") {
-    // Production will be blocked by the deletion handler until this is ready.
-    return {skipped:true};
+    throw new Error("La anonimización externa es obligatoria antes de eliminar una cuenta.");
   }
-  if (env.STRIPE_MODE !== "test") {
-    throw new Error("El reporte externo aún no está autorizado fuera de Preview.");
+  let rawUrl, secret;
+  if (env.STRIPE_MODE === "test") {
+    rawUrl = env.MEMBER_ACCOUNT_DELETION_REPORTING_URL;
+    secret = env.MEMBER_ACCOUNT_DELETION_REPORTING_SECRET;
+  } else if (env.STRIPE_MODE === "live" &&
+      env.MEMBER_ACCOUNT_DELETION_ENABLED === "true" &&
+      env.MEMBER_ACCOUNT_DELETION_LIVE_ENABLED === "true" &&
+      env.MEMBER_LOGIN_GUARD === "true") {
+    rawUrl = env.ALIGN_DB_URL;
+    secret = env.ALIGN_DB_SECRET;
+    if (String(secret || "").length < 32) {
+      throw new Error("El secreto de reportes de producción no cumple la longitud requerida.");
+    }
+  } else {
+    throw new Error("La conexión de reportes Live no está autorizada.");
   }
-  const rawUrl=String(env.MEMBER_ACCOUNT_DELETION_REPORTING_URL||"").trim();
-  const secret=String(env.MEMBER_ACCOUNT_DELETION_REPORTING_SECRET||"").trim();
-  if (!secret || !rawUrl) throw new Error("La conexión de anonimización de reportes no está configurada.");
+  if (!rawUrl || !secret) {
+    throw new Error("La conexión de anonimización de reportes no está configurada.");
+  }
   let url;
-  try {url=new URL(rawUrl);} catch {throw new Error("La URL de anonimización no es válida.");}
-  if (url.protocol!=="https:" || url.hostname!=="script.google.com" ||
+  try {url = new URL(String(rawUrl).trim());}
+  catch {throw new Error("La URL de anonimización no es válida.");}
+  if (url.protocol !== "https:" || url.hostname !== "script.google.com" ||
       !/^\/macros\/s\/[^/]+\/exec$/.test(url.pathname) ||
       url.username || url.password || url.search || url.hash) {
     throw new Error("La URL del conector no pertenece a Google Apps Script publicado.");
   }
-  if(!/^[a-z0-9._-]{4,24}$/.test(username) || !/^cus_[A-Za-z0-9]+$/.test(customerId)){
+  return { url: url.toString(), secret: String(secret) };
+}
+
+async function report(env, {username,customerId}, action, fetcher) {
+  if (!VALID_USER.test(username) || !VALID_CUSTOMER.test(customerId)) {
     throw new Error("La identidad del socio no es válida para anonimización.");
   }
-
-  // A single request; duplicate deliveries must be idempotent on the Script.
-  // Google Apps Script web apps sometimes redirect on successful execution.
-  const res=await fetcher(url.toString(),{
+  const {url,secret} = destination(env);
+  const response = await fetcher(url,{
     method:"POST",
     headers:{"content-type":"application/json"},
-    body:JSON.stringify({
-      mode:MODE,secret,action:QA_ACTION,username,stripeCustomerId:customerId,
-    }),
+    body:JSON.stringify({mode:MODE,secret,action,username,stripeCustomerId:customerId}),
     redirect:"follow",
     signal:AbortSignal.timeout(20000),
   });
-  if(!res.ok) throw new Error("El servicio de reportes no respondió correctamente.");
-  const data=await res.json().catch(()=>null);
-  if(data?.ok!==true || data?.anonymized!==true ||
-     !data.counts || !["socios","afiliados","visitas","pagos"].every(
-       k=>Number.isSafeInteger(data.counts[k])&&data.counts[k]>=0)) {
+  if (!response.ok) throw new Error("El servicio de reportes no respondió correctamente.");
+  const result = await response.json().catch(()=>null);
+  if (result?.ok !== true) throw new Error("El servicio de reportes no confirmó la operación.");
+  return result;
+}
+
+/**
+ * Read-only identity & capability check BEFORE Stripe cancellation.
+ * Required in Live. The Apps Script production deployment must explicitly
+ * implement 'preflight_account_erasure'; no optimistic fallback.
+ */
+export async function checkAccountReporting(env, identity, fetcher=fetch) {
+  if (env.STRIPE_MODE !== "live") {
+    throw new Error("La verificación previa solo corresponde a producción.");
+  }
+  const result = await report(env, identity, "preflight_account_erasure", fetcher);
+  if (result.eligible !== true || result.capability !== "account-erasure-v1") {
+    throw new Error("El servicio de reportes no verificó la cuenta ni la funcionalidad.");
+  }
+  return {eligible:true};
+}
+
+export async function eraseAccountReporting(env, identity, fetcher=fetch) {
+  const result = await report(env, identity, "anonymize_account", fetcher);
+  if (result.anonymized !== true || !result.counts ||
+      !["socios","afiliados","visitas","pagos"].every(k =>
+        Number.isSafeInteger(result.counts[k]) && result.counts[k] >= 0)) {
     throw new Error("El servicio de reportes no confirmó la anonimización.");
   }
-  return {ok:true,counts:data.counts};
+  return {ok:true,counts:result.counts};
 }
