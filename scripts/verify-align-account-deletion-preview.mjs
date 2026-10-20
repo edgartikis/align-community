@@ -21,11 +21,13 @@ const BASE="https://align-qr-pilot-align-payments.alignservice18.workers.dev";
 const USERNAME="qa.delete.fixture2";
 // Stage 2 only: link a disposable Stripe TEST trial subscription ID, never live.
 const args=process.argv.slice(2);
+const reportingQa=args.includes("--reporting-qa");
 const subscriptionIndex=args.indexOf("--stripe-test-sub");
 const subId=subscriptionIndex>=0?String(args[subscriptionIndex+1]||""):"";
 if(subscriptionIndex>=0 && !/^sub_[A-Za-z0-9]+$/.test(subId))
   throw Error("Especifica un ID sub_... válido de una suscripción Stripe Test.");
-if(args.length!==(subscriptionIndex>=0?2:0))throw Error("Argumentos inesperados.");
+if(args.length!==(subscriptionIndex>=0?2:0)+(reportingQa?1:0))throw Error("Argumentos inesperados.");
+if(reportingQa && subId)throw Error("La prueba QA de Sheets usa cus_fakeqa1; no puede combinarse con una suscripción de otro cliente Stripe.");
 const createdKeys=[];
 let groupId="";
 let issuedSessionToken="";
@@ -46,6 +48,10 @@ function assertPreviewOnly(){
   assert.match(preview,/MEMBER_LOGIN_GUARD = "true"/);
   assert.match(preview,/MEMBER_PASSWORD_V2 = "true"/);
   assert.match(preview,/ALIGN_APP_QR_ROTATION_ENABLED = "true"/);
+  if(reportingQa){
+    assert.match(preview,/MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED = "true"/,
+      "Activa el borrado de reportes solamente para la prueba Preview y despliega de nuevo.");
+  }
   assert.ok(new URL(BASE).hostname.endsWith(".workers.dev"));
 }
 function kvRun(action,key,value){
@@ -108,7 +114,8 @@ async function main(){
     status:"Activa",level:"The Brotherhood",planKey:"brotherhood",position:1,
     joinedAt:now,validFrom:now,validUntil:until,savings:0,
   });
-  kvPut("group:"+groupId,{groupId,tokens:[token],planKey:"brotherhood",membershipType:"synthetic_test"});
+  kvPut("group:"+groupId,{groupId,tokens:[token],planKey:"brotherhood",membershipType:"synthetic_test",
+    ...(reportingQa?{customerId:"cus_fakeqa1"}:{})});
   kvPut("account:"+USERNAME,{
     version:1,username:USERNAME,passwordHash:createHash("sha256").update(password).digest("hex"),
     groupId,primaryToken:token,tokens:[token],createdAt:now,
@@ -185,7 +192,9 @@ async function main(){
   console.log("✓ Cuenta, tarjetas y acceso revocados; segundo login rechazado.");
   // Discard only the synthetic QA tombstone; no activation was created.
   kvDelete("deleted-group:"+groupId);
-  console.log(subId
+  console.log(reportingQa
+    ? "✓ PRUEBA PREVIEW + GOOGLE SHEETS QA COMPLETADA. Comprueba en Sheets que solo qa.delete.fixture2 fue anonimizado."
+    : subId
     ? "✓ PRUEBA PREVIEW + STRIPE TEST COMPLETADA. Verifica status=canceled en Stripe Test."
     : "✓ PRUEBA PREVIEW COMPLETADA. Stripe Live y los socios reales permanecen intactos.");
 }
