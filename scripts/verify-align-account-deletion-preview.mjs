@@ -19,6 +19,9 @@ const PREVIEW_KV="4b23fffb26264609b9f18f110baea954";
 const LIVE_KV="4504d6bcead74cdfa7e3a76599f641fc";
 const BASE="https://align-qr-pilot-align-payments.alignservice18.workers.dev";
 const USERNAME="qa.delete.fixture2";
+// Verified against Stripe TEST API; never accept a different customer or subscription here.
+const QA_TEST_CUSTOMER="cus_VT7rpDV5GBjC6u";
+const QA_TEST_SUBSCRIPTION="sub_1USSV1DMjEcJHlpUbTf9Sy6V";
 // Stage 2 only: link a disposable Stripe TEST trial subscription ID, never live.
 const args=process.argv.slice(2);
 const reportingQa=args.includes("--reporting-qa");
@@ -27,7 +30,8 @@ const subId=subscriptionIndex>=0?String(args[subscriptionIndex+1]||""):"";
 if(subscriptionIndex>=0 && !/^sub_[A-Za-z0-9]+$/.test(subId))
   throw Error("Especifica un ID sub_... válido de una suscripción Stripe Test.");
 if(args.length!==(subscriptionIndex>=0?2:0)+(reportingQa?1:0))throw Error("Argumentos inesperados.");
-if(reportingQa && subId)throw Error("La prueba QA de Sheets usa cus_fakeqa1; no puede combinarse con una suscripción de otro cliente Stripe.");
+if(reportingQa && subId!==QA_TEST_SUBSCRIPTION)throw Error("La prueba conjunta solo acepta la suscripción trialing del cliente QA previamente verificado.");
+if(!reportingQa && subId===QA_TEST_SUBSCRIPTION)throw Error("La suscripción QA vinculada a Google Sheets exige --reporting-qa para anonimizar los registros antes de borrar KV.");
 const createdKeys=[];
 let groupId="";
 let issuedSessionToken="";
@@ -115,7 +119,7 @@ async function main(){
     joinedAt:now,validFrom:now,validUntil:until,savings:0,
   });
   kvPut("group:"+groupId,{groupId,tokens:[token],planKey:"brotherhood",membershipType:"synthetic_test",
-    ...(reportingQa?{customerId:"cus_fakeqa1"}:{})});
+    ...(reportingQa?{customerId:QA_TEST_CUSTOMER,subscriptionId:subId}:{})});
   kvPut("account:"+USERNAME,{
     version:1,username:USERNAME,passwordHash:createHash("sha256").update(password).digest("hex"),
     groupId,primaryToken:token,tokens:[token],createdAt:now,
