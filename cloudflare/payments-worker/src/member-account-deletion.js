@@ -178,6 +178,20 @@ async function deletionPlan(env, account, group) {
   return { deletions: [...deletions], redactions, subIds: [...subIds], customerIds: [...customerIds], tokens };
 }
 
+// A short bounded retry handles transient Cloudflare KV errors during cleanup.
+// This is not a substitute for a separately authenticated manual recovery tool.
+async function removeKvWithRetry(env, key) {
+  let lastError;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try { await env.PAYMENT_STATE.delete(key); return; }
+    catch (error) {
+      lastError = error;
+      if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 80 * (attempt + 1)));
+    }
+  }
+  throw lastError;
+}
+
 async function endSubscription(env, id, stripeRequest) {
   if (!/^sub_[a-zA-Z0-9_]+$/.test(id)) throw new Error("Identificador de suscripción inválido.");
   // Fail closed if Stripe cannot verify or terminate billing; do not delete the
@@ -265,8 +279,18 @@ export async function handleMemberAccountDeletion(request, env, deps) {
 
   try {
     const plan = await deletionPlan(env, account, group);
+    // The journal contains only status and timestamps, never credentials.
+    // It enables operational diagnosis if Stripe/Sheets/KV temporarily fails.
+    // Repeating an authenticated request before the tombstone is written is
+    // intentionally idempotent (Stripe GET then conditional DELETE; Sheets
+    // response uses the same identity), without replaying another charge.
+    const progressKey = `deletion-progress:${account.groupId}`;
+    const setProgress = (stage) => env.PAYMENT_STATE.put(progressKey,
+      JSON.stringify({stage, updatedAt:new Date().toISOString()}));
+    await setProgress("stopping-renewals");
     // Stripe must be stopped before all sensitive records are erased.
     for (const id of plan.subIds) await endSubscription(env, id, deps.stripeRequest);
+    await setProgress("erasing-reporting");
     // An external reporting failure MUST NOT result in a successful deletion
     // response or erased KV records. After Stripe cancellation, retrying the
     // request is safe: the subscription is already canceled.
@@ -279,6 +303,7 @@ export async function handleMemberAccountDeletion(request, env, deps) {
         customerId: plan.customerIds[0],
       }, deps.reportingFetch);
     }
+    await setProgress("purging-kv");
     // Tombstone prevents old checkout activation data from resurrecting a deleted
     // group, and makes sessions fail closed while KV cleanup is in progress.
     const tombstone = `deleted-group:${account.groupId}`;
@@ -296,11 +321,12 @@ export async function handleMemberAccountDeletion(request, env, deps) {
         integranteId: "", socioId: "", photoUrl: "" };
       await env.PAYMENT_STATE.put(key, JSON.stringify(cleaned));
     }
-    for (const key of plan.deletions) await env.PAYMENT_STATE.delete(key);
-    await env.PAYMENT_STATE.delete(attemptKey);
+    for (const key of plan.deletions) await removeKvWithRetry(env, key);
+    await removeKvWithRetry(env, attemptKey);
     await env.PAYMENT_STATE.put(tombstone, JSON.stringify({
       status: "complete", completedAt: new Date().toISOString(),
     }));
+    await removeKvWithRetry(env, progressKey);
     return reply({ ok: true, status: "deleted",
       message: "Cuenta eliminada y renovación detenida. Los comprobantes fiscales se conservan cuando la ley lo exige." }, 200, origin);
   } catch (error) {
