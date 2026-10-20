@@ -1,5 +1,5 @@
 import { authenticatePreviewPassword, validPlaintextPassword, previewPasswordV2Enabled } from "./member-password-v2.js";
-import { eraseAccountReporting } from "./account-deletion-reporting.js";
+import { checkAccountReporting, eraseAccountReporting } from "./account-deletion-reporting.js";
 import { stopVerifiedSubscriptions } from "./account-deletion-billing.js";
 
 // Isolated account-erasure workflow. Requires a valid member session, password
@@ -304,18 +304,23 @@ export async function handleMemberAccountDeletion(request, env, deps) {
     "access-control-allow-headers": "authorization,content-type",
   } });
   if (request.method !== "POST") return reply({ error: "Método no permitido." }, 405, origin);
-  // Staging-only deployment guard: even an accidental flag flip in Production
-  // must never enable a destructive endpoint. Revisit this gate after isolated
-  // E2E testing, billing reconciliation and full external-data erasure review.
+  // Two independent, off-by-default deployment modes:
+  // Preview = isolated Stripe Test / fake account allowlist.
+  // Live = explicit deletion + live approval + reporting + login throttling.
+  // A deploy of this code alone cannot enable destructive operations.
   const isolatedPreview = env.STRIPE_MODE === "test" &&
     env.MEMBER_PASSWORD_V2 === "true" &&
     env.MEMBER_LOGIN_GUARD === "true" &&
     env.ALIGN_APP_QR_ROTATION_ENABLED === "true";
-  if (env.MEMBER_ACCOUNT_DELETION_ENABLED !== "true" || !isolatedPreview) {
+  const reviewedLive = env.STRIPE_MODE === "live" &&
+    env.MEMBER_ACCOUNT_DELETION_LIVE_ENABLED === "true" &&
+    env.MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED === "true" &&
+    env.MEMBER_LOGIN_GUARD === "true";
+  if (env.MEMBER_ACCOUNT_DELETION_ENABLED !== "true" || !(isolatedPreview || reviewedLive)) {
     return reply({ error: "La eliminación de cuenta aún no está habilitada en este entorno." }, 503, origin);
   }
   const permittedUsername = clean(env.MEMBER_ACCOUNT_DELETION_TEST_USERNAME, 24).toLowerCase();
-  if (!/^[a-z0-9._-]{4,24}$/.test(permittedUsername)) {
+  if (isolatedPreview && !/^[a-z0-9._-]{4,24}$/.test(permittedUsername)) {
     return reply({ error: "Falta configurar la cuenta ficticia autorizada para eliminación." }, 503, origin);
   }
   if (!env.PAYMENT_STATE) return reply({ error: "Servicio no disponible." }, 503, origin);
@@ -328,7 +333,7 @@ export async function handleMemberAccountDeletion(request, env, deps) {
   if (body.confirmation !== "ELIMINAR" || !validPlaintextPassword(body.password)) {
     return reply({ error: "Escribe ELIMINAR y confirma tu contraseña." }, 400, origin);
   }
-  if (session.username !== permittedUsername) {
+  if (isolatedPreview && session.username !== permittedUsername) {
     return reply({ error: "Solo se permite eliminar la cuenta ficticia autorizada para esta prueba." }, 403, origin);
   }
   const account = await deps.readJson(env, `account:${session.username}`);
@@ -381,15 +386,22 @@ export async function handleMemberAccountDeletion(request, env, deps) {
     const progressKey = `deletion-progress:${account.groupId}`;
     const setProgress = (stage) => env.PAYMENT_STATE.put(progressKey,
       JSON.stringify({stage, updatedAt:new Date().toISOString()}));
-    await setProgress("stopping-renewals");
-    // Match the subscription's Stripe Customer with the QA reporting identity
-    // BEFORE cancellation, not merely the KV mapping stored by the test.
+    // Resolve one Stripe identity. Live cannot skip reporting or ownership
+    // verification; its Google Apps Script must affirm capability + ownership
+    // BEFORE we attempt the first Stripe cancellation.
     const expectedCustomerId = plan.customerIds.length === 1 ? plan.customerIds[0] : null;
     if (plan.customerIds.length > 1 ||
         (plan.subIds.length && !expectedCustomerId) ||
         (env.MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED === "true" && !expectedCustomerId)) {
       throw new Error("No se pudo identificar inequívocamente al titular en Stripe y los reportes.");
     }
+    if (reviewedLive) {
+      await setProgress("validating-reporting");
+      await checkAccountReporting(env, {
+        username: account.username, customerId: expectedCustomerId,
+      }, deps.reportingFetch);
+    }
+    await setProgress("stopping-renewals");
     // Validate ownership of ALL subscriptions before stopping ANY of them.
     await stopVerifiedSubscriptions(env, plan.subIds, expectedCustomerId, deps.stripeRequest);
     await setProgress("erasing-reporting");
