@@ -3,7 +3,7 @@ import { stripeMode, stripeSecret, stripeWebhookSecret, qrSigningSecret, verifyQ
 const PLANS = Object.freeze({
   brotherhood: { name: "The Brotherhood", seats: 1, prefix: "BRO", founderPriceEnv: "STRIPE_PRICE_BROTHERHOOD_FOUNDER", regularPriceEnv: "STRIPE_PRICE_BROTHERHOOD_REGULAR" },
   girls: { name: "Girls Club", seats: 1, prefix: "GIR", founderPriceEnv: "STRIPE_PRICE_GIRLS_FOUNDER", regularPriceEnv: "STRIPE_PRICE_GIRLS_REGULAR" },
-  ranch: { name: "Cowboys", seats: 1, prefix: "COW", founderPriceEnv: "STRIPE_PRICE_RANCH_FOUNDER", regularPriceEnv: "STRIPE_PRICE_RANCH_REGULAR" },
+  ranch: { name: "Ranch Club", seats: 1, prefix: "COW", founderPriceEnv: "STRIPE_PRICE_RANCH_FOUNDER", regularPriceEnv: "STRIPE_PRICE_RANCH_REGULAR" },
   duo: { name: "Duo Club", seats: 2, prefix: "DUO", standardPriceEnv: "STRIPE_PRICE_DUO" },
   circle: { name: "Private Circle", seats: 3, prefix: "CIR", standardPriceEnv: "STRIPE_PRICE_CIRCLE" },
 });
