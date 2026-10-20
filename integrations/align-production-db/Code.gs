@@ -214,6 +214,7 @@ function preflightAccountErasure_(body) {
   const rows = sheet.getRange(DATA_START_ROW, 1,
     sheet.getLastRow() - DATA_START_ROW + 1, 22).getValues();
   let found = 0;
+  let ownerId = '';
   for (let i = 0; i < rows.length; i += 1) {
     const rowUser = clean_(rows[i][1], 24).toLowerCase();
     const rowCustomer = clean_(rows[i][17], 100);
@@ -221,13 +222,41 @@ function preflightAccountErasure_(body) {
     if (rowUser !== username || rowCustomer !== customer) {
       throw new Error('Conflicto de identidad de Stripe; no se eliminó nada.');
     }
-    if (!clean_(rows[i][0], 80)) {
+    ownerId = clean_(rows[i][0], 80);
+    if (!ownerId) {
       throw new Error('Falta identidad del grupo; no se detuvieron cobros.');
     }
     found += 1;
   }
   if (found !== 1) {
     throw new Error('Se requiere una coincidencia única antes de detener cobros.');
+  }
+  // Perform the same cross-table identity checks BEFORE cancelling Stripe.
+  // No sheet writes, no row creation and no implicit ownership by username.
+  const checks = [
+    {name:'AFILIADOS', columns:10, group:1, user:2, customer:-1},
+    {name:'VISITAS', columns:16, group:2, user:4, customer:-1},
+    {name:'PAGOS', columns:12, group:2, user:3, customer:10},
+  ];
+  for (let k = 0; k < checks.length; k += 1) {
+    const spec = checks[k];
+    const sheet = ss.getSheetByName(spec.name);
+    if (!sheet) throw new Error('Falta una hoja necesaria para verificar la identidad.');
+    const count = Math.max(0, sheet.getLastRow() - DATA_START_ROW + 1);
+    if (!count) continue;
+    const records = sheet.getRange(DATA_START_ROW, 1, count, spec.columns).getValues();
+    for (let i = 0; i < records.length; i += 1) {
+      const row = records[i];
+      const group = clean_(row[spec.group], 80);
+      const user = clean_(row[spec.user], 24).toLowerCase();
+      const stripe = spec.customer < 0 ? '' : clean_(row[spec.customer], 100);
+      if (group !== ownerId && user !== username && stripe !== customer) continue;
+      if (group && group !== ownerId ||
+          user && user !== username ||
+          stripe && stripe !== customer) {
+        throw new Error('Hay registros vinculados a otro socio; no se detuvieron cobros.');
+      }
+    }
   }
   return { ok: true, eligible: true, capability: 'account-erasure-v1' };
 }
