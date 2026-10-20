@@ -30,6 +30,7 @@ function doPost(e) {
     if (body.action === 'register_visit') return json_(registerVisit_(body));
     // Account erasure must be called only by the authenticated Worker with its
     // existing ALIGN_DB_SECRET; never expose this Apps Script URL to the app.
+    if (body.action === 'preflight_account_erasure') return json_(preflightAccountErasure_(body));
     if (body.action === 'anonymize_account') return json_(anonymizeAccount_(body));
     if (body.action === 'subscription_renewed') return json_(subscriptionRenewed_(body));
     if (body.action === 'subscription_payment_failed') return json_(subscriptionPaymentFailed_(body));
@@ -192,13 +193,47 @@ function registerVisit_(body) {
  * This handler MUST NOT be deployed until tested with backup reports and a
  * verified, authenticated production Worker deletion orchestration.
  */
+/**
+ * Read-only fail-closed capability + Stripe identity preflight.
+ * The native app never calls this: only an authenticated Cloudflare Worker.
+ * If a real account is missing from the reporting sheet, do NOT cancel Stripe.
+ * A support reconciliation is required instead of guessing an owner.
+ */
+function preflightAccountErasure_(body) {
+  const username = clean_(body.username, 24).toLowerCase();
+  const customer = clean_(body.stripeCustomerId, 100);
+  if (!/^[a-z0-9._-]{4,24}$/.test(username) ||
+      !/^cus_[A-Za-z0-9]+$/.test(customer)) {
+    throw new Error('Identidad de eliminación inválida.');
+  }
+  const ss = spreadsheet_();
+  const sheet = ss.getSheetByName('SOCIOS');
+  if (!sheet || sheet.getLastRow() < DATA_START_ROW) {
+    throw new Error('No existen registros de socios que puedan verificarse.');
+  }
+  const rows = sheet.getRange(DATA_START_ROW, 1,
+    sheet.getLastRow() - DATA_START_ROW + 1, 22).getValues();
+  let found = 0;
+  for (let i = 0; i < rows.length; i += 1) {
+    if (clean_(rows[i][1], 24).toLowerCase() !== username) continue;
+    if (clean_(rows[i][17], 100) !== customer) {
+      throw new Error('Conflicto de identidad de Stripe; no se eliminó nada.');
+    }
+    found += 1;
+  }
+  if (found !== 1) {
+    throw new Error('Se requiere una coincidencia única antes de detener cobros.');
+  }
+  return { ok: true, eligible: true, capability: 'account-erasure-v1' };
+}
+
 function anonymizeAccount_(body) {
   const username = clean_(body.username, 24).toLowerCase();
   if (!/^[a-z0-9._-]{4,24}$/.test(username)) {
     throw new Error('Cuenta no válida para anonimización.');
   }
   const expectedCustomer = clean_(body.stripeCustomerId, 100);
-  if (expectedCustomer && !/^cus_[A-Za-z0-9]+$/.test(expectedCustomer)) {
+  if (!/^cus_[A-Za-z0-9]+$/.test(expectedCustomer)) {
     throw new Error('Stripe Customer no válido.');
   }
   const db = sheets_();
@@ -216,7 +251,7 @@ function anonymizeAccount_(body) {
   for (let i = 0; i < socios.length; i += 1) {
     const row = socios[i];
     if (clean_(row[1], 24).toLowerCase() !== username) continue;
-    if (expectedCustomer && clean_(row[17], 100) !== expectedCustomer) {
+    if (clean_(row[17], 100) !== expectedCustomer) {
       throw new Error('La identidad de Stripe no coincide con el socio.');
     }
     if (row[0]) socioIds[clean_(row[0], 80)] = true;
