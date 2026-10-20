@@ -66,11 +66,23 @@ function setup() {
   const fake=fakeSheets();
   const context={
     SpreadsheetApp:{openById:()=>fake.spreadsheet},
-    PropertiesService:{getScriptProperties:()=>({getProperty:key=>key==="SPREADSHEET_ID"?"fake-spreadsheet":"mock-secret"})},
-    ContentService:{},
+    PropertiesService:{getScriptProperties:()=>({getProperty:key=>
+      key==="SPREADSHEET_ID" ? "fake-spreadsheet" :
+      key==="ALIGN_DB_SECRET" ? "billing-test-secret" :
+      key==="ALIGN_DB_DELETION_SECRET" ? "deletion-only-fixture-credential-at-least-32-chars" : ""
+    })},
+    LockService:{getScriptLock:()=>({waitLock(){},releaseLock(){}})},
+    ContentService:{
+      MimeType:{JSON:"application/json"},
+      createTextOutput:payload=>({
+        payload,
+        setMimeType(){return this;},
+        getContent(){return this.payload;}
+      }),
+    },
   };
-  runInNewContext(source+"\nthis.__anonymizeAccount = anonymizeAccount_; this.__preflight = preflightAccountErasure_;",context);
-  return {...fake,anonymizeAccount:context.__anonymizeAccount,preflight:context.__preflight};
+  runInNewContext(source+"\nthis.__anonymizeAccount = anonymizeAccount_; this.__preflight = preflightAccountErasure_; this.__doPost = doPost;",context);
+  return {...fake,anonymizeAccount:context.__anonymizeAccount,preflight:context.__preflight,doPost:context.__doPost};
 }
 
 test("reporting sheet anonymizes only one member and affiliates while retaining required accounting amounts",()=>{
@@ -170,4 +182,42 @@ test("Stripe customer linked to a second username prevents any erasure",()=>{
   assert.throws(()=>s.preflight(identity),/Conflicto de identidad/);
   assert.throws(()=>s.anonymizeAccount(identity),/Conflicto de identidad/);
   assert.equal(JSON.stringify(s.files),before);
+});
+
+test("routine billing credential NEVER authorizes account deletion",()=>{
+  const s=setup();
+  const before=JSON.stringify(s.files);
+  const invoke=action=>s.doPost({postData:{contents:JSON.stringify({
+    mode:"ALIGN_PROD_2026",secret:"billing-test-secret",action,
+    username:"qa.delete.fixture2",stripeCustomerId:"cus_del"
+  })}});
+  for(const action of ["preflight_account_erasure","anonymize_account"]){
+    const result=JSON.parse(invoke(action).getContent());
+    assert.equal(result.ok,false);
+    assert.match(result.error,/Solicitud no autorizada/);
+    assert.equal(JSON.stringify(s.files),before,"Billing credential must not modify any sheet");
+  }
+});
+
+test("independent deletion credential permits read-only preflight",()=>{
+  const s=setup();
+  const before=JSON.stringify(s.files);
+  const result=JSON.parse(s.doPost({postData:{contents:JSON.stringify({
+    mode:"ALIGN_PROD_2026",secret:"deletion-only-fixture-credential-at-least-32-chars",
+    action:"preflight_account_erasure",username:"qa.delete.fixture2",stripeCustomerId:"cus_del"
+  })}}).getContent());
+  assert.equal(result.ok,true);
+  assert.equal(result.capability,"account-erasure-v1");
+  assert.equal(result.eligible,true);
+  assert.equal(JSON.stringify(s.files),before);
+});
+
+test("ordinary membership payment status remains authorized by existing billing key",()=>{
+  const s=setup();
+  const result=JSON.parse(s.doPost({postData:{contents:JSON.stringify({
+    mode:"ALIGN_PROD_2026",secret:"billing-test-secret",
+    action:"subscription_status",stripeSubscriptionId:""
+  })}}).getContent());
+  assert.equal(result.ok,true);
+  assert.equal(result.missing,true);
 });
