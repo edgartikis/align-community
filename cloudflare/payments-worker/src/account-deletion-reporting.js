@@ -1,7 +1,7 @@
 /**
  * Fail-closed Google Apps Script adapter for account deletion.
- * Preview uses separate QA credentials. Live uses the existing database
- * integration and can run ONLY behind independent explicit live gates.
+ * Preview uses separate QA credentials. Live uses a distinct Google Apps Script
+ * deployment URL and secret, behind independent explicit live gates.
  * No secrets or personal data are logged. Never call this from a browser.
  */
 const MODE = "ALIGN_PROD_2026";
@@ -20,7 +20,8 @@ function destination(env) {
       env.MEMBER_ACCOUNT_DELETION_ENABLED === "true" &&
       env.MEMBER_ACCOUNT_DELETION_LIVE_ENABLED === "true" &&
       env.MEMBER_LOGIN_GUARD === "true") {
-    rawUrl = env.ALIGN_DB_URL;
+    // Separate deployment URL: never replace the billing/reporting web app.
+    rawUrl = env.MEMBER_ACCOUNT_DELETION_LIVE_URL;
     secret = env.MEMBER_ACCOUNT_DELETION_LIVE_SECRET;
     if (String(secret || "").length < 32 ||
         String(secret) === String(env.ALIGN_DB_SECRET || "")) {
