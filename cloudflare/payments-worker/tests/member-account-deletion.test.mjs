@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash, webcrypto } from "node:crypto";
-import { handleMemberAccountDeletion } from "../src/member-account-deletion.js";
+import { handleMemberAccountDeletion, recoverInterruptedDeletionPreview } from "../src/member-account-deletion.js";
 import { readFileSync } from "node:fs";
 
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
@@ -369,4 +369,65 @@ test("After successful erasure and completed tombstone, journal-cleanup failure 
   assert.equal(t.records.has("account:"+t.username),false);
   assert.equal(JSON.parse(t.records.get("deleted-group:"+t.groupId)).status,"complete");
   assert.equal(JSON.parse(t.records.get("deletion-progress:"+t.groupId)).stage,"purging-kv");
+});
+
+
+test("Internal Preview recovery safely resumes permanently interrupted KV deletion",async()=>{
+  const t=fixture({subStatus:"canceled"});
+  const original=t.env.PAYMENT_STATE.delete;
+  let outage=true;
+  t.env.PAYMENT_STATE.delete=async key=>{
+    if(outage && key==="account:"+t.username)throw Error("KV permanent outage");
+    return original(key);
+  };
+  const first=await handleMemberAccountDeletion(
+    t.request({confirmation:"ELIMINAR",password:t.pass}),t.env,t.deps);
+  assert.equal(first.status,503);
+  assert.equal(JSON.parse(t.records.get("deleted-group:"+t.groupId)).status,"processing");
+  assert.ok(t.records.has("deletion-manifest:"+t.groupId));
+  const manifest=JSON.parse(t.records.get("deletion-manifest:"+t.groupId));
+  assert.equal(manifest.username,t.username);
+  assert.equal(manifest.groupId,t.groupId);
+  assert.ok(manifest.deletions.includes("account:"+t.username));
+  assert.equal(JSON.stringify(manifest).includes(t.pass),false);
+  // No additional Stripe operations: billing was already stopped.
+  const priorStripeCalls=t.stripeCalls.length;
+  outage=false;
+  const outcome=await recoverInterruptedDeletionPreview(t.env,{
+    username:t.username,groupId:t.groupId,
+  });
+  assert.deepEqual(outcome,{ok:true,status:"deleted"});
+  assert.equal(t.stripeCalls.length,priorStripeCalls);
+  assert.equal(t.records.has("account:"+t.username),false);
+  assert.equal(t.records.has("member:"+t.token),false);
+  assert.equal(t.records.has("deletion-manifest:"+t.groupId),false);
+  assert.equal(t.records.has("deletion-progress:"+t.groupId),false);
+  assert.equal(JSON.parse(t.records.get("deleted-group:"+t.groupId)).status,"complete");
+  assert.equal(JSON.parse(t.records.get("visit:visit_other")).visitorName,"Another Member");
+});
+
+test("Internal recovery rejects Live mode, unrelated usernames and incomplete authorization",async()=>{
+  const t=fixture({subStatus:"canceled"});
+  await assert.rejects(recoverInterruptedDeletionPreview(t.env,{
+    username:t.username,groupId:t.groupId
+  }),/No hay una eliminación/);
+  t.env.STRIPE_MODE="live";
+  await assert.rejects(recoverInterruptedDeletionPreview(t.env,{
+    username:t.username,groupId:t.groupId
+  }),/no está autorizada/);
+  t.env.STRIPE_MODE="test";
+  await assert.rejects(recoverInterruptedDeletionPreview(t.env,{
+    username:"qa.another",groupId:t.groupId
+  }),/no está autorizada/);
+});
+
+test("Recovery will not touch KV if a processing tombstone has no verified manifest",async()=>{
+  const t=fixture({subStatus:"canceled"});
+  t.records.set("deleted-group:"+t.groupId,JSON.stringify({status:"processing"}));
+  t.records.set("deletion-progress:"+t.groupId,JSON.stringify({stage:"purging-kv"}));
+  await assert.rejects(recoverInterruptedDeletionPreview(t.env,{
+    username:t.username,groupId:t.groupId
+  }),/Falta el manifiesto verificado/);
+  assert.ok(t.records.has("account:"+t.username));
+  assert.ok(t.records.has("member:"+t.token));
 });
