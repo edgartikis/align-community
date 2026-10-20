@@ -279,11 +279,15 @@ export async function recoverInterruptedDeletionPreview(env, {username, groupId}
   return {ok:true,status:"deleted"};
 }
 
-async function endSubscription(env, id, stripeRequest) {
+async function endSubscription(env, id, stripeRequest, expectedCustomerId = null) {
   if (!/^sub_[a-zA-Z0-9_]+$/.test(id)) throw new Error("Identificador de suscripción inválido.");
   // Fail closed if Stripe cannot verify or terminate billing; do not delete the
   // account while future charges might continue.
   const current = await stripeRequest(env, "GET", `subscriptions/${encodeURIComponent(id)}`);
+  const stripeCustomerId = typeof current.customer === "string" ? current.customer : current.customer?.id;
+  if (expectedCustomerId && stripeCustomerId !== expectedCustomerId) {
+    throw new Error("La suscripción no pertenece al cliente QA autorizado.");
+  }
   if (!["canceled", "incomplete_expired"].includes(current.status)) {
     await stripeRequest(env, "DELETE", `subscriptions/${encodeURIComponent(id)}`, { prorate: "false" });
   }
@@ -375,8 +379,16 @@ export async function handleMemberAccountDeletion(request, env, deps) {
     const setProgress = (stage) => env.PAYMENT_STATE.put(progressKey,
       JSON.stringify({stage, updatedAt:new Date().toISOString()}));
     await setProgress("stopping-renewals");
+    // Match the subscription's Stripe Customer with the QA reporting identity
+    // BEFORE cancellation, not merely the KV mapping stored by the test.
+    const expectedCustomerId = env.MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED === "true"
+      ? (plan.customerIds.length === 1 ? plan.customerIds[0] : null)
+      : null;
+    if (env.MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED === "true" && !expectedCustomerId) {
+      throw new Error("No se pudo identificar inequívocamente al titular en los reportes.");
+    }
     // Stripe must be stopped before all sensitive records are erased.
-    for (const id of plan.subIds) await endSubscription(env, id, deps.stripeRequest);
+    for (const id of plan.subIds) await endSubscription(env, id, deps.stripeRequest, expectedCustomerId);
     await setProgress("erasing-reporting");
     // An external reporting failure MUST NOT result in a successful deletion
     // response or erased KV records. After Stripe cancellation, retrying the
