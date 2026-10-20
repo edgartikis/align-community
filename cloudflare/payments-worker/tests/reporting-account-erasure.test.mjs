@@ -69,8 +69,8 @@ function setup() {
     PropertiesService:{getScriptProperties:()=>({getProperty:key=>key==="SPREADSHEET_ID"?"fake-spreadsheet":"mock-secret"})},
     ContentService:{},
   };
-  runInNewContext(source+"\nthis.__anonymizeAccount = anonymizeAccount_;",context);
-  return {...fake,anonymizeAccount:context.__anonymizeAccount};
+  runInNewContext(source+"\nthis.__anonymizeAccount = anonymizeAccount_; this.__preflight = preflightAccountErasure_;",context);
+  return {...fake,anonymizeAccount:context.__anonymizeAccount,preflight:context.__preflight};
 }
 
 test("reporting sheet anonymizes only one member and affiliates while retaining required accounting amounts",()=>{
@@ -106,4 +106,23 @@ test("secondary report erasure rejects invalid usernames and Stripe customer IDs
   const s=setup();
   assert.throws(()=>s.anonymizeAccount({username:"",stripeCustomerId:"cus_del"}),/Cuenta no válida/);
   assert.throws(()=>s.anonymizeAccount({username:"qa.delete.fixture2",stripeCustomerId:"cus_#!"}),/Stripe Customer no válido/);
+});
+
+test("read-only production preflight verifies a unique username and Stripe customer",()=>{
+  const s=setup();
+  const snapshot=JSON.stringify(s.files);
+  const result=s.preflight({username:"qa.delete.fixture2",stripeCustomerId:"cus_del"});
+  assert.equal(result.ok,true);
+  assert.equal(result.eligible,true);
+  assert.equal(result.capability,"account-erasure-v1");
+  assert.equal(JSON.stringify(s.files),snapshot,"Preflight must be read-only");
+});
+
+test("read-only production preflight rejects wrong customer and missing member",()=>{
+  const s=setup();
+  assert.throws(()=>s.preflight({username:"qa.delete.fixture2",stripeCustomerId:"cus_other"}),
+    /Conflicto de identidad/);
+  assert.throws(()=>s.preflight({username:"qa.not.in.sheet",stripeCustomerId:"cus_del"}),
+    /coincidencia única/);
+  assert.equal(s.files.SOCIOS[0][1],"qa.delete.fixture2");
 });
