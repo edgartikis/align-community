@@ -355,3 +355,18 @@ test("Permanent KV failure leaves a processing tombstone and support-visible jou
   // This requires a protected operator recovery procedure, not client retry:
   // requireMemberSession correctly rejects tombstoned accounts.
 });
+
+
+test("After successful erasure and completed tombstone, journal-cleanup failure cannot falsely report failed deletion",async()=>{
+  const t=fixture({subStatus:"canceled"});
+  const original=t.env.PAYMENT_STATE.delete;
+  t.env.PAYMENT_STATE.delete=async(key)=>{
+    if(key==="deletion-progress:"+t.groupId)throw Error("KV journal GC unavailable");
+    return original(key);
+  };
+  const response=await handleMemberAccountDeletion(t.request({confirmation:"ELIMINAR",password:t.pass}),t.env,t.deps);
+  assert.equal(response.status,200);
+  assert.equal(t.records.has("account:"+t.username),false);
+  assert.equal(JSON.parse(t.records.get("deleted-group:"+t.groupId)).status,"complete");
+  assert.equal(JSON.parse(t.records.get("deletion-progress:"+t.groupId)).stage,"purging-kv");
+});
