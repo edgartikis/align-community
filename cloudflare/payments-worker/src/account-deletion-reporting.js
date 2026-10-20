@@ -19,7 +19,9 @@ function destination(env) {
   } else if (env.STRIPE_MODE === "live" &&
       env.MEMBER_ACCOUNT_DELETION_ENABLED === "true" &&
       env.MEMBER_ACCOUNT_DELETION_LIVE_ENABLED === "true" &&
-      env.MEMBER_LOGIN_GUARD === "true") {
+      env.MEMBER_ACCOUNT_DELETION_LIVE_QA_ENABLED === "true" &&
+      env.MEMBER_LOGIN_GUARD !== "true" &&
+      env.MEMBER_ACCOUNT_DELETION_FOUNDER_ENABLED !== "true") {
     // Separate deployment URL: never replace the billing/reporting web app.
     rawUrl = env.MEMBER_ACCOUNT_DELETION_LIVE_URL;
     secret = env.MEMBER_ACCOUNT_DELETION_LIVE_SECRET;
