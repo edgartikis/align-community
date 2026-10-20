@@ -8,7 +8,7 @@ const CUSTOMER = /^cus_[A-Za-z0-9]+$/;
 const STOPPED = new Set(["canceled", "incomplete_expired"]);
 
 export async function stopVerifiedSubscriptions(env, subscriptionIds, expectedCustomerId, stripeRequest) {
-  if (!Array.isArray(subscriptionIds) || !Array.isArray([...subscriptionIds])) {
+  if (!Array.isArray(subscriptionIds)) {
     throw new Error("No se pudo verificar el listado de suscripciones.");
   }
   const ids = [...new Set(subscriptionIds)];
