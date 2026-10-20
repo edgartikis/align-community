@@ -32,6 +32,15 @@ Fecha: 19 octubre 2026 · PR #39 · Solo rama de desarrollo, NO fusionado.
 
 - El script `scripts/verify-align-account-deletion-preview.mjs --reporting-qa` crea una cuenta temporal en KV Preview con `customerId:cus_fakeqa1` (ID ficticio de Sheets), verifica contraseña/estado, envía el borrado y exige que la cuenta ya no pueda acceder. **No incluye suscripción Stripe** porque `cus_fakeqa1` no es un cliente real de Stripe. La prueba con Stripe Test ya se realizó por separado. No mezclar ambas opciones sin alinear la identidad del cliente en los tres servicios. **Los identificadores de Stripe Customer/Subscription siguen presentes en las columnas de auditoría de PAGOS en el ejemplo ficticio; para producción se necesita determinar conservación legal, minimización de datos y posible disociación de identificadores reversibles.**
 
+## Pruebas de recuperación ante fallos (19 octubre 2026)
+- En `cloudflare/payments-worker/src/member-account-deletion.js` hay un registro interno en KV `deletion-progress:<groupId>`, que solo almacena la fase y la fecha, sin contraseñas, nombres ni tokens.
+- Una segunda solicitud autenticada puede continuar cuando Stripe ya quedó cancelado pero Google Sheets estuvo caído: Stripe consulta primero el estado y no cancela dos veces. Probado con fallo simulado en la primera solicitud de Apps Script.
+- La eliminación de claves KV tiene hasta tres intentos para recuperar errores transitorios. Probado con un fallo simulado en el primer intento.
+- **BLOQUEADOR crítico:** si una eliminación de KV falla de forma persistente después de crear `deleted-group:...` con `status:"processing"`, la cuenta queda bloqueada y solo el personal autorizado puede recuperarla. Debe implementarse una reconciliación autenticada, limitada al grupo afectado, que nunca restaure accesos cancelados, y probarse antes de activar Live. No borrar a mano estos marcadores ni ejecutar pruebas con usuarios reales.
+- **BLOQUEADOR adicional:** probar en un mismo escenario controlado Stripe Test y Google Sheets usando la misma identidad de cliente (las pruebas actuales fueron independientes: Stripe Test real y el conector Sheets con el identificador sintético `cus_fakeqa1`). Verificar idempotencia, tiempo de espera y el efecto del segundo intento.
+- Si el backend cambia mientras la app 1.0 (9) aún no está publicada, conservar este trabajo en PR DRAFT y validar nuevamente al instalarla en TestFlight.
+- La aplicación web Apps Script de QA fue publicada con acceso anónimo limitado por secreto y allowlist; tras terminar las pruebas hay que inhabilitar ese despliegue y rotar/revocar el secreto de QA.
+
 ## Secuencia responsable para terminar
 1. En copia de Sheets, desplegar el `Code.gs` de pruebas y verificar anonimización exclusiva, retención fiscal y reintento idempotente.
 2. Integrar desde el Worker un contrato de anonimización con respuesta confirmada. Exigir disponibilidad externa ANTES de marcar la cuenta como eliminada.
