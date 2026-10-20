@@ -306,16 +306,24 @@ export async function handleMemberAccountDeletion(request, env, deps) {
   if (request.method !== "POST") return reply({ error: "Método no permitido." }, 405, origin);
   // Two independent, off-by-default deployment modes:
   // Preview = isolated Stripe Test / fake account allowlist.
-  // Live = explicit deletion + live approval + reporting + login throttling.
-  // A deploy of this code alone cannot enable destructive operations.
+  // Live QA = independent explicit authorization of ONE test member, without
+  // flipping the global Preview login-guard/QR flags in production.
+  // The deletion endpoint still requires an authenticated session, password,
+  // 5-try rate limiting, and verified Stripe/Google identity preflights.
+  // Do NOT extend this mode to general user deletion without dedicated
+  // production-grade login throttling and account recovery validation.
   const isolatedPreview = env.STRIPE_MODE === "test" &&
     env.MEMBER_PASSWORD_V2 === "true" &&
     env.MEMBER_LOGIN_GUARD === "true" &&
     env.ALIGN_APP_QR_ROTATION_ENABLED === "true";
   const reviewedLive = env.STRIPE_MODE === "live" &&
     env.MEMBER_ACCOUNT_DELETION_LIVE_ENABLED === "true" &&
+    env.MEMBER_ACCOUNT_DELETION_LIVE_QA_ENABLED === "true" &&
     env.MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED === "true" &&
-    env.MEMBER_LOGIN_GUARD === "true";
+    env.MEMBER_ACCOUNT_DELETION_FOUNDER_ENABLED !== "true" &&
+    env.MEMBER_LOGIN_GUARD !== "true" &&
+    env.MEMBER_PASSWORD_V2 !== "true" &&
+    env.ALIGN_APP_QR_ROTATION_ENABLED !== "true";
   if (env.MEMBER_ACCOUNT_DELETION_ENABLED !== "true" || !(isolatedPreview || reviewedLive)) {
     return reply({ error: "La eliminación de cuenta aún no está habilitada en este entorno." }, 503, origin);
   }
