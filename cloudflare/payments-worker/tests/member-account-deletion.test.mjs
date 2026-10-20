@@ -87,6 +87,7 @@ test("Live reporting preflight must affirm ownership BEFORE Stripe cancellation"
     MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
     ALIGN_DB_URL:"https://script.google.com/macros/s/test-fixture/exec",
     ALIGN_DB_SECRET:"F".repeat(48),
+    MEMBER_ACCOUNT_DELETION_LIVE_SECRET:"D".repeat(48),
   });
   const calls=[];
   t.deps.reportingFetch=async(_,init)=>{
@@ -125,6 +126,7 @@ test("Live preflight failure never calls Stripe or alters member data",async()=>
     MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
     ALIGN_DB_URL:"https://script.google.com/macros/s/test-fixture/exec",
     ALIGN_DB_SECRET:"F".repeat(48),
+    MEMBER_ACCOUNT_DELETION_LIVE_SECRET:"D".repeat(48),
   });
   let reportingCalls=0;
   t.deps.reportingFetch=async()=>{
@@ -148,7 +150,8 @@ test("Live mode fails closed if Google integration secret is missing",async()=>{
     MEMBER_ACCOUNT_DELETION_LIVE_ENABLED:"true",
     MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
     ALIGN_DB_URL:"https://script.google.com/macros/s/test-fixture/exec",
-    ALIGN_DB_SECRET:"",
+    ALIGN_DB_SECRET:"F".repeat(48),
+    MEMBER_ACCOUNT_DELETION_LIVE_SECRET:"",
   });
   const r=await handleMemberAccountDeletion(t.request({
     confirmation:"ELIMINAR",password:t.pass,
