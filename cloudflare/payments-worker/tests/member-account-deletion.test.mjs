@@ -166,6 +166,28 @@ test("Live mode fails closed if Google integration secret is missing",async()=>{
   assert.ok(t.records.has("account:"+t.username));
 });
 
+test("Live mode refuses the billing Apps Script URL even with deletion gates on",async()=>{
+  const t=fixture();
+  Object.assign(t.env,{
+    STRIPE_MODE:"live",
+    MEMBER_ACCOUNT_DELETION_LIVE_ENABLED:"true",
+    MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
+    ALIGN_DB_URL:"https://script.google.com/macros/s/billing-production-fixture/exec",
+    MEMBER_ACCOUNT_DELETION_LIVE_URL:"https://script.google.com/macros/s/billing-production-fixture/exec",
+    ALIGN_DB_SECRET:"F".repeat(48),
+    MEMBER_ACCOUNT_DELETION_LIVE_SECRET:"D".repeat(48),
+  });
+  let requests=0;
+  t.deps.reportingFetch=async()=>{requests++;throw Error("Must not contact billing service")};
+  const result=await handleMemberAccountDeletion(t.request({
+    confirmation:"ELIMINAR",password:t.pass,
+  }),t.env,t.deps);
+  assert.equal(result.status,503);
+  assert.equal(requests,0);
+  assert.equal(t.stripeCalls.length,0);
+  assert.ok(t.records.has("account:"+t.username));
+});
+
 test("deletion needs exact typed confirmation and password; errors do not touch Stripe", async () => {
   const t = fixture();
   for (const body of [
