@@ -84,6 +84,7 @@ test("Live reporting preflight must affirm ownership BEFORE Stripe cancellation"
   Object.assign(t.env,{
     STRIPE_MODE:"live",
     MEMBER_ACCOUNT_DELETION_LIVE_ENABLED:"true",
+    MEMBER_ACCOUNT_DELETION_LIVE_TEST_USERNAME:t.username,
     MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
     ALIGN_DB_URL:"https://script.google.com/macros/s/test-fixture/exec",
     MEMBER_ACCOUNT_DELETION_LIVE_URL:"https://script.google.com/macros/s/independent-deletion-fixture/exec",
@@ -126,6 +127,7 @@ test("Live preflight failure never calls Stripe or alters member data",async()=>
   Object.assign(t.env,{
     STRIPE_MODE:"live",
     MEMBER_ACCOUNT_DELETION_LIVE_ENABLED:"true",
+    MEMBER_ACCOUNT_DELETION_LIVE_TEST_USERNAME:t.username,
     MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
     ALIGN_DB_URL:"https://script.google.com/macros/s/test-fixture/exec",
     MEMBER_ACCOUNT_DELETION_LIVE_URL:"https://script.google.com/macros/s/independent-deletion-fixture/exec",
@@ -152,6 +154,7 @@ test("Live mode fails closed if Google integration secret is missing",async()=>{
   Object.assign(t.env,{
     STRIPE_MODE:"live",
     MEMBER_ACCOUNT_DELETION_LIVE_ENABLED:"true",
+    MEMBER_ACCOUNT_DELETION_LIVE_TEST_USERNAME:t.username,
     MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
     ALIGN_DB_URL:"https://script.google.com/macros/s/test-fixture/exec",
     MEMBER_ACCOUNT_DELETION_LIVE_URL:"https://script.google.com/macros/s/independent-deletion-fixture/exec",
@@ -171,6 +174,7 @@ test("Live mode refuses the billing Apps Script URL even with deletion gates on"
   Object.assign(t.env,{
     STRIPE_MODE:"live",
     MEMBER_ACCOUNT_DELETION_LIVE_ENABLED:"true",
+    MEMBER_ACCOUNT_DELETION_LIVE_TEST_USERNAME:t.username,
     MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
     ALIGN_DB_URL:"https://script.google.com/macros/s/billing-production-fixture/exec",
     MEMBER_ACCOUNT_DELETION_LIVE_URL:"https://script.google.com/macros/s/billing-production-fixture/exec",
@@ -184,6 +188,60 @@ test("Live mode refuses the billing Apps Script URL even with deletion gates on"
   }),t.env,t.deps);
   assert.equal(result.status,503);
   assert.equal(requests,0);
+  assert.equal(t.stripeCalls.length,0);
+  assert.ok(t.records.has("account:"+t.username));
+});
+
+test("Live rollout with no approved test username cannot cancel Stripe or touch KV",async()=>{
+  const t=fixture();
+  Object.assign(t.env,{
+    STRIPE_MODE:"live",
+    MEMBER_ACCOUNT_DELETION_LIVE_ENABLED:"true",
+    MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
+    MEMBER_ACCOUNT_DELETION_LIVE_TEST_USERNAME:"",
+  });
+  let called=0;
+  t.deps.reportingFetch=async()=>{called++;throw Error("not authorized")};
+  const r=await handleMemberAccountDeletion(t.request({
+    confirmation:"ELIMINAR",password:t.pass,
+  }),t.env,t.deps);
+  assert.equal(r.status,503);
+  assert.equal(called,0);
+  assert.equal(t.stripeCalls.length,0);
+  assert.ok(t.records.has("account:"+t.username));
+});
+
+test("Live rollout forbids another username even with valid session and deletion password",async()=>{
+  const t=fixture();
+  Object.assign(t.env,{
+    STRIPE_MODE:"live",
+    MEMBER_ACCOUNT_DELETION_LIVE_ENABLED:"true",
+    MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
+    MEMBER_ACCOUNT_DELETION_LIVE_TEST_USERNAME:"cordexin",
+  });
+  let called=0;
+  t.deps.reportingFetch=async()=>{called++;throw Error("not authorized")};
+  const r=await handleMemberAccountDeletion(t.request({
+    confirmation:"ELIMINAR",password:t.pass,
+  }),t.env,t.deps);
+  assert.equal(r.status,403);
+  assert.equal(called,0);
+  assert.equal(t.stripeCalls.length,0);
+  assert.ok(t.records.has("account:"+t.username));
+});
+
+test("Live rollout refuses Founder username as QA allowlist even when flags are enabled",async()=>{
+  const t=fixture();
+  Object.assign(t.env,{
+    STRIPE_MODE:"live",
+    MEMBER_ACCOUNT_DELETION_LIVE_ENABLED:"true",
+    MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
+    MEMBER_ACCOUNT_DELETION_LIVE_TEST_USERNAME:"edgar.cordero",
+  });
+  const r=await handleMemberAccountDeletion(t.request({
+    confirmation:"ELIMINAR",password:t.pass,
+  }),t.env,t.deps);
+  assert.equal(r.status,503);
   assert.equal(t.stripeCalls.length,0);
   assert.ok(t.records.has("account:"+t.username));
 });
