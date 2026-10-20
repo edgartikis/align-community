@@ -102,6 +102,7 @@ test("safe branch keeps real deletions and Founder disabled in Wrangler producti
   assert.ok(prod,"Production vars must exist");
   assert.match(prod,/STRIPE_MODE = "live"/);
   assert.match(prod,/MEMBER_ACCOUNT_DELETION_ENABLED = "false"/);
+  assert.match(prod,/MEMBER_ACCOUNT_DELETION_LIVE_ENABLED = "false"/);
   assert.match(prod,/MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED = "false"/);
   assert.match(prod,/MEMBER_ACCOUNT_DELETION_FOUNDER_ENABLED = "false"/);
   assert.ok(staging,"Preview vars must exist");
