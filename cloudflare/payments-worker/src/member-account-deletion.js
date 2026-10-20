@@ -323,6 +323,14 @@ export async function handleMemberAccountDeletion(request, env, deps) {
   if (isolatedPreview && !/^[a-z0-9._-]{4,24}$/.test(permittedUsername)) {
     return reply({ error: "Falta configurar la cuenta ficticia autorizada para eliminación." }, 503, origin);
   }
+  // Live rollout is initially restricted to ONE pre-approved disposable account.
+  // Even if someone enables all three live flags, absent allowlist fails closed.
+  // No general Live account deletion until a separately reviewed code rollout.
+  const liveTestUsername = clean(env.MEMBER_ACCOUNT_DELETION_LIVE_TEST_USERNAME, 24).toLowerCase();
+  if (reviewedLive && (!/^[a-z0-9._-]{4,24}$/.test(liveTestUsername) ||
+      liveTestUsername === "edgar.cordero")) {
+    return reply({ error: "Falta autorizar una única cuenta no fundadora para la prueba Live." }, 503, origin);
+  }
   if (!env.PAYMENT_STATE) return reply({ error: "Servicio no disponible." }, 503, origin);
 
   let session;
@@ -335,6 +343,9 @@ export async function handleMemberAccountDeletion(request, env, deps) {
   }
   if (isolatedPreview && session.username !== permittedUsername) {
     return reply({ error: "Solo se permite eliminar la cuenta ficticia autorizada para esta prueba." }, 403, origin);
+  }
+  if (reviewedLive && session.username !== liveTestUsername) {
+    return reply({ error: "La eliminación Live aún no está habilitada para esta cuenta." }, 403, origin);
   }
   const account = await deps.readJson(env, `account:${session.username}`);
   if (!account || account.username !== session.username || account.groupId !== session.groupId ||
