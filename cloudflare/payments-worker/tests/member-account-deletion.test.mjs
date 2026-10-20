@@ -91,7 +91,9 @@ test("Live reporting preflight must affirm ownership BEFORE Stripe cancellation"
     MEMBER_ACCOUNT_DELETION_LIVE_SECRET:"D".repeat(48),
   });
   const calls=[];
-  t.deps.reportingFetch=async(_,init)=>{
+  t.deps.reportingFetch=async(url,init)=>{
+    assert.equal(url,t.env.MEMBER_ACCOUNT_DELETION_LIVE_URL);
+    assert.notEqual(url,t.env.ALIGN_DB_URL);
     const body=JSON.parse(init.body);
     calls.push("SHEETS:"+body.action);
     assert.equal(body.username,t.username);
