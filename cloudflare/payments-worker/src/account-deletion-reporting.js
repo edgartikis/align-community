@@ -21,9 +21,10 @@ function destination(env) {
       env.MEMBER_ACCOUNT_DELETION_LIVE_ENABLED === "true" &&
       env.MEMBER_LOGIN_GUARD === "true") {
     rawUrl = env.ALIGN_DB_URL;
-    secret = env.ALIGN_DB_SECRET;
-    if (String(secret || "").length < 32) {
-      throw new Error("El secreto de reportes de producción no cumple la longitud requerida.");
+    secret = env.MEMBER_ACCOUNT_DELETION_LIVE_SECRET;
+    if (String(secret || "").length < 32 ||
+        String(secret) === String(env.ALIGN_DB_SECRET || "")) {
+      throw new Error("Falta una credencial independiente para eliminación de cuentas.");
     }
   } else {
     throw new Error("La conexión de reportes Live no está autorizada.");
