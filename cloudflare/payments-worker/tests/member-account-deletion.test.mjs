@@ -285,3 +285,73 @@ test("Google reporting rejects ambiguous Stripe ownership without sending accoun
   assert.equal(contacted,false);
   assert.ok(t.records.has("account:"+t.username));
 });
+
+
+test("Stripe canceled, Google temporarily fails, then authenticated retry finishes once Google recovers", async () => {
+  const t=fixture();
+  const activation=JSON.parse(t.records.get("activation:cs_test_one"));
+  activation.customerId="cus_fakeqa1";
+  t.records.set("activation:cs_test_one",JSON.stringify(activation));
+  Object.assign(t.env,{
+    MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
+    MEMBER_ACCOUNT_DELETION_REPORTING_URL:"https://script.google.com/macros/s/qa-fixture/exec",
+    MEMBER_ACCOUNT_DELETION_REPORTING_SECRET:"qa-local-only",
+  });
+  let status="active", cancelCalls=0, reportCalls=0;
+  t.deps.stripeRequest=async (_,method)=>{
+    if(method==="GET") return {status};
+    if(method==="DELETE") { status="canceled";cancelCalls++;return {status}; }
+    throw Error("unexpected Stripe operation");
+  };
+  t.deps.reportingFetch=async()=>{
+    reportCalls++;
+    if(reportCalls===1) throw Error("Google temporary unavailable");
+    return Response.json({ok:true,anonymized:true,counts:{socios:1,afiliados:1,visitas:1,pagos:1}});
+  };
+  const first=await handleMemberAccountDeletion(
+    t.request({confirmation:"ELIMINAR",password:t.pass}),t.env,t.deps);
+  assert.equal(first.status,503);
+  assert.equal(cancelCalls,1);
+  assert.ok(t.records.has("account:"+t.username));
+  assert.equal(JSON.parse(t.records.get("deletion-progress:"+t.groupId)).stage,"erasing-reporting");
+  assert.equal(t.records.has("deleted-group:"+t.groupId),false);
+  const second=await handleMemberAccountDeletion(
+    t.request({confirmation:"ELIMINAR",password:t.pass}),t.env,t.deps);
+  assert.equal(second.status,200);
+  assert.equal(cancelCalls,1,"Second attempt must not double-cancel Stripe");
+  assert.equal(reportCalls,2);
+  assert.equal(t.records.has("account:"+t.username),false);
+  assert.equal(t.records.has("deletion-progress:"+t.groupId),false);
+  assert.equal(JSON.parse(t.records.get("deleted-group:"+t.groupId)).status,"complete");
+});
+
+test("Transient KV cleanup error is retried before responding with success",async()=>{
+  const t=fixture({subStatus:"canceled"});
+  const original=t.env.PAYMENT_STATE.delete;
+  let failures=0;
+  t.env.PAYMENT_STATE.delete=async(key)=>{
+    if(key==="account:"+t.username && failures++===0)throw Error("KV transient timeout");
+    return original(key);
+  };
+  const result=await handleMemberAccountDeletion(t.request({confirmation:"ELIMINAR",password:t.pass}),t.env,t.deps);
+  assert.equal(result.status,200);
+  assert.equal(t.records.has("account:"+t.username),false);
+  assert.equal(t.records.has("deletion-progress:"+t.groupId),false);
+  assert.equal(JSON.parse(t.records.get("deleted-group:"+t.groupId)).status,"complete");
+});
+
+test("Permanent KV failure leaves a processing tombstone and support-visible journal, never fake success",async()=>{
+  const t=fixture({subStatus:"canceled"});
+  const original=t.env.PAYMENT_STATE.delete;
+  t.env.PAYMENT_STATE.delete=async(key)=>{
+    if(key==="account:"+t.username)throw Error("KV permanent read-only");
+    return original(key);
+  };
+  const result=await handleMemberAccountDeletion(t.request({confirmation:"ELIMINAR",password:t.pass}),t.env,t.deps);
+  assert.equal(result.status,503);
+  assert.equal(t.records.has("account:"+t.username),true);
+  assert.equal(JSON.parse(t.records.get("deletion-progress:"+t.groupId)).stage,"purging-kv");
+  assert.equal(JSON.parse(t.records.get("deleted-group:"+t.groupId)).status,"processing");
+  // This requires a protected operator recovery procedure, not client retry:
+  // requireMemberSession correctly rejects tombstoned accounts.
+});
