@@ -122,7 +122,7 @@ test("read-only production preflight rejects wrong customer and missing member",
   const s=setup();
   assert.throws(()=>s.preflight({username:"qa.delete.fixture2",stripeCustomerId:"cus_other"}),
     /Conflicto de identidad/);
-  assert.throws(()=>s.preflight({username:"qa.not.in.sheet",stripeCustomerId:"cus_del"}),
+  assert.throws(()=>s.preflight({username:"qa.not.in.sheet",stripeCustomerId:"cus_unknown"}),
     /coincidencia única/);
   assert.equal(s.files.SOCIOS[0][1],"qa.delete.fixture2");
 });
