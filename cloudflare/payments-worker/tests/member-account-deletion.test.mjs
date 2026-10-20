@@ -113,6 +113,35 @@ test("deleting active review account cancels Stripe, wipes login/cards/activatio
   assert.equal(JSON.parse(t.records.get("deleted-group:" + t.groupId)).status, "complete");
 });
 
+test("deleted visits retain accounting amounts but remove unexpected private fields and retry sync", async () => {
+  const t = fixture({subStatus:"canceled"});
+  const key = "visit:visit_1";
+  const row = JSON.parse(t.records.get(key));
+  Object.assign(row,{
+    visitId:"VIS-CF-FIXTURE",createdAt:"2026-10-19T12:00:00.000Z",
+    spent:199,saved:40,gross:239,people:2,
+    email:"private@example.invalid",phone:"5551234",
+    notes:"Highly sensitive notes",photoUrl:"data:image/jpeg;base64,SECRET",
+    memberToken:"sensitive-member-token",benefit:"My medical details",
+    dbSynced:false,dbSyncError:"contains customer identity"
+  });
+  t.records.set(key,JSON.stringify(row));
+  const response=await handleMemberAccountDeletion(
+    t.request({confirmation:"ELIMINAR",password:t.pass}),t.env,t.deps);
+  assert.equal(response.status,200);
+  const safe=JSON.parse(t.records.get(key));
+  assert.equal(safe.visitorName,"Cuenta eliminada");
+  assert.equal(safe.memberCode,"");
+  assert.equal(safe.spent,199);
+  assert.equal(safe.saved,40);
+  assert.equal(safe.gross,239);
+  assert.equal(safe.dbSynced,true);
+  for(const key of ["email","phone","notes","photoUrl","memberToken","benefit","dbSyncError"]) {
+    assert.equal(Object.hasOwn(safe,key),false,"Unexpected personal data retained: "+key);
+  }
+  assert.equal(JSON.parse(t.records.get("visit:visit_other")).visitorName,"Another Member");
+});
+
 test("deletion succeeds even if review membership is active but its Stripe subscription was already canceled", async () => {
   const t = fixture({ subStatus: "canceled" });
   const r = await handleMemberAccountDeletion(t.request({ confirmation: "ELIMINAR", password: t.pass }), t.env, t.deps);
