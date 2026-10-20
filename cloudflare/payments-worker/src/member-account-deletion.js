@@ -326,7 +326,10 @@ export async function handleMemberAccountDeletion(request, env, deps) {
     await env.PAYMENT_STATE.put(tombstone, JSON.stringify({
       status: "complete", completedAt: new Date().toISOString(),
     }));
-    await removeKvWithRetry(env, progressKey);
+    // The tombstone is already COMPLETE. Journal pruning is housekeeping:
+    // never report failure to the member after their account was removed.
+    try { await removeKvWithRetry(env, progressKey); }
+    catch { console.error("ALIGN deletion journal cleanup delayed"); }
     return reply({ ok: true, status: "deleted",
       message: "Cuenta eliminada y renovación detenida. Los comprobantes fiscales se conservan cuando la ley lo exige." }, 200, origin);
   } catch (error) {
