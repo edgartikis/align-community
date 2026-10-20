@@ -71,6 +71,94 @@ test("deletion is off by default and cannot affect live account records", async 
   assert.equal(t.stripeCalls.length, 0);
 });
 
+test("Live deletion requires independent live and reporting switches, not merely the main flag", async () => {
+  const t = fixture();
+  t.env.STRIPE_MODE = "live";
+  const r = await handleMemberAccountDeletion(t.request({confirmation:"ELIMINAR",password:t.pass}),t.env,t.deps);
+  assert.equal(r.status,503);
+  assert.equal(t.stripeCalls.length,0);
+  assert.ok(t.records.has("account:"+t.username));
+});
+
+test("Live reporting preflight must affirm ownership BEFORE Stripe cancellation",async()=>{
+  const t=fixture();
+  Object.assign(t.env,{
+    STRIPE_MODE:"live",
+    MEMBER_ACCOUNT_DELETION_LIVE_ENABLED:"true",
+    MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
+    ALIGN_DB_URL:"https://script.google.com/macros/s/test-fixture/exec",
+    ALIGN_DB_SECRET:"F".repeat(48),
+  });
+  const calls=[];
+  t.deps.reportingFetch=async(_,init)=>{
+    const body=JSON.parse(init.body);
+    calls.push("SHEETS:"+body.action);
+    assert.equal(body.username,t.username);
+    assert.equal(body.stripeCustomerId,"cus_test123");
+    if(body.action==="preflight_account_erasure")
+      return Response.json({ok:true,eligible:true,capability:"account-erasure-v1"});
+    if(body.action==="anonymize_account")
+      return Response.json({ok:true,anonymized:true,counts:{socios:1,afiliados:1,visitas:1,pagos:1}});
+    throw Error("Unexpected reporting request");
+  };
+  const original=t.deps.stripeRequest;
+  t.deps.stripeRequest=async (...args)=>{
+    calls.push("STRIPE:"+args[1]);
+    return original(...args);
+  };
+  const res=await handleMemberAccountDeletion(t.request({
+    confirmation:"ELIMINAR",password:t.pass,
+  }),t.env,t.deps);
+  assert.equal(res.status,200,await res.clone().text());
+  assert.deepEqual(calls,[
+    "SHEETS:preflight_account_erasure",
+    "STRIPE:GET","STRIPE:DELETE",
+    "SHEETS:anonymize_account",
+  ]);
+  assert.equal(t.records.has("account:"+t.username),false);
+});
+
+test("Live preflight failure never calls Stripe or alters member data",async()=>{
+  const t=fixture();
+  Object.assign(t.env,{
+    STRIPE_MODE:"live",
+    MEMBER_ACCOUNT_DELETION_LIVE_ENABLED:"true",
+    MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
+    ALIGN_DB_URL:"https://script.google.com/macros/s/test-fixture/exec",
+    ALIGN_DB_SECRET:"F".repeat(48),
+  });
+  let reportingCalls=0;
+  t.deps.reportingFetch=async()=>{
+    reportingCalls++;
+    return Response.json({ok:true,eligible:false,capability:"account-erasure-v1"});
+  };
+  const r=await handleMemberAccountDeletion(t.request({
+    confirmation:"ELIMINAR",password:t.pass,
+  }),t.env,t.deps);
+  assert.equal(r.status,503);
+  assert.equal(reportingCalls,1);
+  assert.equal(t.stripeCalls.length,0);
+  assert.ok(t.records.has("account:"+t.username));
+  assert.ok(t.records.has("member:"+t.token));
+});
+
+test("Live mode fails closed if Google integration secret is missing",async()=>{
+  const t=fixture();
+  Object.assign(t.env,{
+    STRIPE_MODE:"live",
+    MEMBER_ACCOUNT_DELETION_LIVE_ENABLED:"true",
+    MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED:"true",
+    ALIGN_DB_URL:"https://script.google.com/macros/s/test-fixture/exec",
+    ALIGN_DB_SECRET:"",
+  });
+  const r=await handleMemberAccountDeletion(t.request({
+    confirmation:"ELIMINAR",password:t.pass,
+  }),t.env,t.deps);
+  assert.equal(r.status,503);
+  assert.equal(t.stripeCalls.length,0);
+  assert.ok(t.records.has("account:"+t.username));
+});
+
 test("deletion needs exact typed confirmation and password; errors do not touch Stripe", async () => {
   const t = fixture();
   for (const body of [
