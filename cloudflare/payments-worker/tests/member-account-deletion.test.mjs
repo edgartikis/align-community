@@ -39,7 +39,12 @@ function fixture({ owner = false, subStatus = "active", enabled = "true" } = {})
   const stripeCalls = [];
   const stripeRequest = async (_, method, path, args) => {
     stripeCalls.push({ method, path, args });
-    if (method === "GET") return { id: "sub_review123", status: subStatus };
+    if (method === "GET") {
+      const activation = JSON.parse(records.get("activation:cs_test_one") || "{}");
+      const ownerGroup = JSON.parse(records.get("group:"+groupId) || "{}");
+      return { id: "sub_review123", status: subStatus,
+        customer: activation.customerId || ownerGroup.customerId || "cus_test123" };
+    }
     if (method === "DELETE") return { id: "sub_review123", status: "canceled" };
     throw new Error("Unexpected Stripe operation");
   };
@@ -299,7 +304,7 @@ test("Stripe canceled, Google temporarily fails, then authenticated retry finish
   });
   let status="active", cancelCalls=0, reportCalls=0;
   t.deps.stripeRequest=async (_,method)=>{
-    if(method==="GET") return {status};
+    if(method==="GET") return {status, customer:"cus_fakeqa1"};
     if(method==="DELETE") { status="canceled";cancelCalls++;return {status}; }
     throw Error("unexpected Stripe operation");
   };
@@ -430,4 +435,28 @@ test("Recovery will not touch KV if a processing tombstone has no verified manif
   }),/Falta el manifiesto verificado/);
   assert.ok(t.records.has("account:"+t.username));
   assert.ok(t.records.has("member:"+t.token));
+});
+
+
+test("Reporting QA refuses to cancel a subscription owned by another Stripe customer",async()=>{
+  const t=fixture();
+  const activation=JSON.parse(t.records.get("activation:cs_test_one"));
+  activation.customerId="cus_fakeqa1";
+  t.records.set("activation:cs_test_one",JSON.stringify(activation));
+  t.env.MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED="true";
+  const attempts=[];
+  t.deps.stripeRequest=async(_,method)=>{
+    attempts.push(method);
+    if(method==="GET")return {id:"sub_review123",status:"trialing",customer:"cus_someone_else"};
+    throw Error("should not cancel unrelated Stripe subscription");
+  };
+  let calledSheets=false;
+  t.deps.reportingFetch=async()=>{calledSheets=true;throw Error("should not erase sheets");};
+  const response=await handleMemberAccountDeletion(
+    t.request({confirmation:"ELIMINAR",password:t.pass}),t.env,t.deps);
+  assert.equal(response.status,503);
+  assert.deepEqual(attempts,["GET"]);
+  assert.equal(calledSheets,false);
+  assert.ok(t.records.has("account:"+t.username));
+  assert.equal(t.records.has("deleted-group:"+t.groupId),false);
 });
