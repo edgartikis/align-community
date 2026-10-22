@@ -117,7 +117,7 @@ greencabana:{plans:['brotherhood','girls','duo','circle'],promotions:[
 ]},
 mrsmoky:{plans:ALL_PLANS,promotions:[]},
 studiopalmas:{plans:ALL_PLANS,promotions:[]},
-veterinaria:{plans:ALL_PLANS,promotions:[]},
+veterinaria:{plans:ALL_PLANS,promotions:[{label:'50% OFF · Consulta veterinaria',benefit:'50% de descuento en consulta médica veterinaria',rules:'Únicamente consulta médica veterinaria, de lunes a viernes de 9:00 a 19:00 h. Presentar membresía ALIGN activa. No acumulable con otras promociones.',discount:.50}]},
 nuvello:{plans:ALL_PLANS,promotions:[{label:'10% OFF · Servicios seleccionados',benefit:'10% de descuento',rules:'Aplica en spa, odonto, injerto capilar y servicios para disfunción eréctil.',discount:.10}]},
 dentistajessica:{plans:ALL_PLANS,promotions:[
 {label:'15% OFF · Limpieza dental',benefit:'15% de descuento en limpieza dental',rules:'Aplica en limpieza dental.',discount:.15},
@@ -144,7 +144,7 @@ let authToken=sessionStorage.getItem('align_ally_token')||'',ally=null,offer=nul
 
 const money=function(v){return '$'+Number(v||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2})};
 function activeAllyKey(){return ally?.key==='lauranader'?managedPlace.value:(ally?.key||'')}
-function activePlaceLabel(){const key=activeAllyKey();return ally?.key==='lauranader'?(key==='horse'?'Horse Riding':key==='nuvello'?'Nuvello · Odonto (Laura Nader)':'Selecciona una actividad'):ally?.name||''}
+function activePlaceLabel(){const key=activeAllyKey();return ally?.key==='lauranader'?(key==='horse'?'Horse Riding':key==='nuvello'?'Nuvello · Odonto (Laura Nader)':'Selecciona una actividad'):ally?.key==='veterinaria'?'De Leija Veterinaria':ally?.name||''}
 function resetMetrics(){document.querySelector('#visits').textContent='0';document.querySelector('#sales').textContent=money(0);document.querySelector('#savings').textContent=money(0)}
 function planFrom(level){const v=String(level||'').toLowerCase();if(v.includes('brotherhood'))return'brotherhood';if(v.includes('girls'))return'girls';if(v.includes('cowboy')||v.includes('ranch'))return'ranch';if(v.includes('duo'))return'duo';if(v.includes('circle'))return'circle';return''}
 function headers(jsonBody){const value={authorization:'Bearer '+authToken};if(jsonBody)value['content-type']='application/json';return value}
@@ -189,7 +189,7 @@ function startPortal(allyData,token){
   authToken=token;ally=allyData;
   sessionStorage.setItem('align_ally_token',authToken);
   loginView.style.display='none';dashboardView.style.display='block';logoutButton.style.display='block';
-  document.querySelector('#welcomeName').textContent='Bienvenido, '+ally.name+'.';
+  document.querySelector('#welcomeName').textContent='Bienvenido, '+(ally.key==='veterinaria'?'De Leija Veterinaria':ally.name)+'.';
   document.querySelector('#welcomeCategory').textContent=ally.category+' · '+ally.allyId;
   managedPlaceWrap.hidden=ally.key!=='lauranader';
   managedPlace.value='';
