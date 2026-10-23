@@ -1,0 +1,59 @@
+# ALIGN 1.0 (9) · Estado de eliminación de cuenta
+Fecha: 19 octubre 2026 · PR #39 · Solo rama de desarrollo, NO fusionado.
+
+## Qué sí quedó validado
+- UI nativa `Cuenta → Eliminar cuenta`, contraseña + texto ELIMINAR + segunda confirmación.
+- Cloudflare Preview (KV de pruebas independiente): eliminación de una cuenta y tarjetas ficticias, inicio de sesión posterior rechazado.
+- Stripe Test real: cliente sin tarjeta y suscripción en prueba `sub_1USBcADMjEcJHlpUJsIkmzbt`, el Worker la consultó en estado `trialing` y la canceló; Stripe confirmó después `status=canceled`, `livemode=false`.
+- Pruebas locales simuladas para sesiones, Duo/Circle, intentos de contraseña, protección Founder, Stripe caído, rastros KV y hoja secundaria de reportes.
+- Compilación oficial candidata **ALIGN 1.0 (9)** configurada en `ios/ALIGN/project.yml`, bundle de producción `mx.com.alignmembers.app`. La compilación de Preview mantiene su bundle independiente y fue elevada también al build 9 para pruebas privadas de la pantalla.
+
+## Riesgos que BLOQUEAN despliegue y envío a revisión
+1. **La ruta Live sigue deshabilitada** en `cloudflare/payments-worker/wrangler.toml` y además el Worker tiene una segunda barrera que exige `STRIPE_MODE=test`, contraseña V2 y nombre de prueba autorizado. Nunca cambiar ambas barreras sin terminar revisión y aceptación.
+2. El registro real de pagos y visitas utiliza **Google Apps Script + Google Sheets**, repositorio `integrations/align-production-db/Code.gs`. Se implementó la acción `anonymize_account`, diseñada para limpiar datos personales preservando métricas y referencias de auditoría. Está **solo en GitHub** y no ha sido desplegada a Apps Script ni integrada al procedimiento del Worker de producción. Probar primero con copia del Sheet y respaldo. Definir retención fiscal/legal antes de usar.
+3. La eliminación KV conserva registros monetarios anonimizados; hay que validar eliminación de **datos externos y respaldos**, además de un procedimiento de reconciliación de fallos parciales entre Stripe, Sheets y KV. La imagen de perfil se guarda en KV como `member.photoUrl` (data URI JPEG), y se elimina con la tarjeta; revisar backups y exportaciones.
+4. **Founder Lifetime** necesita un control adicional: el código para revocar `owner-lifetime:primary` y `wallet:member:AL-FOUNDER-001` está preparado bajo `MEMBER_ACCOUNT_DELETION_FOUNDER_ENABLED=false` y la identidad canónica del titular. No se ha probado con el propietario real ni activado. Nunca probar con la membresía Founder de producción.
+5. El backend usa KV, con consistencia eventual. Deben probarse nuevamente las verificaciones de sesión, QR y webhook después de activar la nueva versión en un ambiente aislado. Implementar manejo reanudable para eliminaciones interrumpidas.
+6. No se ha preparado un archivo firmado ni subido **1.0 (9)** a TestFlight. La app **1.0 (8)** no tiene la nueva pantalla. Requiere Mac/Xcode del titular.
+7. El mensaje de la app promete eliminación final; **no debe enviarse esta build a App Review con el endpoint Live devolviendo 503**.
+
+## Hoja de validación completamente ficticia
+- Google Sheet creada en Drive: `ALIGN · QA eliminación de cuenta — datos ficticios — 19 oct 2026`
+- ID: `1SGcKQHHlmC3O1eM0PnWO_XQiKm_QDrNKTeBLiiYE2P8`
+- Pestañas de prueba: SOCIOS, AFILIADOS, PAGOS, VISITAS, ALIADOS; registros ficticios de dos cuentas sin correos, pagos o datos reales.
+- La función `anonymizeAccount_` fue ejecutada el 19-oct-2026 desde el proyecto aislado `ALIGN QA - Eliminación de cuenta`, usando `inspeccionarCuentaQA` y `ejecutarEliminacionQA` (archivo `integrations/align-test-db/QA_EliminacionCuenta.gs`). Registro: `QA FINALIZADA`, con 1 socio, 1 afiliado, 1 visita y 1 pago anonimizados. Una lectura independiente de Drive confirmó que la segunda cuenta ficticia y sus datos siguen intactos, mientras la visita del primer socio conserva solo datos económicos y el nombre genérico `Cuenta eliminada`. **No** conectar este script o Sheet a producción, ni desplegarlo como Web App.
+- El Google Sheets real de ALIGN no fue modificado.
+
+## Integración Apps Script ↔ Cloudflare Preview (QA completada; no producción)
+- Worker: `cloudflare/payments-worker/src/account-deletion-reporting.js`, llamado desde `member-account-deletion.js` solamente al habilitar `MEMBER_ACCOUNT_DELETION_REPORTING_ENABLED=true`. Exige exactamente un Stripe Customer identificable y confirmación `ok:true,anonymized:true` de Google antes de borrar datos en KV. Si falla Google, conserva los registros y devuelve error; Stripe ya podría haber quedado cancelado, por lo que es imprescindible una reconciliación reanudable antes del lanzamiento.
+- El flag sigue **false en producción** y **true solo en Preview**, con allowlist a la cuenta desechable `qa.delete.fixture2`; la clave secreta y la URL de Apps Script se configuraron únicamente en Cloudflare Preview. El Worker Preview fue desplegado; el 19-oct-2026 el comando `node scripts/verify-align-account-deletion-preview.mjs --reporting-qa` finalizó con `PRUEBA PREVIEW + GOOGLE SHEETS QA COMPLETADA`, tras autenticar, anonimizar en Sheets, eliminar en KV y rechazar el siguiente login.
+- Archivo QA para añadir como **segundo archivo** al proyecto aislado: `integrations/align-test-db/QA_EliminacionEndpoint.gs`. Su `doPost` exige una propiedad secreta `ALIGN_QA_DELETE_SECRET`, proyecto vinculado a la hoja sintética y exactamente `qa.delete.fixture2` / `cus_fakeqa1`.
+- Apps Script QA se publicó con acceso anónimo (`Cualquier usuario`) en un proyecto **solo de pruebas**, con secreto de acceso y validaciones de username/customerId exactos. Google Sheets ficticio fue resembrado, se ejecutó la prueba en Preview y una lectura independiente posterior confirmó: SOCIOS y AFILIADOS de `qa.delete.fixture2` vacíos; PAGOS conserva MXN 199 pero sin usuario/socio; VISITAS conserva gasto MXN 200 y nombre genérico `Cuenta eliminada` pero no usuario/notas. La cuenta de control `qa.other.member` sigue intacta en las cuatro pestañas; ALIADOS muestra `Cuenta eliminada, Socio Ficticio B`. **No** usar Apps Script ni la hoja de producción. El despliegue QA público debe retirarse cuando termine la validación.
+
+- El script `scripts/verify-align-account-deletion-preview.mjs --reporting-qa` crea una cuenta temporal en KV Preview con `customerId:cus_fakeqa1` (ID ficticio de Sheets), verifica contraseña/estado, envía el borrado y exige que la cuenta ya no pueda acceder. **No incluye suscripción Stripe** porque `cus_fakeqa1` no es un cliente real de Stripe. La prueba con Stripe Test ya se realizó por separado. No mezclar ambas opciones sin alinear la identidad del cliente en los tres servicios. **Los identificadores de Stripe Customer/Subscription siguen presentes en las columnas de auditoría de PAGOS en el ejemplo ficticio; para producción se necesita determinar conservación legal, minimización de datos y posible disociación de identificadores reversibles.**
+
+## Pruebas de recuperación ante fallos (19 octubre 2026)
+- En `cloudflare/payments-worker/src/member-account-deletion.js` hay un registro interno en KV `deletion-progress:<groupId>`, que solo almacena la fase y la fecha, sin contraseñas, nombres ni tokens.
+- Una segunda solicitud autenticada puede continuar cuando Stripe ya quedó cancelado pero Google Sheets estuvo caído: Stripe consulta primero el estado y no cancela dos veces. Probado con fallo simulado en la primera solicitud de Apps Script.
+- La eliminación de claves KV tiene hasta tres intentos para recuperar errores transitorios. Probado con un fallo simulado en el primer intento.
+- **Recuperación interna aislada implementada y probada en simulaciones:** después de cancelar Stripe y recibir confirmación de Sheets, se guarda en KV Preview un manifiesto de borrado por grupo con TTL de 7 días. Ante una eliminación KV interrumpida, la función interna `recoverInterruptedDeletionPreview` permite terminar con un grupo/usuario ficticios autorizados, únicamente si hay `processing`, progreso `purging-kv` y manifiesto íntegro. No toca Stripe otra vez, no restaura accesos y no está expuesta por HTTP. Las pruebas incluyen KV permanente caído y luego recuperado, sin borrar visitas de otro socio, y rechazos explícitos a modo Live, usuario ajeno y manifiesto ausente. **Sigue pendiente un procedimiento operacional auditado, autenticado y ejecutable por soporte, además de pruebas en Preview con fallos reales antes de producción.** No borrar a mano los marcadores ni probar con usuarios reales.
+- **BLOQUEADOR adicional:** probar en un mismo escenario controlado Stripe Test y Google Sheets usando la misma identidad de cliente (las pruebas actuales fueron independientes: Stripe Test real y el conector Sheets con el identificador sintético `cus_fakeqa1`). Verificar idempotencia, tiempo de espera y el efecto del segundo intento.
+- Si el backend cambia mientras la app 1.0 (9) aún no está publicada, conservar este trabajo en PR DRAFT y validar nuevamente al instalarla en TestFlight.
+- La aplicación web Apps Script de QA fue publicada con acceso anónimo limitado por secreto y allowlist; tras terminar las pruebas hay que inhabilitar ese despliegue y rotar/revocar el secreto de QA.
+
+## Secuencia responsable para terminar
+1. En copia de Sheets, desplegar el `Code.gs` de pruebas y verificar anonimización exclusiva, retención fiscal y reintento idempotente.
+2. Integrar desde el Worker un contrato de anonimización con respuesta confirmada. Exigir disponibilidad externa ANTES de marcar la cuenta como eliminada.
+3. Añadir estado de eliminación reanudable, pruebas de caídas parciales y criterio operativo de retención; probar fundador con datos totalmente ficticios.
+4. Probar en Cloudflare Preview también el paso Sheets (sin usar la base real).
+5. Activar Live con dos controles y despliegue previamente autorizados, monitorear con cuenta REAL de prueba descartable del entorno Live sin transacciones reales.
+6. Generar y firmar ALIGN 1.0 (9) en Xcode, subir a TestFlight, instalar en iPhone, probar flujos. Después reemplazar el binario enviado a App Review, registrar notas y vídeo de dispositivo físico.
+
+## Comandos de CI (no hacen despliegue)
+```bash
+node --test cloudflare/payments-worker/tests/member-account-deletion.test.mjs \
+  cloudflare/payments-worker/tests/member-account-deletion-http.test.mjs \
+  cloudflare/payments-worker/tests/reporting-account-erasure.test.mjs
+```
+
+**Sin cambios en producción, Apple Wallet real ni membresías de clientes a causa de estos commits.**

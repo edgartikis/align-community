@@ -1,0 +1,74 @@
+name: ALIGN iOS native build
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "ios/ALIGN/**"
+      - "scripts/verify-align-qr-preview.mjs"
+      - ".github/workflows/ios-native-check.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-iphone-app:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify QR expiry, app privacy, and native QR Preview script syntax
+        run: |
+          node --check scripts/verify-align-qr-preview.mjs
+          node --check scripts/verify-align-account-deletion-preview.mjs
+          node --check scripts/prepare-align-ios-preview.mjs
+          node --check cloudflare/payments-worker/src/entry-app-member-private.js
+          node --check cloudflare/payments-worker/src/member-login-guard.js
+          node --check cloudflare/payments-worker/src/member-password-v2.js
+          node --check cloudflare/payments-worker/src/entry-member-login.js
+          node --check scripts/verify-align-login-guard-preview.mjs
+          node --check scripts/verify-align-preview-activity.mjs
+          node --test ios/ALIGN/Tests/release-readiness.test.mjs cloudflare/payments-worker/tests/member-account-deletion.test.mjs cloudflare/payments-worker/tests/member-account-deletion-http.test.mjs cloudflare/payments-worker/tests/reporting-account-erasure.test.mjs cloudflare/payments-worker/tests/account-deletion-reporting.test.mjs tests/app-qr-capture.test.mjs tests/app-member-private.test.mjs tests/member-login-guard.test.mjs tests/member-password-v2.test.mjs
+      - name: Verify official release preparation script syntax
+        run: bash -n ios/ALIGN/scripts/prepare-official-release.sh
+      - name: Xcode version
+        run: xcodebuild -version
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate app icon from ALIGN's official logo
+        run: swift ios/ALIGN/scripts/generate-app-icon.swift ios/ALIGN/assets/approved-icon.b64 ios/ALIGN/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png
+      - name: Generate Xcode project
+        run: cd ios/ALIGN && xcodegen generate
+      - name: Compile for iPhone Simulator without signing or publishing
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/ALIGN/ALIGN.xcodeproj -scheme ALIGN -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build 2>&1 | tee /tmp/align-ios-build.log | tail -n 80 || {
+            echo "==== Swift compiler diagnostics ===="
+            grep -n -E -C 3 'error:|fatal error:|BUILD FAILED' /tmp/align-ios-build.log | tail -n 120 || true
+            exit 1
+          }
+      - name: Compile Release for iPhone Simulator without signing or publishing
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/ALIGN/ALIGN.xcodeproj -scheme ALIGN -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build 2>&1 | tee /tmp/align-ios-release-build.log | tail -n 80 || {
+            echo "==== Swift Release compiler diagnostics ===="
+            grep -n -E -C 3 'error:|fatal error:|BUILD FAILED' /tmp/align-ios-release-build.log | tail -n 120 || true
+            exit 1
+          }
+
+      - name: Verify private TestFlight archive cannot collide with production
+        run: |
+          set -euo pipefail
+          preview_settings="$(xcodebuild -project ios/ALIGN/ALIGN.xcodeproj -scheme 'ALIGN Private TestFlight' -configuration PreviewRelease -showBuildSettings 2>/dev/null)"
+          grep -Eq '^ *PRODUCT_BUNDLE_IDENTIFIER = mx\.com\.alignmembers\.app\.preview$' <<< "$preview_settings"
+          grep -Eq '^ *SWIFT_ACTIVE_COMPILATION_CONDITIONS = .*ALIGN_PREVIEW' <<< "$preview_settings"
+          grep -Eq '^ *INFOPLIST_KEY_CFBundleDisplayName = ALIGN Preview$' <<< "$preview_settings"
+          prod_settings="$(xcodebuild -project ios/ALIGN/ALIGN.xcodeproj -scheme ALIGN -configuration Release -showBuildSettings 2>/dev/null)"
+          grep -Eq '^ *PRODUCT_BUNDLE_IDENTIFIER = mx\.com\.alignmembers\.app$' <<< "$prod_settings"
+          echo "Verified: private TestFlight bundle and Swift flag stay isolated from production Release."
+      - name: Compile private TestFlight scheme for iPhone Simulator without signing or upload
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/ALIGN/ALIGN.xcodeproj -scheme 'ALIGN Private TestFlight' -configuration PreviewRelease -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build 2>&1 | tee /tmp/align-ios-private-testflight-build.log | tail -n 80 || {
+            echo "==== Private TestFlight compiler diagnostics ===="
+            grep -n -E -C 3 'error:|fatal error:|BUILD FAILED' /tmp/align-ios-private-testflight-build.log | tail -n 120 || true
+            exit 1
+          }

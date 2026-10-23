@@ -1,5 +1,7 @@
 import { stripeMode, qrCutoverEnabled } from "./stripe-runtime.js";
+export { AlignAppQrAuthority } from "./app-qr-authority.js";
 import apiWorker from "./entry-member-login.js";
+import { handleAppMemberPrivate } from "./entry-app-member-private.js";
 import { walletRoute, rewriteWalletAllyRequest } from "./apple-wallet.js";
 
 const BACKEND_VERSION = "2026-10-02-rotating-qr-15m-v1";
@@ -78,6 +80,10 @@ export default {
     if (url.pathname === "/api/health" && request.method === "GET") {
       return health(request, env);
     }
+    // Preview-only authenticated native reads. Do not expose member card
+    // tokens in iPhone request URLs; production is disabled by feature flag.
+    const privateResponse = await handleAppMemberPrivate(request, env);
+    if (privateResponse) return privateResponse;
     // Issuance remains gated OFF pending certified live testing.
     const walletResponse = await walletRoute(request, env);
     if (walletResponse) return walletResponse;

@@ -43,5 +43,12 @@ jobs:
           for file in cloudflare/payments-worker/src/*.js; do node --check "$file"; done
       - name: Test Stripe Live/Test and renewal safety
         run: node --test tests/stripe-runtime.test.mjs
+      - name: Test account deletion isolation and Stripe ownership (offline)
+        run: |
+          node --test \
+            cloudflare/payments-worker/tests/account-deletion-billing.test.mjs \
+            cloudflare/payments-worker/tests/member-account-deletion.test.mjs \
+            cloudflare/payments-worker/tests/member-account-deletion-http.test.mjs \
+            cloudflare/payments-worker/tests/reporting-account-erasure.test.mjs
       - name: Audit deployed Cloudflare health (read only)
         run: python scripts/check_live_health.py
