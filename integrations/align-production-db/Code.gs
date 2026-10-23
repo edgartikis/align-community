@@ -3,7 +3,8 @@
  *
  * Script Properties requeridas:
  * - SPREADSHEET_ID
- * - ALIGN_DB_SECRET
+ * - ALIGN_DB_SECRET (pagos, visitas, renovaciones)
+ * - ALIGN_DB_DELETION_SECRET (solo eliminación, distinto y >= 32 caracteres)
  *
  * El secreto nunca se escribe en el frontend ni en GitHub.
  */
@@ -21,13 +22,29 @@ function doPost(e) {
     lock.waitLock(20000);
     const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     const props = PropertiesService.getScriptProperties();
-    const expected = String(props.getProperty('ALIGN_DB_SECRET') || '');
+    const deletionAction = body.action === 'preflight_account_erasure' ||
+      body.action === 'anonymize_account';
+    const paymentSecret = String(props.getProperty('ALIGN_DB_SECRET') || '');
+    const erasureSecret = deletionAction
+      ? String(props.getProperty('ALIGN_DB_DELETION_SECRET') || '')
+      : '';
+    // Never allow the routine billing/reporting credential to perform erasure.
+    // Existing actions continue authenticating with the original secret.
+    if (deletionAction &&
+        (erasureSecret.length < 32 || erasureSecret === paymentSecret)) {
+      throw new Error('La credencial independiente de eliminación no está configurada.');
+    }
+    const expected = deletionAction ? erasureSecret : paymentSecret;
     if (body.mode !== MODE || !expected || String(body.secret || '') !== expected) {
       throw new Error('Solicitud no autorizada.');
     }
 
     if (body.action === 'register_payment') return json_(registerPayment_(body));
     if (body.action === 'register_visit') return json_(registerVisit_(body));
+    // Account erasure must be called only by the authenticated Worker with its
+    // existing ALIGN_DB_SECRET; never expose this Apps Script URL to the app.
+    if (body.action === 'preflight_account_erasure') return json_(preflightAccountErasure_(body));
+    if (body.action === 'anonymize_account') return json_(anonymizeAccount_(body));
     if (body.action === 'subscription_renewed') return json_(subscriptionRenewed_(body));
     if (body.action === 'subscription_payment_failed') return json_(subscriptionPaymentFailed_(body));
     if (body.action === 'subscription_status') return json_(subscriptionStatus_(body));
@@ -171,6 +188,201 @@ function registerVisit_(body) {
   if (socioRow) setSocioFormulas_(db.socios, socioRow);
   refreshAllies_(db);
   return { ok: true, visitId: visitId, socioId: socioId };
+}
+
+
+/**
+ * Anonymize member personal data from reporting sheets, without changing tax /
+ * billing totals or creating false refunds. Idempotent. All calls require the
+ * global doPost secret, plus a validated account username.
+ *
+ * SOCIOS and AFILIADOS: remove entire account and member credential rows.
+ * VISITAS: retain dated financial statistics but remove subscriber names/IDs
+ * and arbitrary notes, which might also contain personal information.
+ * PAGOS: retain payment ID / Stripe financial references required for audit,
+ * but remove local account owner identifiers; retention needs legal review.
+ * ALIADOS: recalculate unique-member display to remove exposed names.
+ *
+ * This handler MUST NOT be deployed until tested with backup reports and a
+ * verified, authenticated production Worker deletion orchestration.
+ */
+/**
+ * Read-only fail-closed capability + Stripe identity preflight.
+ * The native app never calls this: only an authenticated Cloudflare Worker.
+ * If a real account is missing from the reporting sheet, do NOT cancel Stripe.
+ * A support reconciliation is required instead of guessing an owner.
+ */
+function preflightAccountErasure_(body) {
+  const username = clean_(body.username, 24).toLowerCase();
+  const customer = clean_(body.stripeCustomerId, 100);
+  if (!/^[a-z0-9._-]{4,24}$/.test(username) ||
+      !/^cus_[A-Za-z0-9]+$/.test(customer)) {
+    throw new Error('Identidad de eliminación inválida.');
+  }
+  const ss = spreadsheet_();
+  const sheet = ss.getSheetByName('SOCIOS');
+  if (!sheet || sheet.getLastRow() < DATA_START_ROW) {
+    throw new Error('No existen registros de socios que puedan verificarse.');
+  }
+  const rows = sheet.getRange(DATA_START_ROW, 1,
+    sheet.getLastRow() - DATA_START_ROW + 1, 22).getValues();
+  let found = 0;
+  let ownerId = '';
+  for (let i = 0; i < rows.length; i += 1) {
+    const rowUser = clean_(rows[i][1], 24).toLowerCase();
+    const rowCustomer = clean_(rows[i][17], 100);
+    if (rowUser !== username && rowCustomer !== customer) continue;
+    if (rowUser !== username || rowCustomer !== customer) {
+      throw new Error('Conflicto de identidad de Stripe; no se eliminó nada.');
+    }
+    ownerId = clean_(rows[i][0], 80);
+    if (!ownerId) {
+      throw new Error('Falta identidad del grupo; no se detuvieron cobros.');
+    }
+    found += 1;
+  }
+  if (found !== 1) {
+    throw new Error('Se requiere una coincidencia única antes de detener cobros.');
+  }
+  // Perform the same cross-table identity checks BEFORE cancelling Stripe.
+  // No sheet writes, no row creation and no implicit ownership by username.
+  const checks = [
+    {name:'AFILIADOS', columns:10, group:1, user:2, customer:-1},
+    {name:'VISITAS', columns:16, group:2, user:4, customer:-1},
+    {name:'PAGOS', columns:12, group:2, user:3, customer:10},
+  ];
+  for (let k = 0; k < checks.length; k += 1) {
+    const spec = checks[k];
+    const sheet = ss.getSheetByName(spec.name);
+    if (!sheet) throw new Error('Falta una hoja necesaria para verificar la identidad.');
+    const count = Math.max(0, sheet.getLastRow() - DATA_START_ROW + 1);
+    if (!count) continue;
+    const records = sheet.getRange(DATA_START_ROW, 1, count, spec.columns).getValues();
+    for (let i = 0; i < records.length; i += 1) {
+      const row = records[i];
+      const group = clean_(row[spec.group], 80);
+      const user = clean_(row[spec.user], 24).toLowerCase();
+      const stripe = spec.customer < 0 ? '' : clean_(row[spec.customer], 100);
+      if (group !== ownerId && user !== username && stripe !== customer) continue;
+      if (group && group !== ownerId ||
+          user && user !== username ||
+          stripe && stripe !== customer) {
+        throw new Error('Hay registros vinculados a otro socio; no se detuvieron cobros.');
+      }
+    }
+  }
+  return { ok: true, eligible: true, capability: 'account-erasure-v1' };
+}
+
+function anonymizeAccount_(body) {
+  const username = clean_(body.username, 24).toLowerCase();
+  if (!/^[a-z0-9._-]{4,24}$/.test(username)) {
+    throw new Error('Cuenta no válida para anonimización.');
+  }
+  const expectedCustomer = clean_(body.stripeCustomerId, 100);
+  if (!/^cus_[A-Za-z0-9]+$/.test(expectedCustomer)) {
+    throw new Error('Stripe Customer no válido.');
+  }
+  const db = sheets_();
+  const socioIds = Object.create(null);
+  const counts = { socios: 0, afiliados: 0, visitas: 0, pagos: 0 };
+
+  function rows_(sheet, width) {
+    const count = Math.max(0, sheet.getLastRow() - DATA_START_ROW + 1);
+    return count ? sheet.getRange(DATA_START_ROW, 1, count, width).getValues() : [];
+  }
+
+  // Account ownership is established ONLY by the unique SOCIOS record
+  // with the expected Stripe customer. Never take ownership of another group
+  // from a stale / duplicated username in an affiliate or visit row.
+  const socios = rows_(db.socios, 22);
+  let ownerId = '';
+  let matchedSocios = 0;
+  for (let i = 0; i < socios.length; i += 1) {
+    const row = socios[i];
+    const rowUser = clean_(row[1], 24).toLowerCase();
+    const rowCustomer = clean_(row[17], 100);
+    if (rowUser !== username && rowCustomer !== expectedCustomer) continue;
+    if (rowUser !== username || rowCustomer !== expectedCustomer) {
+      throw new Error('Conflicto de identidad de Stripe; no se eliminó nada.');
+    }
+    matchedSocios++;
+    ownerId = clean_(row[0], 80);
+  }
+  if (matchedSocios !== 1 || !ownerId) {
+    throw new Error('Falta una coincidencia única del socio y su grupo; requiere revisión.');
+  }
+  socioIds[ownerId] = true;
+
+  // Snapshot ALL affected rows before any writes; a stray username, group ID
+  // or Stripe customer on any row is a conflict, never deletion authority.
+  const affiliates = rows_(db.afiliados, 10);
+  const visits = rows_(db.visitas, 16);
+  const payments = rows_(db.pagos, 12);
+  const assertLinked_ = function(group, user, customer) {
+    if (group && group !== ownerId ||
+        user && user !== username ||
+        customer && customer !== expectedCustomer) {
+      throw new Error('Registros vinculados a otro socio; requiere revisión asistida.');
+    }
+  };
+  for (let i = 0; i < affiliates.length; i += 1) {
+    const row = affiliates[i];
+    const group = clean_(row[1], 80);
+    const user = clean_(row[2], 24).toLowerCase();
+    if (group === ownerId || user === username) assertLinked_(group, user, '');
+  }
+  for (let i = 0; i < visits.length; i += 1) {
+    const row = visits[i];
+    const group = clean_(row[2], 80);
+    const user = clean_(row[4], 24).toLowerCase();
+    if (group === ownerId || user === username) assertLinked_(group, user, '');
+  }
+  for (let i = 0; i < payments.length; i += 1) {
+    const row = payments[i];
+    const group = clean_(row[2], 80);
+    const user = clean_(row[3], 24).toLowerCase();
+    const customer = clean_(row[10], 100);
+    if (group === ownerId || user === username || customer === expectedCustomer) {
+      assertLinked_(group, user, customer);
+    }
+  }
+
+  // Ownership preflight complete: only now may the requested rows be mutated.
+  // Payments keep accounting amounts without fabricated refunds.
+  for (let i = 0; i < socios.length; i += 1) {
+    if (clean_(socios[i][1], 24).toLowerCase() === username) {
+      db.socios.getRange(DATA_START_ROW + i, 1, 1, 22).clearContent();
+      counts.socios++;
+    }
+  }
+  for (let i = 0; i < affiliates.length; i += 1) {
+    const row = affiliates[i];
+    if (clean_(row[2], 24).toLowerCase() === username ||
+        socioIds[clean_(row[1], 80)]) {
+      db.afiliados.getRange(DATA_START_ROW + i, 1, 1, 10).clearContent();
+      counts.afiliados++;
+    }
+  }
+  for (let i = 0; i < visits.length; i += 1) {
+    const row = visits[i];
+    if (clean_(row[4], 24).toLowerCase() !== username &&
+        !socioIds[clean_(row[2], 80)]) continue;
+    const n = DATA_START_ROW + i;
+    // Keep date, ally, people, amounts and discounts for anonymized reporting.
+    db.visitas.getRange(n, 3, 1, 4).setValues([['', '', '', 'Cuenta eliminada']]);
+    db.visitas.getRange(n, 16).clearContent(); // Free-text notes can contain PII
+    counts.visitas++;
+  }
+  for (let i = 0; i < payments.length; i += 1) {
+    const row = payments[i];
+    if (clean_(row[3], 24).toLowerCase() !== username &&
+        !socioIds[clean_(row[2], 80)]) continue;
+    db.pagos.getRange(DATA_START_ROW + i, 3, 1, 2).clearContent();
+    counts.pagos++;
+  }
+  refreshAllies_(db);
+  return { ok: true, anonymized: true, counts: counts };
 }
 
 function subscriptionRenewed_(body) {

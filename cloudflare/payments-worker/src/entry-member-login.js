@@ -1,5 +1,8 @@
 import { stripeSecret } from "./stripe-runtime.js";
+import { handleMemberAccountDeletion } from "./member-account-deletion.js";
 import memberActivityWorker from "./entry-member-activity.js";
+import { checkPreviewLoginAttempts, recordPreviewLoginFailure, clearPreviewLoginFailures } from "./member-login-guard.js";
+import { previewPasswordV2Enabled, validPlaintextPassword, authenticatePreviewPassword } from "./member-password-v2.js";
 
 const ALLOWED_ORIGINS = new Set([
   "https://alignmembers.com.mx",
@@ -105,7 +108,8 @@ async function requireMemberSession(request, env) {
   const token = bearerToken(request);
   if (!token) throw new Error("Tu sesión de miembro expiró. Inicia sesión nuevamente.");
   const record = await readJson(env, `member-session:${token}`);
-  if (!record?.groupId || Number(record.expiresAt || 0) <= Date.now()) {
+  if (!record?.groupId || Number(record.expiresAt || 0) <= Date.now() ||
+      await env.PAYMENT_STATE.get(`deleted-group:${record.groupId}`)) {
     if (token) await env.PAYMENT_STATE.delete(`member-session:${token}`);
     throw new Error("Tu sesión de miembro expiró. Inicia sesión nuevamente.");
   }
@@ -421,7 +425,7 @@ async function draftIdForSession(env, sessionId) {
 async function accountFromSession(env, sessionId, expectedUsername = "") {
   if (!sessionId) return null;
   const activation = await readJson(env, `activation:${sessionId}`);
-  if (!activation?.groupId) return null;
+  if (!activation?.groupId || await env.PAYMENT_STATE.get(`deleted-group:${activation.groupId}`)) return null;
 
   const draftId = await draftIdForSession(env, sessionId);
   if (!draftId) return null;
@@ -430,6 +434,12 @@ async function accountFromSession(env, sessionId, expectedUsername = "") {
   const passwordHash = clean(draft?.passwordHash, 64).toLowerCase();
   if (!validUsername(username) || !validHash(passwordHash)) return null;
   if (expectedUsername && username !== expectedUsername) return null;
+
+  // A repeated Preview activation cannot downgrade an upgraded password back to SHA-256.
+  if (previewPasswordV2Enabled(env)) {
+    const existing = await readJson(env, `account:${username}`);
+    if (existing && Object.prototype.hasOwnProperty.call(existing, "passwordVerifier")) return existing;
+  }
 
   const group = await readJson(env, `group:${activation.groupId}`);
   const tokens = Array.isArray(group?.tokens)
@@ -469,7 +479,8 @@ async function findSessionForDraft(env, draftId) {
 
 async function migrateAccount(env, username) {
   const direct = await readJson(env, `account:${username}`);
-  if (direct) return direct;
+  if (direct && !await env.PAYMENT_STATE.get(`deleted-group:${direct.groupId}`)) return direct;
+  if (direct) return null;
 
   let cursor = undefined;
   let inspected = 0;
@@ -529,21 +540,48 @@ async function cardsForAccount(env, account) {
   return cards;
 }
 
-async function handleLogin(request, env) {
+async function handleLogin(request, env, useV2 = false) {
   const origin = request.headers.get("origin") || "";
+  const v2Enabled = previewPasswordV2Enabled(env);
+  // Do not allow a reusable client SHA-256 digest to bypass the V2 endpoint.
+  if (useV2 && !v2Enabled) return json({ error: "Ruta no disponible." }, 404, origin);
+  if (!useV2 && v2Enabled) return json({ error: "Actualiza ALIGN Preview para continuar." }, 426, origin);
   if (!env.PAYMENT_STATE) return json({ error: "La base de miembros no está conectada." }, 503, origin);
 
   const body = await request.json().catch(() => ({}));
   const username = normalizeUsername(body.username);
-  const passwordHash = clean(body.passwordHash, 64).toLowerCase();
-  if (!validUsername(username) || !validHash(passwordHash)) {
+  const passwordHash = useV2 ? "" : clean(body.passwordHash, 64).toLowerCase();
+  if (!validUsername(username) || (useV2 ? !validPlaintextPassword(body.password) : !validHash(passwordHash))) {
     return json({ error: "Usuario o contraseña incorrectos." }, 401, origin);
   }
 
-  const account = await migrateAccount(env, username);
-  if (!account || !constantTimeEqual(clean(account.passwordHash, 64).toLowerCase(), passwordHash)) {
+  const attempts = await checkPreviewLoginAttempts(env, request, username);
+  if (attempts.blocked) {
+    return json({ error: "Demasiados intentos. Espera 15 minutos antes de intentar de nuevo." }, 429, origin);
+  }
+
+  let account = await migrateAccount(env, username);
+  let authenticated = false;
+  if (useV2) {
+    const outcome = await authenticatePreviewPassword(account, body.password);
+    authenticated = outcome.ok;
+    if (outcome.ok && outcome.upgradedAccount) {
+      // Save only salted PBKDF2 verifier in the account record, never a reusable hash.
+      await env.PAYMENT_STATE.put(`account:${username}`, JSON.stringify(outcome.upgradedAccount));
+      account = outcome.upgradedAccount;
+    }
+  } else {
+    // Unmodified legacy production behavior while MEMBER_PASSWORD_V2 is disabled.
+    authenticated = Boolean(account && constantTimeEqual(clean(account.passwordHash, 64).toLowerCase(), passwordHash));
+  }
+  if (authenticated && await env.PAYMENT_STATE.get(`deleted-group:${account.groupId}`)) {
+    return json({ error: "Esta cuenta fue eliminada." }, 410, origin);
+  }
+  if (!authenticated) {
+    await recordPreviewLoginFailure(env, attempts);
     return json({ error: "Usuario o contraseña incorrectos." }, 401, origin);
   }
+  await clearPreviewLoginFailures(env, attempts);
 
   const cards = await cardsForAccount(env, account);
   if (!cards.length) return json({ error: "La membresía no tiene tarjetas disponibles." }, 404, origin);
@@ -582,17 +620,21 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    if ((url.pathname === "/api/member-login" || url.pathname === "/api/member-billing") && request.method === "OPTIONS") {
+    if (["/api/member-login", "/api/member-login-v2", "/api/member-billing", "/api/member-account/delete"].includes(url.pathname) && request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: cors(request.headers.get("origin") || "") });
     }
 
-    if (url.pathname === "/api/member-login" && request.method === "POST") {
+    if (["/api/member-login", "/api/member-login-v2"].includes(url.pathname) && request.method === "POST") {
       try {
-        return await handleLogin(request, env);
+        return await handleLogin(request, env, url.pathname === "/api/member-login-v2");
       } catch (error) {
         console.error("ALIGN member login", error);
         return json({ error: "No pudimos iniciar sesión." }, 500, request.headers.get("origin") || "");
       }
+    }
+
+    if (url.pathname === "/api/member-account/delete") {
+      return handleMemberAccountDeletion(request, env, { readJson, requireMemberSession, stripeRequest });
     }
 
     if (url.pathname === "/api/member-billing" && ["GET", "POST"].includes(request.method)) {
