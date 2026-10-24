@@ -1,0 +1,4 @@
+ALIGN Membership GitHub Pages rebuild trigger
+Source: main f253980172d0abeda3ea2fd47ae60279791f87ce
+Purpose: force branch-based Pages build following successful site sync.
+No production backend or membership data is changed.
